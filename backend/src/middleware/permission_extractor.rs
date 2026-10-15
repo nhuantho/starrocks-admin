@@ -30,6 +30,19 @@ pub fn extract_permission(method: &str, uri: &str) -> Option<(String, String)> {
     Some((resource.to_string(), action))
 }
 
+#[cfg(test)]
+mod profile_permission_tests {
+    use super::extract_permission;
+
+    #[test]
+    fn explain_and_status_require_profile_view_permission() {
+        let expected = Some(("clusters".to_string(), "profiles:get".to_string()));
+        assert_eq!(extract_permission("POST", "/api/clusters/profiles/explain"), expected);
+        assert_eq!(extract_permission("GET", "/api/clusters/profiles/query-1/status"), expected);
+        assert_ne!(extract_permission("POST", "/api/clusters/profiles/query-1"), expected);
+    }
+}
+
 /// Extract action with special route handlers
 fn extract_action_with_special_handlers(
     resource: &str,
@@ -71,6 +84,10 @@ fn extract_users_action(segments: &[&str], method: &str) -> Option<String> {
 
 /// Extract action for clusters resource with special handlers
 fn extract_clusters_action_special(segments: &[&str], method: &str) -> Option<String> {
+    // EXPLAIN is read-only and follows the existing profile-view permission.
+    if method == "POST" && segments == ["clusters", "profiles", "explain"] {
+        return Some("profiles:get".to_string());
+    }
     if segments.len() < 2 {
         return None;
     }

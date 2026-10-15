@@ -298,6 +298,7 @@
   },
   "running": {
     "columns": {
+      "catalog": "数据目录",
       "cpuTime": "CPU时间",
       "database": "数据库",
       "execTime": "执行时间",

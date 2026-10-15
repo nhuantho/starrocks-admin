@@ -416,6 +416,11 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
           type: 'string', 
           width: '10%' 
         },
+        Catalog: {
+          title: this.t('running.columns.catalog'),
+          type: 'string',
+          width: '12%',
+        },
         ExecTime: {
           title: this.t('running.columns.execTime'),
           type: 'html',
@@ -426,19 +431,19 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
           title: this.t('running.columns.scanBytes'),
           type: 'html',
           width: '10%',
-          valuePrepareFunction: (value: string | number) => this.formatBytes(value),
+          valuePrepareFunction: (value: string | number) => value === '' || value == null ? '—' : this.formatBytes(value),
         },
         ProcessRows: {
           title: this.t('running.columns.processRows'),
           type: 'string',
           width: '10%',
-          valuePrepareFunction: (value: string | number) => this.formatNumber(value),
+          valuePrepareFunction: (value: string | number) => value === '' || value == null ? '—' : this.formatNumber(value),
         },
         CPUTime: {
           title: this.t('running.columns.cpuTime'),
           type: 'html',
           width: '10%',
-          valuePrepareFunction: (value: string | number) => this.formatTime(value),
+          valuePrepareFunction: (value: string | number) => value === '' || value == null ? '—' : this.formatTime(value),
         },
         Sql: { 
           title: 'SQL', 
@@ -4383,10 +4388,15 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
     node.loading = true;
     this.loadingDatabases = true;
 
-    // Load databases and their IDs in parallel
+    // Database IDs are optional internal metadata; catalog browsing must not depend on them.
+    const internalCatalog = catalogName === 'internal' || catalogName === 'default_catalog' || !catalogName;
+    const emptyDbIds = { results: [], total_execution_time_ms: 0 };
     forkJoin({
       databases: this.nodeService.getDatabases(catalogName || undefined),
-      dbIds: this.nodeService.executeSQL(`SHOW PROC '/dbs'`, 1000, catalogName || undefined, undefined),
+      dbIds: internalCatalog
+        ? this.nodeService.executeSQL(`SHOW PROC '/dbs'`, 1000, catalogName || undefined, undefined)
+          .pipe(catchError(() => of(emptyDbIds)))
+        : of(emptyDbIds),
     })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
@@ -4632,7 +4642,8 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
     this.nodeService.getCatalogs().subscribe({
       next: (catalogs) => {
         const catalogList = (catalogs || []).filter((name) => !!name && name.trim().length > 0);
-        catalogList.sort((a, b) => a.localeCompare(b));
+        const isInternal = (name: string) => name === 'internal' || name === 'default_catalog';
+        catalogList.sort((a, b) => Number(isInternal(b)) - Number(isInternal(a)) || a.localeCompare(b));
         this.catalogs = catalogList;
         this.loadingCatalogs = false;
         this.databaseTree = this.catalogs.map((catalog) => this.createCatalogNode(catalog));

@@ -7,6 +7,277 @@ use serde_json::Value;
 use std::sync::Arc;
 use std::time::Duration;
 
+// Doris's processlist spans all FE nodes and is independent of the SQL editor's catalog.
+const DORIS_RUNNING_QUERIES_SQL: &str = r#"
+SELECT *
+FROM internal.information_schema.processlist
+WHERE UPPER(`COMMAND`) IN ('QUERY', 'EXECUTE')
+ORDER BY `TIME` DESC
+"#;
+
+fn normalize_doris_queries(rows: Vec<Value>) -> ApiResult<Vec<Value>> {
+    rows.into_iter()
+        .map(|row| {
+            // Doris releases expose both QueryId-style and QUERY_ID-style column names.
+            let field = |names: &[&str]| -> Option<String> {
+                row.as_object()?.iter().find_map(|(key, value)| {
+                    let key = key.replace('_', "");
+                    if !names.iter().any(|name| key.eq_ignore_ascii_case(name)) || value.is_null() {
+                        return None;
+                    }
+                    let value = value
+                        .as_str()
+                        .map(str::to_string)
+                        .unwrap_or_else(|| value.to_string());
+                    (value != "NULL").then_some(value)
+                })
+            };
+            let required = |name: &str, aliases: &[&str]| -> ApiResult<String> {
+                field(aliases).ok_or_else(|| {
+                    ApiError::cluster_connection_failed(format!(
+                        "Doris processlist is missing {}",
+                        name
+                    ))
+                })
+            };
+            let seconds = required("Time", &["Time"])?;
+            let milliseconds = seconds
+                .parse::<u64>()
+                .ok()
+                .and_then(|seconds| seconds.checked_mul(1000))
+                .ok_or_else(|| {
+                    ApiError::cluster_connection_failed(
+                        "Invalid Doris processlist Time".to_string(),
+                    )
+                })?;
+            Ok(serde_json::json!({
+                "QueryId": required("QueryId", &["QueryId"])?,
+                "ConnectionId": required("Id", &["Id", "ConnectionId"])?,
+                "User": required("User", &["User"])?,
+                "Catalog": field(&["Catalog", "CatalogName"]).unwrap_or_default(),
+                "Database": field(&["Db", "Database"]).unwrap_or_default(),
+                "ExecTime": milliseconds.to_string(),
+                "Sql": field(&["Info", "Sql"]).unwrap_or_default(),
+                "feIp": field(&["FE", "FrontendInstance"]),
+            }))
+        })
+        .collect()
+}
+
+fn parse_running_queries(rows: Vec<Value>) -> ApiResult<Vec<Query>> {
+    rows.into_iter()
+        .map(|row| {
+            serde_json::from_value::<Query>(row).map_err(|error| {
+                ApiError::cluster_connection_failed(format!(
+                    "Invalid running query response: {}",
+                    error
+                ))
+            })
+        })
+        .filter_map(|result| match result {
+            // Omit this monitoring statement itself, without excluding same-ID sessions on other FEs.
+            Ok(query)
+                if query.sql.trim().trim_end_matches(';') == DORIS_RUNNING_QUERIES_SQL.trim() =>
+            {
+                None
+            },
+            result => Some(result),
+        })
+        .collect()
+}
+
+fn global_queries_path_missing(error: &ApiError) -> bool {
+    let message = error.to_string().to_lowercase();
+    message.contains("/global_current_queries")
+        && (message.contains("doesn't exist") || message.contains("wrong proc path"))
+}
+
+#[cfg(test)]
+mod running_query_tests {
+    use super::{
+        DORIS_RUNNING_QUERIES_SQL, global_queries_path_missing, normalize_doris_queries,
+        parse_running_queries,
+    };
+    use crate::utils::ApiError;
+    use serde_json::json;
+
+    #[test]
+    fn retains_queries_from_all_catalogs_and_frontends() {
+        let rows = vec![
+            json!({"QueryId": "q-internal", "ConnectionId": "7", "Catalog": "internal", "Database": "app", "User": "analyst", "ExecTime": "12000", "Sql": "select * from internal.app.events", "feIp": "fe-1"}),
+            json!({"QueryId": "q-iceberg", "ConnectionId": "7", "Catalog": "iceberg", "Database": "app", "User": "analyst", "ExecTime": "8000", "Sql": "select * from iceberg.app.events", "feIp": "fe-2"}),
+            json!({"QueryId": "q-jdbc", "ConnectionId": "9", "Catalog": "jdbc", "Database": "app", "User": "etl", "ExecTime": "5000", "Sql": "select * from jdbc.app.events", "feIp": "fe-3"}),
+        ];
+        let queries = parse_running_queries(rows).unwrap();
+        assert_eq!(queries.len(), 3);
+        assert_eq!(
+            queries
+                .iter()
+                .map(|query| query.catalog.as_str())
+                .collect::<Vec<_>>(),
+            ["internal", "iceberg", "jdbc"]
+        );
+        assert_eq!(queries[1].connection_id, queries[0].connection_id);
+        assert_ne!(queries[1].fe_ip, queries[0].fe_ip);
+        assert_eq!(queries[0].exec_time, "12000");
+        assert_eq!(queries[0].scan_bytes, "");
+    }
+
+    #[test]
+    fn hides_only_the_monitoring_statement() {
+        let rows = vec![
+            json!({"QueryId": "observer", "ConnectionId": "7", "User": "root", "Sql": DORIS_RUNNING_QUERIES_SQL}),
+            json!({"QueryId": "work", "ConnectionId": "7", "User": "root", "Sql": "select sleep(10)", "Catalog": "internal"}),
+        ];
+        let queries = parse_running_queries(rows).unwrap();
+        assert_eq!(queries.len(), 1);
+        assert_eq!(queries[0].query_id, "work");
+    }
+
+    #[test]
+    fn accepts_starrocks_rows_and_reports_invalid_responses() {
+        let queries = parse_running_queries(vec![json!({"QueryId": "sr-query", "ConnectionId": "42", "User": "analyst", "ScanRows": "123", "ScanBytes": "5 MB", "ExecTime": "2.5 s"})]).unwrap();
+        assert_eq!(queries[0].process_rows, "123");
+        assert_eq!(queries[0].catalog, "");
+        assert!(parse_running_queries(vec![json!({"QueryId": "missing-fields"})]).is_err());
+        assert!(parse_running_queries(Vec::new()).unwrap().is_empty());
+    }
+
+    #[test]
+    fn fallback_does_not_hide_permission_or_network_errors() {
+        assert!(global_queries_path_missing(&ApiError::internal_error(
+            "Wrong proc path: /global_current_queries"
+        )));
+        for message in [
+            "Access denied to /global_current_queries",
+            "Connection timed out",
+            "Wrong proc path: /current_queries",
+        ] {
+            assert!(!global_queries_path_missing(&ApiError::internal_error(message)));
+        }
+    }
+
+    #[test]
+    fn accepts_doris_camel_case_and_underscore_columns() {
+        let rows = vec![
+            json!({"Id": "7", "User": "analyst", "Catalog": "internal", "Db": "app", "Time": "12", "QueryId": "q-internal", "Info": "select sleep(30)", "FE": "fe-1"}),
+            json!({"ID": 7, "USER": "analyst", "CATALOG": "iceberg", "DB": "NULL", "TIME": 8, "QUERY_ID": "q-iceberg", "INFO": "select sleep(30)", "FE": "fe-2"}),
+        ];
+        let queries = parse_running_queries(normalize_doris_queries(rows).unwrap()).unwrap();
+        assert_eq!(queries.len(), 2);
+        assert_eq!(queries[0].catalog, "internal");
+        assert_eq!(queries[0].exec_time, "12000");
+        assert_eq!(queries[1].catalog, "iceberg");
+        assert_eq!(queries[1].exec_time, "8000");
+        assert_eq!(queries[1].database, "");
+        assert_eq!(queries[1].fe_ip.as_deref(), Some("fe-2"));
+    }
+
+    #[test]
+    fn malformed_doris_processlist_is_not_an_empty_query_list() {
+        for row in [
+            json!({"Time": "12", "User": "analyst", "Id": "7"}),
+            json!({"Time": "invalid", "User": "analyst", "Id": "7", "QueryId": "q1"}),
+            json!({"Time": "18446744073709551615", "User": "analyst", "Id": "7", "QueryId": "q1"}),
+        ] {
+            assert!(normalize_doris_queries(vec![row]).is_err());
+        }
+    }
+}
+
+// StarRocks returns the runtime object directly; Doris wraps it in a result envelope.
+fn parse_runtime_info(payload: Value) -> ApiResult<RuntimeInfo> {
+    let data = if payload.get("code").is_some() || payload.get("data").is_some() {
+        if payload.get("code").and_then(Value::as_i64) != Some(0) {
+            return Err(ApiError::cluster_connection_failed(
+                "FE runtime API returned an unsuccessful or invalid status code".to_string(),
+            ));
+        }
+        payload.get("data").cloned().unwrap_or(Value::Null)
+    } else {
+        payload
+    };
+
+    serde_json::from_value(data).map_err(|e| {
+        ApiError::cluster_connection_failed(format!("Failed to parse runtime response: {}", e))
+    })
+}
+
+fn compute_nodes_path_missing(error: &ApiError) -> bool {
+    let message = error.to_string();
+    message.contains("Proc path '/compute_nodes' doesn't exist")
+}
+
+#[cfg(test)]
+mod runtime_info_tests {
+    use super::parse_runtime_info;
+    use serde_json::json;
+
+    #[test]
+    fn accepts_starrocks_runtime() {
+        let info = parse_runtime_info(json!({
+            "fe_node": "fe-1", "total_mem": "1024", "free_mem": "256", "thread_cnt": "98"
+        }))
+        .unwrap();
+        assert_eq!(info.fe_node, "fe-1");
+        assert_eq!((info.total_mem, info.free_mem, info.thread_cnt), (1024, 256, 98));
+    }
+
+    #[test]
+    fn accepts_doris_runtime_envelope() {
+        let info = parse_runtime_info(json!({
+            "msg": "success", "code": 0, "count": 0,
+            "data": {"total_mem": "1037959168", "free_mem": "855642056",
+                     "thread_cnt": "98", "max_mem": "1037959168"}
+        }))
+        .unwrap();
+        assert_eq!(info.fe_node, "");
+        assert_eq!((info.total_mem, info.free_mem, info.thread_cnt), (1037959168, 855642056, 98));
+    }
+
+    #[test]
+    fn rejects_failed_or_malformed_runtime_responses() {
+        for payload in [
+            json!({"code": 401, "msg": "Unauthorized", "data": {
+                "total_mem": "1024", "free_mem": "256", "thread_cnt": "98"}}),
+            json!({"data": {"total_mem": "1024", "free_mem": "256", "thread_cnt": "98"}}),
+            json!({"code": 0, "data": null}),
+            json!({"code": 0, "data": {"free_mem": "256", "thread_cnt": "98"}}),
+            json!({"total_mem": "invalid", "free_mem": "256", "thread_cnt": "98"}),
+            json!({}),
+        ] {
+            assert!(parse_runtime_info(payload.clone()).is_err(), "accepted {payload}");
+        }
+    }
+
+    #[test]
+    fn only_falls_back_for_missing_compute_nodes_path() {
+        use crate::utils::ApiError;
+        assert!(super::compute_nodes_path_missing(&ApiError::internal_error(
+            "SQL execution failed: Server error: errCode = 2, detailMessage = Proc path '/compute_nodes' doesn't exist".to_string()
+        )));
+        for message in
+            ["Access denied", "Connection timed out", "Proc path '/backends' doesn't exist"]
+        {
+            assert!(!super::compute_nodes_path_missing(&ApiError::internal_error(
+                message.to_string()
+            )));
+        }
+    }
+
+    #[test]
+    fn accepts_backend_host_from_both_engines() {
+        for column in ["IP", "Host"] {
+            let backend: crate::models::Backend = serde_json::from_value(json!({
+                (column): "be-1", "BackendId": "10001", "Alive": "true"
+            }))
+            .unwrap();
+            assert_eq!(backend.host, "be-1");
+            assert_eq!(backend.backend_id, "10001");
+        }
+    }
+}
+
 pub struct StarRocksClient {
     pub http_client: Client,
     pub cluster: Cluster,
@@ -107,7 +378,15 @@ impl StarRocksClient {
 
     // Get compute nodes for shared-data architecture
     async fn get_compute_nodes(&self) -> ApiResult<Vec<Backend>> {
-        let compute_nodes = self.show_proc_entities::<Backend>("/compute_nodes").await?;
+        let compute_nodes = match self.show_proc_entities::<Backend>("/compute_nodes").await {
+            Ok(nodes) => nodes,
+            Err(error) if compute_nodes_path_missing(&error) => {
+                // Doris exposes BE nodes through /backends, including in decoupled deployments.
+                tracing::debug!("No /compute_nodes proc path; fetching /backends instead");
+                self.show_proc_entities::<Backend>("/backends").await?
+            },
+            Err(error) => return Err(error),
+        };
         tracing::info!("Retrieved {} compute nodes (shared-data mode)", compute_nodes.len());
         Ok(compute_nodes)
     }
@@ -173,18 +452,22 @@ impl StarRocksClient {
         self.show_proc_entities::<Frontend>("/frontends").await
     }
 
-    // Get current queries
+    // Get running queries across catalogs and FE nodes, using the connection account's visibility.
     pub async fn get_queries(&self) -> ApiResult<Vec<Query>> {
-        match self.show_proc_entities::<Query>("/current_queries").await {
-            Ok(queries) => Ok(queries),
-            Err(e) => {
-                tracing::warn!(
-                    "Failed to retrieve /current_queries via SHOW PROC: {}. Returning empty list.",
-                    e
-                );
-                Ok(Vec::new())
-            },
-        }
+        let mysql_client = self.mysql_client().await?;
+        let (columns, _) = mysql_client.query_raw("SHOW CATALOGS").await?;
+        let rows = if crate::services::mysql_client::is_doris_catalogs(&columns)? {
+            normalize_doris_queries(mysql_client.query(DORIS_RUNNING_QUERIES_SQL).await?)?
+        } else {
+            match self.show_proc_raw("/global_current_queries").await {
+                Ok(rows) => rows,
+                Err(error) if global_queries_path_missing(&error) => {
+                    self.show_proc_raw("/current_queries").await?
+                },
+                Err(error) => return Err(error),
+            }
+        };
+        parse_running_queries(rows)
     }
 
     // Get runtime info
@@ -206,11 +489,11 @@ impl StarRocksClient {
             )));
         }
 
-        let runtime_info: RuntimeInfo = response.json().await.map_err(|e| {
+        let payload: Value = response.json().await.map_err(|e| {
             ApiError::cluster_connection_failed(format!("Failed to parse response: {}", e))
         })?;
 
-        Ok(runtime_info)
+        parse_runtime_info(payload)
     }
 
     // Get metrics in Prometheus format

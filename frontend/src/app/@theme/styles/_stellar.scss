@@ -1,0 +1,105 @@
+@mixin stellar-console() {
+  nb-layout, .query-inspector-card {
+    --stellar-surface: #{nb-theme(background-basic-color-1)};
+    --stellar-subtle: #{nb-theme(background-basic-color-2)};
+    --stellar-border: #{nb-theme(border-basic-color-3)};
+    --stellar-text: #{nb-theme(text-basic-color)};
+    --stellar-muted: #{nb-theme(text-hint-color)};
+    --stellar-accent: #{nb-theme(color-primary-default)};
+  }
+  ngx-one-column-layout {
+    nb-layout-header nav { border-bottom: 1px solid nb-theme(border-basic-color-3); }
+    nb-sidebar { border-right: 1px solid nb-theme(border-basic-color-3); }
+    nb-sidebar.collapsed { border-right: 0; }
+    nb-sidebar.collapsed .main-container { visibility: hidden; overflow: hidden; }
+    nb-sidebar .scrollable { padding: 1rem 0.65rem !important; }
+    nb-menu .menu-item { border: 0; }
+    nb-menu .menu-item a { margin: 0.1rem 0; font-weight: 500; font-size: 0.8rem; border-radius: 0.5rem; }
+    nb-menu .menu-item .menu-icon { color: nb-theme(text-hint-color); opacity: 1; font-size: 1.1rem; }
+    nb-menu .menu-item a.active { background: rgba(110, 130, 240, 0.12); }
+    nb-menu .menu-item a.active .menu-icon { color: nb-theme(color-primary-default); }
+    nb-card { border-color: nb-theme(border-basic-color-3); }
+    ng2-smart-table table { border-collapse: separate; border-spacing: 0; }
+    ng2-smart-table table tr th, ng2-smart-table table tr td { border-color: nb-theme(border-basic-color-3) !important; }
+    ng2-smart-table table thead th { background: nb-theme(background-basic-color-2); font-size: 0.72rem; font-weight: 600; }
+    ng2-smart-table table tbody td { font-size: 0.78rem; padding: 0.9rem 0.75rem; }
+    ng2-smart-table table tbody tr:hover { background: nb-theme(background-basic-color-2); }
+    ng2-smart-table table input { border-radius: 0.4rem !important; font-size: 0.75rem !important; }
+    .badge { border-radius: 0.4rem; padding: 0.3rem 0.5rem; font-size: 0.65rem; font-weight: 600; letter-spacing: 0.025em; }
+    .badge-success { color: #19784e; background: #e5f5ed; }
+    .badge-warning { color: #946b0a; background: #fff4d8; }
+    .badge-danger { color: #b4344c; background: #fde9ee; }
+  }
+  .query-inspector-card { border: 1px solid nb-theme(border-basic-color-3); box-shadow: 0 24px 80px rgba(0,0,0,0.24); border-radius: 1rem; }
+  .query-inspector-card nb-tabset .tab-link { text-transform: none; font-size: 0.8rem; }
+  .query-inspector-card .badge { padding: 0.4rem 0.6rem; border-radius: 0.4rem; font-size: 0.65rem; }
+}
+
+// Nebular 11 renders with CSS custom properties; apply tokens after its generated defaults.
+@mixin stellar-theme-tokens() {
+  .nb-theme-default, .nb-theme-dark, .nb-theme-cosmic, .nb-theme-corporate {
+    --header-height: 4.5rem;
+    --header-padding: 0 1.5rem;
+    --header-shadow: none;
+    --sidebar-width: 15rem;
+    --sidebar-shadow: none;
+    --card-border-radius: 0.75rem;
+    --card-shadow: none;
+    --card-margin-bottom: 1.25rem;
+    --button-rectangle-border-radius: 0.5rem;
+    --input-rectangle-border-radius: 0.5rem;
+    --select-rectangle-border-radius: 0.5rem;
+    --button-small-text-font-weight: 600;
+    --button-small-text-transform: none;
+    --menu-item-padding: 0.8rem 1rem;
+    --menu-item-border-radius: 0.5rem;
+    --menu-item-divider-width: 0;
+    --layout-padding: 1.5rem;
+  }
+  .nb-theme-default {
+    --background-basic-color-1: #ffffff;
+    --background-basic-color-2: #f6f8fb;
+    --background-basic-color-3: #eef2f7;
+    --background-basic-color-4: #e3e9f1;
+    --text-basic-color: #202b40;
+    --text-hint-color: #69788f;
+    --border-basic-color-3: #e3e9f1;
+    --border-basic-color-4: #d6deea;
+    --color-primary-default: #4a64dd;
+    --color-primary-hover: #3b51c7;
+    --layout-background-color: #f6f8fb;
+  }
+  .nb-theme-dark {
+    --background-basic-color-1: #1a2339;
+    --background-basic-color-2: #141c2e;
+    --background-basic-color-3: #242f49;
+    --background-basic-color-4: #303c57;
+    --text-basic-color: #e7ecf5;
+    --text-hint-color: #98a6bf;
+    --border-basic-color-3: #2b3650;
+    --border-basic-color-4: #3d4b68;
+    --color-primary-default: #8196ff;
+    --color-primary-hover: #a1b1ff;
+    --button-filled-primary-text-color: #111827;
+    --layout-background-color: #111827;
+    --button-filled-basic-background-color: #242f49;
+    --button-filled-basic-border-color: #3d4b68;
+    --button-filled-basic-text-color: #e7ecf5;
+    ngx-one-column-layout ng2-smart-table {
+      thead th a { color: #b8c6df; }
+      thead input { color: #e7ecf5 !important; background: #141c2e !important; border-color: #3d4b68 !important; }
+      thead input::placeholder { color: #98a6bf; opacity: 1; }
+      .metric-badge--good { color: #85d7b0; }
+      .metric-badge--warn { color: #edca7c; }
+      .metric-badge--alert { color: #ffa3b4; }
+      .metric-badge--info { color: #96bcff; }
+      .metric-badge--neutral { color: #b3bed1; }
+    }
+  }
+  @media (max-width: 600px) {
+    .nb-theme-default, .nb-theme-dark, .nb-theme-cosmic, .nb-theme-corporate {
+      --header-padding: 0 0.5rem;
+      --layout-padding: 0.85rem;
+    }
+  }
+}

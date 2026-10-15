@@ -14,7 +14,7 @@ use crate::models::{
     QueryExecuteResponse, SingleQueryResult, TableMetadata, TableObjectType,
 };
 use crate::services::StarRocksClient;
-use crate::services::mysql_client::MySQLClient;
+use crate::services::mysql_client::{MySQLClient, parse_catalog_names, quote_identifier};
 use crate::utils::ApiResult;
 
 // Get list of catalogs using MySQL client
@@ -48,17 +48,8 @@ pub async fn list_catalogs(
     let pool = state.mysql_pool_manager.get_pool(&cluster).await?;
     let mysql_client = MySQLClient::from_pool(pool);
 
-    let (_, rows) = mysql_client.query_raw("SHOW CATALOGS").await?;
-
-    let mut catalogs = Vec::new();
-    for row in rows {
-        if let Some(catalog_name) = row.first() {
-            let name = catalog_name.trim().to_string();
-            if !name.is_empty() {
-                catalogs.push(name);
-            }
-        }
-    }
+    let (columns, rows) = mysql_client.query_raw("SHOW CATALOGS").await?;
+    let catalogs = parse_catalog_names(&columns, &rows)?;
 
     tracing::debug!("Found {} catalogs via MySQL client", catalogs.len());
     Ok(Json(catalogs))
@@ -101,7 +92,7 @@ pub async fn list_databases(
 
     // Get catalog parameter if provided
     let query_sql = if let Some(catalog_name) = params.get("catalog") {
-        format!("SHOW DATABASES FROM {}", catalog_name)
+        format!("SHOW DATABASES FROM {}", quote_identifier(catalog_name))
     } else {
         "SHOW DATABASES".to_string()
     };
@@ -172,92 +163,39 @@ pub async fn list_tables(
     let catalog_name = params.get("catalog").cloned();
     let mut session = mysql_client.create_session().await?;
 
-    let show_tables_sql = match catalog_name.as_deref() {
-        Some(catalog) if catalog != "default_catalog" => {
-            format!("SHOW TABLES FROM {}.{}", catalog, database_name)
-        },
-        _ => format!("SHOW TABLES FROM {}", database_name),
-    };
-
-    let mut tables = match session.execute(&show_tables_sql).await {
-        Ok((_, rows, _)) => rows
-            .into_iter()
-            .filter_map(|row| {
-                let name = row
-                    .first()
-                    .map(|s| s.trim().to_string())
-                    .unwrap_or_default();
-                if name.is_empty() {
-                    None
-                } else {
-                    Some(TableMetadata { name, object_type: TableObjectType::Table })
-                }
-            })
-            .collect::<Vec<_>>(),
-        Err(err) => {
-            tracing::warn!(
-                "Failed to execute '{}': {}. Falling back to information_schema query.",
-                show_tables_sql,
-                err
-            );
-
-            let table_sql = r#"
-                SELECT 
-                    t.TABLE_NAME,
-                    CASE
-                        WHEN t.TABLE_TYPE = 'TABLE' OR t.TABLE_TYPE = 'BASE TABLE' THEN 'TABLE'
-                        WHEN mv.TABLE_NAME IS NOT NULL THEN 'MATERIALIZED_VIEW'
-                        ELSE 'VIEW'
-                    END AS OBJECT_TYPE
-                FROM information_schema.tables t
-                LEFT JOIN information_schema.materialized_views mv
-                    ON t.TABLE_SCHEMA = mv.TABLE_SCHEMA
-                   AND t.TABLE_NAME = mv.TABLE_NAME
-                WHERE t.TABLE_SCHEMA = ?
-                ORDER BY t.TABLE_NAME
-            "#;
-
-            match session
-                .query_with_params(table_sql, (database_name.clone(),))
-                .await
-            {
-                Ok((_, rows)) => rows
-                    .into_iter()
-                    .filter_map(|row| {
-                        let name = row
-                            .first()
-                            .map(|s| s.trim().to_string())
-                            .unwrap_or_default();
-                        if name.is_empty() {
-                            return None;
-                        }
-                        let object_type_raw = row
-                            .get(1)
-                            .map(|s| s.trim().to_uppercase())
-                            .unwrap_or_default();
-                        let object_type = match object_type_raw.as_str() {
-                            "MATERIALIZED_VIEW" => TableObjectType::MaterializedView,
-                            "VIEW" => TableObjectType::View,
-                            _ => TableObjectType::Table,
-                        };
-                        Some(TableMetadata { name, object_type })
-                    })
-                    .collect::<Vec<_>>(),
-                Err(info_schema_err) => {
-                    tracing::error!(
-                        "Failed to retrieve tables for {} ({}): {} / {}",
-                        database_name,
-                        catalog_name.as_deref().unwrap_or("default_catalog"),
-                        err,
-                        info_schema_err
-                    );
-                    Vec::new()
-                },
+    if let Some(catalog) = catalog_name.as_deref().filter(|name| !name.is_empty()) {
+        session.use_catalog(catalog).await?;
+    }
+    let show_tables_sql = format!("SHOW FULL TABLES FROM {}", quote_identifier(&database_name));
+    let (columns, rows, _) = session.execute(&show_tables_sql).await?;
+    let type_index = columns
+        .iter()
+        .position(|column| column.eq_ignore_ascii_case("Table_type"));
+    let mut tables = rows
+        .into_iter()
+        .filter_map(|row| {
+            let name = row.first()?.trim().to_string();
+            if name.is_empty() {
+                return None;
             }
-        },
-    };
+            let table_type = type_index
+                .and_then(|index| row.get(index))
+                .map(|value| value.trim().to_uppercase());
+            let object_type = match table_type.as_deref() {
+                Some("VIEW") => TableObjectType::View,
+                Some("MATERIALIZED_VIEW" | "MATERIALIZED VIEW") => {
+                    TableObjectType::MaterializedView
+                },
+                _ => TableObjectType::Table,
+            };
+            Some(TableMetadata { name, object_type })
+        })
+        .collect::<Vec<_>>();
 
     if !tables.is_empty()
+        && catalog_name
+            .as_deref()
+            .is_none_or(|name| name == "default_catalog")
         && let Ok((_, info_rows)) = session
             .query_with_params(
                 r#"
@@ -344,20 +282,12 @@ pub async fn list_catalogs_with_databases(
     let mysql_client = MySQLClient::from_pool(pool);
 
     // Step 1: Get all catalogs
-    let (_, catalog_rows) = mysql_client.query_raw("SHOW CATALOGS").await?;
+    let (catalog_columns, catalog_rows) = mysql_client.query_raw("SHOW CATALOGS").await?;
 
     let mut catalogs = Vec::new();
 
     // Extract catalog names
-    let mut catalog_names = Vec::new();
-    for row in catalog_rows {
-        if let Some(catalog_name) = row.first() {
-            let name = catalog_name.trim().to_string();
-            if !name.is_empty() {
-                catalog_names.push(name);
-            }
-        }
-    }
+    let catalog_names = parse_catalog_names(&catalog_columns, &catalog_rows)?;
 
     tracing::debug!("Found {} catalogs, fetching databases for each...", catalog_names.len());
 
@@ -365,7 +295,7 @@ pub async fn list_catalogs_with_databases(
     let mut session = mysql_client.create_session().await?;
     for catalog_name in &catalog_names {
         // Get databases for this catalog
-        let show_db_sql = format!("SHOW DATABASES FROM {}", catalog_name);
+        let show_db_sql = format!("SHOW DATABASES FROM {}", quote_identifier(catalog_name));
         let (_, db_rows, _) = match session.execute(&show_db_sql).await {
             Ok(result) => result,
             Err(e) => {

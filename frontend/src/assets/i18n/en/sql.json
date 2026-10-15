@@ -298,6 +298,7 @@
   },
   "running": {
     "columns": {
+      "catalog": "Catalog",
       "cpuTime": "CPU Time",
       "database": "Database",
       "execTime": "Exec Time",

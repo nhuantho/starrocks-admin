@@ -5,7 +5,7 @@ import { NbToastrService, NbDialogService } from '@nebular/theme';
 import { LocalDataSource } from 'ng2-smart-table';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { NodeService } from '../../../../@core/data/node.service';
+import { NodeService, ProfileListItem } from '../../../../@core/data/node.service';
 import { ClusterContextService } from '../../../../@core/data/cluster-context.service';
 import { Cluster } from '../../../../@core/data/cluster.service';
 import { ErrorHandler } from '../../../../@core/utils/error-handler';
@@ -41,7 +41,34 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
   currentQueryId: string = '';
   profileDetailLoading = false;
   @ViewChild('profileDetailDialog') profileDetailDialogTemplate: TemplateRef<any>;
+  @ViewChild('queryExplainDialog') queryExplainDialogTemplate: TemplateRef<any>;
+  profiles: ProfileListItem[] = [];
+  inspectedQuery: ProfileListItem | null = null;
+  explainSql = '';
+  explainCatalog = '';
+  explainDatabase = '';
+  explainCatalogs: string[] = [];
+  explainPlan = '';
+  explainTimeMs: number | null = null;
+  explainLoading = false;
+  explainError = '';
+  queryStatusLoading = false;
+  queryStatusError = '';
+  nativeProfileLoading = false;
+  nativeProfileText = '';
+  nativeProfileError = '';
+  private explainRequestId = 0;
   
+  get runningProfileCount(): number {
+    return this.profiles.filter(query => query.State === 'RUNNING').length;
+  }
+  get finishedProfileCount(): number {
+    return this.profiles.filter(query => query.State === 'FINISHED').length;
+  }
+  get unsuccessfulProfileCount(): number {
+    return this.profiles.filter(query => ['FAILED', 'CANCELLED', 'CANCELED', 'ABORTED'].includes(query.State)).length;
+  }
+
   // DAG Analysis
   analysisLoading = false;
   analysisError: string = '';
@@ -497,7 +524,8 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
         edit: true,
         delete: false,
         position: 'right',
-        width: '80px',
+        width: '120px',
+        custom: [{ name: 'explain', title: '<span role="img" aria-label="Explain SQL" title="Explain SQL"><i class="fas fa-code" aria-hidden="true"></i></span>' }],
       },
       edit: {
         editButtonContent: '<i class="nb-search"></i>',
@@ -529,8 +557,8 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
           type: 'html',
           width: '10%',
           valuePrepareFunction: (value: string) => {
-            const status = value === 'Finished' ? 'success' : 'warning';
-            return `<span class="badge badge-${status}">${value}</span>`;
+            const safeState = this.safeState(value);
+            return `<span class="badge badge-${this.queryStateColor(safeState)}">${safeState}</span>`;
           },
         },
         Statement: { 
@@ -539,6 +567,8 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
           width: '40%',
           valuePrepareFunction: (value: any) => renderLongText(value, 100),
         },
+        Catalog: { title: this.translate.instant('profile.inspect.catalog'), type: 'string', width: '12%' },
+        User: { title: this.translate.instant('profile.inspect.user'), type: 'string', width: '8%' },
       },
     };
   }
@@ -656,6 +686,7 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.nodeService.listProfiles().subscribe(
       data => {
+        this.profiles = data;
         this.profileSource.load(data);
         this.updateDynamicThresholds(data);
         this.loading = false;
@@ -671,6 +702,12 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
   loadProfilesSilently(): void {
     this.nodeService.listProfiles().subscribe(
       data => {
+        this.profiles = data;
+        if (this.inspectedQuery) {
+          const updated = data.find(query => query.QueryId === this.inspectedQuery.QueryId);
+          if (updated) { this.inspectedQuery = updated; this.queryStatusError = ''; }
+          else { this.queryStatusError = this.translate.instant('profile.inspect.statusMissing'); }
+        }
         this.profileSource.load(data);
         this.updateDynamicThresholds(data);
       },
@@ -731,7 +768,122 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
 
   // Handle profile edit action (view profile)
   onProfileEdit(event: any): void {
+    if (event.data.Engine === 'doris') {
+      this.openExplain(event.data);
+      return;
+    }
     this.viewProfileDetail(event.data.QueryId);
+  }
+
+  onProfileCustom(event: any): void {
+    if (event.action === 'explain') { this.openExplain(event.data); }
+  }
+
+  safeState(value: string): string {
+    const state = String(value || 'UNKNOWN').toUpperCase();
+    return /^[A-Z0-9_ -]{1,64}$/.test(state) ? state : 'UNKNOWN';
+  }
+
+  queryStateColor(value: string): string {
+    switch (this.safeState(value)) {
+      case 'FINISHED': case 'EOF': case 'SUCCESS': return 'success';
+      case 'FAILED': case 'ERROR': case 'ERR': case 'ABORTED': case 'CANCELLED': case 'CANCELED': return 'danger';
+      case 'RUNNING': case 'PENDING': case 'QUEUED': return 'warning';
+      default: return 'secondary';
+    }
+  }
+
+  openExplain(query: ProfileListItem | null = null): void {
+    this.inspectedQuery = query;
+    this.explainSql = query?.Statement || '';
+    this.explainCatalog = query?.Catalog || '';
+    this.explainDatabase = query?.Database || '';
+    this.explainPlan = '';
+    this.explainError = '';
+    this.explainTimeMs = null;
+    this.explainLoading = false;
+    this.queryStatusLoading = false;
+    this.queryStatusError = '';
+    this.nativeProfileLoading = false;
+    this.nativeProfileText = '';
+    this.nativeProfileError = '';
+    this.explainRequestId++;
+    this.dialogService.open(this.queryExplainDialogTemplate, {hasBackdrop: true, closeOnBackdropClick: false, closeOnEsc: true});
+    this.nodeService.getCatalogs().pipe(takeUntil(this.destroy$)).subscribe({
+      next: catalogs => {
+        const selectedCatalog = this.explainCatalog || catalogs.find(catalog => catalog === 'internal' || catalog === 'default_catalog') || '';
+        this.explainCatalogs = catalogs;
+        this.explainCatalog = selectedCatalog;
+        this.cdr.markForCheck();
+      },
+      error: error => { this.explainError = ErrorHandler.extractErrorMessage(error); this.cdr.markForCheck(); },
+    });
+  }
+
+  generateExplain(): void {
+    const requestId = ++this.explainRequestId;
+    this.explainLoading = true;
+    this.explainError = '';
+    this.explainPlan = '';
+    this.explainTimeMs = null;
+    this.nodeService.explainQuery(this.explainSql, this.explainCatalog || undefined, this.explainDatabase || undefined)
+      .pipe(takeUntil(this.destroy$)).subscribe({
+        next: result => {
+          if (requestId !== this.explainRequestId) { return; }
+          this.explainPlan = result.plan;
+          this.explainTimeMs = result.execution_time_ms;
+          this.explainLoading = false;
+          this.cdr.markForCheck();
+        },
+        error: error => {
+          if (requestId !== this.explainRequestId) { return; }
+          this.explainError = ErrorHandler.extractErrorMessage(error);
+          this.explainLoading = false;
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  refreshQueryStatus(): void {
+    const queryId = this.inspectedQuery?.QueryId;
+    if (!queryId) { return; }
+    this.queryStatusLoading = true;
+    this.queryStatusError = '';
+    this.nodeService.getProfileStatus(queryId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: query => {
+        if (this.inspectedQuery?.QueryId !== queryId) { return; }
+        this.inspectedQuery = query;
+        this.queryStatusLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: error => {
+        if (this.inspectedQuery?.QueryId !== queryId) { return; }
+        this.queryStatusError = ErrorHandler.extractErrorMessage(error);
+        this.queryStatusLoading = false;
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  loadNativeProfile(): void {
+    const queryId = this.inspectedQuery?.QueryId;
+    if (!queryId) { return; }
+    this.nativeProfileLoading = true;
+    this.nativeProfileError = '';
+    this.nodeService.getProfile(queryId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: profile => {
+        if (this.inspectedQuery?.QueryId !== queryId) { return; }
+        this.nativeProfileText = profile.profile_content;
+        this.nativeProfileLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: error => {
+        if (this.inspectedQuery?.QueryId !== queryId) { return; }
+        this.nativeProfileError = ErrorHandler.extractErrorMessage(error);
+        this.nativeProfileLoading = false;
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   // View profile detail from profile list

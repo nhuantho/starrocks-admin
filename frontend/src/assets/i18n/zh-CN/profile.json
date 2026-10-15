@@ -409,5 +409,41 @@
     "IoSeekTime": "IO Seek寻址过程产生的总耗时，该指标仅适用于存算分离实例",
     "LocalDiskReadIOTime": "从本地缓存读取数据产生的I/O耗时，该指标仅适用于存算分离实例",
     "RemoteReadIOTime": "从远端OSS读取数据产生的I/O耗时，该指标仅适用于存算分离实例"
+  },
+  "inspect": {
+    "title": "查询详情",
+    "explainSql": "查看执行计划",
+    "explainTab": "SQL 与 EXPLAIN",
+    "runtimeTab": "运行时 Profile",
+    "catalog": "Catalog",
+    "database": "数据库",
+    "user": "用户",
+    "endTime": "结束时间",
+    "frontend": "FE 节点",
+    "refreshStatus": "刷新状态",
+    "planHint": "根据当前元数据生成执行计划。EXPLAIN 不会重新执行查询。对于未限定名称的 SQL，请选择原始 Catalog 和数据库。",
+    "sessionDefault": "会话默认值",
+    "optional": "可选",
+    "generate": "生成 EXPLAIN",
+    "generating": "正在生成…",
+    "runtimeHint": "运行时 Profile 必须在原始查询执行时采集。Doris 需要在该查询会话中启用 enable_profile=true。较早的 Profile 可能已过期。",
+    "loadRuntime": "加载运行时 Profile",
+    "loading": "正在加载…",
+    "selectQuery": "请从 Profiles 列表选择查询以加载运行时 Profile。",
+    "statusMissing": "实时查询或保留的 Profile 中已找不到该查询，最终状态未知。"
+  },
+  "workspace": {
+    "eyebrow": "查询观测",
+    "description": "从执行状态到物理计划，了解每一条查询。",
+    "summary": "可见查询概览",
+    "visible": "可见查询",
+    "running": "运行中",
+    "finished": "已完成",
+    "unsuccessful": "失败 / 已取消",
+    "activity": "查询活动",
+    "historyHint": "当前连接有权限查看的实时查询和保留的 Profile",
+    "planOutput": "执行计划",
+    "planEmpty": "在此查看执行计划",
+    "planEmptyHint": "选择 Catalog 和数据库，然后生成 EXPLAIN 计划。"
   }
 }
