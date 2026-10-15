@@ -1,6 +1,6 @@
-//! StarRocks Profile Analyzer
+//! StarRocks and Apache Doris runtime profile analyzer.
 //!
-//! A comprehensive module for parsing, analyzing, and visualizing StarRocks query profiles.
+//! Parses engine-specific counters into shared execution graphs and evidence-based diagnostics.
 //!
 //! # Architecture
 //!
@@ -44,6 +44,8 @@
 //! ```
 
 pub mod analyzer;
+mod dependency_paths;
+pub mod doris;
 pub mod models;
 pub mod parser;
 
@@ -116,6 +118,9 @@ pub fn analyze_profile_with_context(
     profile_text: &str,
     context: &AnalysisContext,
 ) -> Result<ProfileAnalysisResponse, String> {
+    if doris::is_doris_profile(profile_text) {
+        return doris::analyze(profile_text, context);
+    }
     let mut composer = ProfileComposer::new();
     let profile = composer
         .parse(profile_text)
@@ -258,7 +263,13 @@ pub fn analyze_profile_with_context(
     let all_suggestions = RuleEngine::generate_suggestions(&rule_diagnostics);
     let performance_score = RuleEngine::calculate_performance_score(&rule_diagnostics, &profile);
 
+    let root_cause_paths = dependency_paths::build_paths(execution_tree.as_ref(), &diagnostics);
     Ok(ProfileAnalysisResponse {
+        engine: "starrocks".to_string(),
+        metric_basis: "StarRocks operator timing semantics".to_string(),
+        topology_warnings: Vec::new(),
+        root_cause_paths,
+        operator_diagnostics: HashMap::new(),
         hotspots,
         conclusion,
         suggestions: all_suggestions,

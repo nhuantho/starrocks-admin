@@ -186,12 +186,14 @@ pub async fn analyze_profile_handler(
 ) -> ApiResult<Json<ProfileAnalysisResponse>> {
     let safe_query_id = sanitize_query_id(&query_id)?;
     let service = profile_service(&state, &org_ctx).await?;
-    if service.is_doris().await? {
-        return Err(ApiError::invalid_data(
-            "The execution DAG analyzer supports StarRocks profiles. Use Explain and the native runtime profile for Doris.",
-        ));
-    }
+    let is_doris = service.is_doris().await?;
     let profile_content = service.profile_text(&safe_query_id).await?;
+    if is_doris {
+        let context = AnalysisContext { cluster_variables: None, lang };
+        return crate::services::profile_analyzer::doris::analyze(&profile_content, &context)
+            .map(Json)
+            .map_err(|error| ApiError::invalid_data(format!("Doris profile analysis: {}", error)));
+    }
     let mysql_client = service.mysql;
 
     // Fetch live cluster session variables for smart parameter recommendations

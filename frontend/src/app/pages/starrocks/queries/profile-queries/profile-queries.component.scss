@@ -1735,3 +1735,63 @@
   &:focus { outline: 2px solid var(--stellar-accent); outline-offset: 2px; }
   &:disabled { opacity: 0.65; }
 }
+
+.profile-dialog-card {
+  .profile-engine-badge { font-size: 0.65rem; padding: 0.2rem 0.5rem; border-radius: 0.3rem; color: var(--stellar-accent); background: var(--stellar-subtle); }
+  .dag-layout, .dag-center-panel { background-color: var(--stellar-subtle); }
+  .dag-center-panel { background-image: radial-gradient(var(--stellar-border) 1px, transparent 1px); background-size: 18px 18px; }
+  .dag-center-panel .graph-viewport { display: block; }
+  .dag-toolbar { background: var(--stellar-surface); border: 1px solid var(--stellar-border); border-radius: 0.5rem; }
+  .dag-node { border-radius: 0.5rem; background: var(--stellar-surface); border-color: var(--stellar-border); }
+  .dag-node.on-cause-path { outline: 2px solid #d9a936; outline-offset: 3px; }
+  .dag-node:focus-visible { outline: 3px solid var(--stellar-accent); }
+  .dag-node .node-header.header-gray { background: var(--stellar-subtle); }
+  .dag-node .node-header.header-gray .node-title { color: var(--stellar-text); }
+  .dag-node .node-body, .dag-node .node-body .id-row { color: var(--stellar-muted); }
+  .dag-node .node-body .time-value, .dag-node .node-body .pct-value { color: var(--stellar-text); }
+  .dag-right-panel { background: var(--stellar-surface); color: var(--stellar-text); border-color: var(--stellar-border); }
+  .dag-right-panel .right-section, .dag-right-panel .section-header { border-color: var(--stellar-border); }
+  .dag-right-panel .section-header { background: var(--stellar-subtle); color: var(--stellar-text); }
+  .dag-right-panel .section-header .title, .dag-right-panel .top10-table td { color: var(--stellar-text); }
+  .dag-right-panel .top10-table th { color: var(--stellar-muted); background: var(--stellar-subtle); }
+  .runtime-method { padding: 0.75rem 1rem; font-size: 0.7rem; color: var(--stellar-muted); }
+  .runtime-method summary { cursor: pointer; font-weight: 600; color: var(--stellar-text); }
+  .runtime-method p { margin: 0.6rem 0 0; }
+  .topology-warning { color: #b7821c; }
+  .causal-note { color: var(--stellar-muted); font-size: 0.7rem; line-height: 1.6; }
+  .causal-card { border: 1px solid var(--stellar-border); border-radius: 0.5rem; margin-bottom: 0.6rem; padding: 0.75rem; font-size: 0.7rem; line-height: 1.6; overflow-wrap: anywhere; }
+  .causal-card.active { border-color: #d9a936; }
+  .causal-title { border: 0; background: transparent; color: var(--stellar-text); padding: 0; text-align: left; font-weight: 600; cursor: pointer; font-size: 0.75rem; line-height: 1.6; width: 100%; }
+  .causal-steps { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin: 0.75rem 0; }
+  .causal-steps button { font-size: 0.6rem; border: 1px solid var(--stellar-border); color: var(--stellar-accent); background: var(--stellar-subtle); border-radius: 0.35rem; padding: 0.3rem; cursor: pointer; }
+  .causal-caption { display: block; margin: 0.75rem 0 0.3rem; }
+  .causal-evidence { color: var(--stellar-muted); font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.65rem; margin-bottom: 0.5rem; }
+  .causal-card ul { padding-left: 1rem; margin: 0; color: var(--stellar-text); }
+  .causal-card li + li { margin-top: 0.4rem; }
+  .doris-counter { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.7rem; padding: 0.6rem 0; border-bottom: 1px solid var(--stellar-border); overflow-wrap: anywhere; }
+  .doris-counter code { white-space: normal; color: var(--stellar-accent); font-size: 0.65rem; }
+  .diag-message-inline, .diag-reason, .reason-text { color: var(--stellar-muted); }
+}
+
+// Nebular's 100%-height action links overlap adjacent rows when custom actions coexist.
+.profiles-workspace ng2-smart-table tbody td.ng2-smart-actions {
+  height: auto;
+  padding: 0.35rem 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  ng2-st-tbody-custom, ng2-st-tbody-edit-delete { display: inline-flex; height: 2rem; vertical-align: middle; }
+  a.ng2-smart-action { font-size: 1rem !important; height: 2rem; width: 2rem; border: 0; border-radius: 0.35rem; }
+  a.ng2-smart-action:hover { background: var(--stellar-subtle); }
+}
+
+.diagnostics-live-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem 1rem;
+  padding: .65rem 1.25rem;
+  background: var(--background-basic-color-2);
+  color: var(--text-hint-color);
+  border-bottom: 1px solid var(--border-basic-color-3);
+  font-size: .75rem;
+}
+.diagnostics-state[data-state="RUNNING"] { color: #b7791f; }

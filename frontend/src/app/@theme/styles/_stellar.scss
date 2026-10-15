@@ -1,5 +1,5 @@
 @mixin stellar-console() {
-  nb-layout, .query-inspector-card {
+  nb-layout, .query-inspector-card, .profile-dialog-card {
     --stellar-surface: #{nb-theme(background-basic-color-1)};
     --stellar-subtle: #{nb-theme(background-basic-color-2)};
     --stellar-border: #{nb-theme(border-basic-color-3)};

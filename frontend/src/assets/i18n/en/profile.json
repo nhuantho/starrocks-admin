@@ -434,7 +434,7 @@
   },
   "workspace": {
     "eyebrow": "QUERY OBSERVABILITY",
-    "description": "Understand every query, from execution status to the physical plan.",
+    "description": "Explore runtime execution graphs, dominant operators and evidence-backed recommendations.",
     "summary": "Visible query summary",
     "visible": "Visible queries",
     "running": "Running",
@@ -445,5 +445,26 @@
     "planOutput": "Execution plan",
     "planEmpty": "Your plan starts here",
     "planEmptyHint": "Choose the catalog and database, then generate an EXPLAIN plan."
+  },
+  "runtime": {
+    "method": "Timing and topology",
+    "paths": "Root-cause paths",
+    "pathHint": "Measured dependency paths with candidate causes. Select a path to highlight it; select an operator to inspect its counters.",
+    "evidence": "Runtime evidence",
+    "recommendations": "Optimization recommendations",
+    "counters": "Doris runtime counters",
+    "waitHint": "ExecTime and dependency waits are separate counters. Do not add them as query wall time.",
+    "openDiagnostics": "Open query diagnostics"
+  },
+  "live": {
+    "pause": "Pause live updates · 5s",
+    "resume": "Resume live updates · 5s",
+    "final": "Final runtime snapshot · live updates stopped.",
+    "provisional": "Provisional runtime snapshot · counters and diagnostic candidates may change while the query runs.",
+    "updated": "Snapshot updated",
+    "refreshing": "Refreshing…",
+    "waiting": "Waiting for a runtime profile. Profiling must be enabled in the original query session. The last available snapshot is preserved.",
+    "statusUnavailable": "Query status is temporarily unavailable; showing the state reported by this profile.",
+    "unavailable": "A final complete profile could not be confirmed. Automatic retries stopped; refresh manually to try again. The last snapshot is preserved."
   }
 }
