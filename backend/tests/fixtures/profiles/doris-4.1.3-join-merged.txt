@@ -1,0 +1,469 @@
+Summary:
+   - Profile ID: 0000000000000000-0000000000000002
+   - Task Type: QUERY
+   - Start Time: 2026-10-15 15:21:28
+   - End Time: 2026-10-15 15:21:28
+   - Total: 49ms
+   - Task State: OK
+   - User: profile_reader
+   - Default Catalog: internal
+   - Default Db: sample_db
+   - Sql Statement: SELECT a.id, COUNT(b.id) AS matches
+FROM `external_catalog`.`sample_db`.`items` a
+LEFT JOIN `external_catalog`.`sample_db`.`items` b ON a.id = b.id
+GROUP BY a.id LIMIT 5
+   - Distributed Plan: N/A
+Execution Summary:
+   - Workload Group: normal
+   - Parse SQL Time: 1ms
+   - Plan Time: 8ms
+     - Garbage Collect During Plan Time: 0ms
+     - Nereids Preload External Metadata Time: 0ms
+     - Nereids Lock Table Time: 0ms
+     - Nereids Analysis Time: 1ms
+     - Nereids Rewrite Time: 3ms
+       - Nereids Fold Const By BE Time: 0ms
+     - Nereids Collect Table Partition Time: 0ms
+   - Nereids Pre Rewrite By Mv Time: N/A
+     - Nereids Optimize Time: N/A
+     - Nereids Translate Time: 1ms
+       - Init Scan Node Time: N/A
+       - Finalize Scan Node Time: N/A
+         - Get Splits Time: N/A
+         - Get Partitions Time: N/A
+         - Get Partition Files Time: N/A
+         - Sink Set Partition Values Time: N/A
+       - Create Scan Range Time: N/A
+         - Iceberg Scan Metrics: N/A
+         - Paimon Scan Metrics: N/A
+     - Nereids Distribute Time: 1ms
+   - Get Meta Version Time: 0ns
+     - Get Partition Version Time: N/A
+     - Get Partition Version Count (hasData): 0
+     - Get Partition Version Count: 0
+     - Get Table Version Time: N/A
+     - Get Table Version Count: 0
+   - Schedule Time: 9ms
+     - Fragment Assign Time: 1ms
+     - Fragment Serialize Time: 2ms
+     - Fragment RPC Phase1 Time: 5ms
+     - Fragment RPC Phase2 Time: 1ms
+     - Fragment Compressed Size: 7.49 KB
+     - Fragment RPC Count: 2
+   - Schedule Time Of BE: {"phase1":{"backend.example: 8060":{"RPC Work Time":"4ms","RPC Latency From FE To BE":"1ms","RPC Work Queue Time":"0ms","RPC Latency From BE To FE":"0ms"}},"phase2":{"backend.example: 8060":{"RPC Work Time":"1ms","RPC Latency From FE To BE":"0ms","RPC Work Queue Time":"0ms","RPC Latency From BE To FE":"0ms"}}}
+   - Wait and Fetch Result Time: 31ms
+   - Fetch Result Time: 30ms
+   - Write Result Time: 0ms
+   - Doris Version: doris-4.1.3-rc02-7126cf65d96
+   - Is Nereids: Yes
+   - Is Cached: No
+   - Total Instances Num: 25
+   - Instances Num Per BE: backend.example:8060:25
+   - Parallel Fragment Exec Instance Num: 8
+   - Trace ID: 
+   - Transaction Commit Time: N/A
+   - System Message: N/A
+   - Executed By Frontend: N/A
+   - Splits Assignment Weight: N/A
+
+ChangedSessionVariables:
+[
+  {
+    "VarName": "enable_profile",
+    "CurrentValue": "true",
+    "DefaultValue": "false"
+  },
+  {
+    "VarName": "max_allowed_packet",
+    "CurrentValue": "67108864",
+    "DefaultValue": "16777216"
+  }
+]
+MergedProfile:
+     Fragments:
+       Fragment 0:
+         Pipeline 0(instance_num=1):
+            - WaitWorkerTime: avg 47.514us, max 47.514us, min 47.514us
+           RESULT_SINK_OPERATOR(id=9):
+             CommonCounters:
+                - ExecTime: avg 110.54us, max 110.54us, min 110.54us
+                - InputRows: sum 1, avg 1, max 1, min 1
+                - MemoryUsage: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MemoryUsagePeak: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - WaitForDependency[RESULT_SINK_OPERATOR_DEPENDENCY]Time: avg 0ns, max 0ns, min 0ns
+             CustomCounters:
+                - WaitForDependencyTime: avg 0ns, max 0ns, min 0ns
+           EXCHANGE_OPERATOR(id=8):
+              - PlanInfo
+                 - offset: 0
+                 - limit: 5
+             CommonCounters:
+                - BlocksProduced: sum 1, avg 1, max 1, min 1
+                - ExecTime: avg 69.144us, max 69.144us, min 69.144us
+                - MaxOutputBlockBytes: sum 16.00 B, avg 16.00 B, max 16.00 B, min 16.00 B
+                - MemoryUsage: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MemoryUsagePeak: sum 192.00 B, avg 192.00 B, max 192.00 B, min 192.00 B
+                - MinOutputBlockBytes: sum 16.00 B, avg 16.00 B, max 16.00 B, min 16.00 B
+                - OutputBlockBytes: sum 16.00 B, avg 16.00 B, max 16.00 B, min 16.00 B
+                - RowsProduced: sum 1, avg 1, max 1, min 1
+             CustomCounters:
+                - WaitForDependencyTime: avg 0ns, max 0ns, min 0ns
+                  - WaitForData0: avg 30.167ms, max 30.167ms, min 30.167ms
+       Fragment 1:
+         Pipeline 0(instance_num=8):
+            - WaitWorkerTime: avg 38.555us, max 81.608us, min 20.717us
+           DATA_STREAM_SINK_OPERATOR(dest_id=8):
+             CommonCounters:
+                - ExecTime: avg 21.883us, max 39.648us, min 16.641us
+                - InputRows: sum 1, avg 0, max 1, min 0
+                - MemoryUsage: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MemoryUsagePeak: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - WaitForDependencyTime: avg 0ns, max 0ns, min 0ns
+                  - WaitForRpcBufferQueue: avg 0ns, max 0ns, min 0ns
+             CustomCounters:
+                - BlocksProduced: sum 9, avg 1, max 2, min 1
+                - OverallThroughput: sum 0.0 /sec, avg 0.0 /sec, max 0.0 /sec, min 0.0 /sec
+           LOCAL_MERGE_SORT_SOURCE_OPERATOR(nereids_id=375)(id=7):
+              - PlanInfo
+                 - order by: id ASC
+                 - algorithm: heap sort
+                 - local merge sort
+                 - merge by exchange
+                 - offset: 0
+                 - limit: 5
+             CommonCounters:
+                - BlocksProduced: sum 1, avg 0, max 1, min 0
+                - ExecTime: avg 8.160us, max 41.944us, min 1.353us
+                - MaxOutputBlockBytes: sum 16.00 B, avg 2.00 B, max 16.00 B, min 0.00 
+                - MemoryUsage: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MemoryUsagePeak: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MinOutputBlockBytes: sum 16.00 B, avg 2.00 B, max 16.00 B, min 0.00 
+                - OutputBlockBytes: sum 16.00 B, avg 2.00 B, max 16.00 B, min 0.00 
+                - RowsProduced: sum 1, avg 0, max 1, min 0
+                - WaitForDependency[LOCAL_MERGE_SORT_SOURCE_OPERATOR_DEPENDENCY]Time: avg 29.989ms, max 30.57ms, min 29.893ms
+             CustomCounters:
+         Pipeline 1(instance_num=8):
+            - WaitWorkerTime: avg 34.188us, max 51.995us, min 19.824us
+           SORT_SINK_OPERATOR(nereids_id=375)(id=7):
+             CommonCounters:
+                - ExecTime: avg 20.796us, max 30.679us, min 12.760us
+                - InputRows: sum 1, avg 0, max 1, min 0
+                - MemoryUsage: sum 192.00 B, avg 24.00 B, max 192.00 B, min 0.00 
+                - MemoryUsagePeak: sum 192.00 B, avg 24.00 B, max 192.00 B, min 0.00 
+                - WaitForDependency[SORT_SINK_OPERATOR_DEPENDENCY]Time: avg 0ns, max 0ns, min 0ns
+             CustomCounters:
+                - MemoryUsageSortBlocks: sum 192.00 B, avg 24.00 B, max 192.00 B, min 0.00 
+           LOCAL_EXCHANGE_OPERATOR(PASSTHROUGH)(id=-3):
+             CommonCounters:
+                - BlocksProduced: sum 1, avg 0, max 1, min 0
+                - ExecTime: avg 1.680us, max 4.480us, min 944ns
+                - MaxOutputBlockBytes: sum 16.00 B, avg 2.00 B, max 16.00 B, min 0.00 
+                - MemoryUsage: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MemoryUsagePeak: sum 4.13 KB, avg 528.00 B, max 4.13 KB, min 0.00 
+                - MinOutputBlockBytes: sum 16.00 B, avg 2.00 B, max 16.00 B, min 0.00 
+                - OutputBlockBytes: sum 16.00 B, avg 2.00 B, max 16.00 B, min 0.00 
+                - RowsProduced: sum 1, avg 0, max 1, min 0
+                - WaitForDependency[LOCAL_EXCHANGE_OPERATOR_DEPENDENCY]Time: avg 29.957ms, max 30.11ms, min 29.907ms
+             CustomCounters:
+                - GetBlockFailedTime: sum 1, avg 0, max 1, min 0
+         Pipeline 2(instance_num=8):
+            - WaitWorkerTime: avg 25.147us, max 47.597us, min 14.269us
+           LOCAL_EXCHANGE_SINK_OPERATOR(PASSTHROUGH)(id=-3):
+             CommonCounters:
+                - ExecTime: avg 9.657us, max 50.378us, min 2.208us
+                - InputRows: sum 1, avg 0, max 1, min 0
+                - MemoryUsage: sum 4.13 KB, avg 528.00 B, max 4.13 KB, min 0.00 
+                - MemoryUsagePeak: sum 4.13 KB, avg 528.00 B, max 4.13 KB, min 0.00 
+                - WaitForDependency[LOCAL_EXCHANGE_SINK_DEPENDENCY]Time: avg 0ns, max 0ns, min 0ns
+             CustomCounters:
+           AGGREGATION_OPERATOR(nereids_id=371)(id=6):
+              - PlanInfo
+                 - output: count(partial_count(id))[#13]
+                 - group by: id
+                 - sortByGroupKey:true
+                 - cardinality=1
+                 - limit: 5
+             CommonCounters:
+                - BlocksProduced: sum 1, avg 0, max 1, min 0
+                - ExecTime: avg 16.231us, max 18.214us, min 13.775us
+                - MaxOutputBlockBytes: sum 16.00 B, avg 2.00 B, max 16.00 B, min 0.00 
+                - MemoryUsage: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MemoryUsagePeak: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MinOutputBlockBytes: sum 16.00 B, avg 2.00 B, max 16.00 B, min 0.00 
+                - OutputBlockBytes: sum 16.00 B, avg 2.00 B, max 16.00 B, min 0.00 
+                - RowsProduced: sum 1, avg 0, max 1, min 0
+                - WaitForDependency[AGGREGATION_OPERATOR_DEPENDENCY]Time: avg 29.873ms, max 29.916ms, min 29.845ms
+             CustomCounters:
+                - HashTableInputCount: sum 0, avg 0, max 0, min 0
+                - HashTableSize: sum 0, avg 0, max 0, min 0
+                - MemoryUsageHashTable: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+         Pipeline 3(instance_num=8):
+            - WaitWorkerTime: avg 31.994us, max 51.518us, min 10.962us
+           AGGREGATION_SINK_OPERATOR(nereids_id=371)(id=6):
+             CommonCounters:
+                - ExecTime: avg 40.354us, max 83.68us, min 19.94us
+                - InputRows: sum 1, avg 0, max 1, min 0
+                - MemoryUsage: sum 426.28 KB, avg 53.29 KB, max 426.28 KB, min 0.00 
+                - MemoryUsagePeak: sum 426.28 KB, avg 53.29 KB, max 426.28 KB, min 0.00 
+                - WaitForDependency[AGGREGATION_SINK_OPERATOR_DEPENDENCY]Time: avg 0ns, max 0ns, min 0ns
+             CustomCounters:
+                - MemoryUsageHashTable: sum 22.28 KB, avg 2.79 KB, max 22.28 KB, min 0.00 
+                - MemoryUsageSerializeKeyArena: sum 404.00 KB, avg 50.50 KB, max 404.00 KB, min 0.00 
+           EXCHANGE_OPERATOR(id=5):
+              - PlanInfo
+                 - offset: 0
+             CommonCounters:
+                - BlocksProduced: sum 1, avg 0, max 1, min 0
+                - ExecTime: avg 17.999us, max 22.47us, min 14.195us
+                - MaxOutputBlockBytes: sum 16.00 B, avg 2.00 B, max 16.00 B, min 0.00 
+                - MemoryUsage: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MemoryUsagePeak: sum 192.00 B, avg 24.00 B, max 192.00 B, min 0.00 
+                - MinOutputBlockBytes: sum 16.00 B, avg 2.00 B, max 16.00 B, min 0.00 
+                - OutputBlockBytes: sum 16.00 B, avg 2.00 B, max 16.00 B, min 0.00 
+                - RowsProduced: sum 1, avg 0, max 1, min 0
+             CustomCounters:
+                - WaitForDependencyTime: avg 0ns, max 0ns, min 0ns
+                  - WaitForData0: avg 29.803ms, max 29.838ms, min 29.703ms
+       Fragment 2:
+         Pipeline 0(instance_num=8):
+            - WaitWorkerTime: avg 37.913us, max 70.637us, min 19.257us
+           DATA_STREAM_SINK_OPERATOR(dest_id=5):
+             CommonCounters:
+                - ExecTime: avg 99.69us, max 131.510us, min 62.653us
+                - InputRows: sum 1, avg 0, max 1, min 0
+                - MemoryUsage: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MemoryUsagePeak: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - WaitForDependencyTime: avg 0ns, max 0ns, min 0ns
+                  - WaitForRpcBufferQueue: avg 0ns, max 0ns, min 0ns
+             CustomCounters:
+                - BlocksProduced: sum 64, avg 8, max 8, min 8
+                - OverallThroughput: sum 0.0 /sec, avg 0.0 /sec, max 0.0 /sec, min 0.0 /sec
+           STREAMING_AGGREGATION_OPERATOR(nereids_id=363)(id=4):
+              - PlanInfo
+                 - STREAMING
+                 - output: partial_count(id)[#11]
+                 - group by: id
+                 - sortByGroupKey:true
+                 - cardinality=1
+                 - limit: 5
+             CommonCounters:
+                - BlocksProduced: sum 1, avg 0, max 1, min 0
+                - ExecTime: avg 42.989us, max 79.80us, min 29.258us
+                - MaxOutputBlockBytes: sum 16.00 B, avg 2.00 B, max 16.00 B, min 0.00 
+                - MemoryUsage: sum 426.28 KB, avg 53.29 KB, max 426.28 KB, min 0.00 
+                - MemoryUsagePeak: sum 426.28 KB, avg 53.29 KB, max 426.28 KB, min 0.00 
+                - MinOutputBlockBytes: sum 16.00 B, avg 2.00 B, max 16.00 B, min 0.00 
+                - OutputBlockBytes: sum 16.00 B, avg 2.00 B, max 16.00 B, min 0.00 
+                - RowsProduced: sum 1, avg 0, max 1, min 0
+             CustomCounters:
+                - MemoryUsageHashTable: sum 22.28 KB, avg 2.79 KB, max 22.28 KB, min 0.00 
+                - MemoryUsageSerializeKeyArena: sum 404.00 KB, avg 50.50 KB, max 404.00 KB, min 0.00 
+                - MemoryUsageSerializeKeyArenaPeak: sum 404.00 KB, avg 50.50 KB, max 404.00 KB, min 0.00 
+           LOCAL_EXCHANGE_OPERATOR(PASSTHROUGH)(id=-6):
+             CommonCounters:
+                - BlocksProduced: sum 1, avg 0, max 1, min 0
+                - ExecTime: avg 1.486us, max 4.398us, min 952ns
+                - MaxOutputBlockBytes: sum 17.00 B, avg 2.00 B, max 17.00 B, min 0.00 
+                - MemoryUsage: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MemoryUsagePeak: sum 320.00 B, avg 40.00 B, max 320.00 B, min 0.00 
+                - MinOutputBlockBytes: sum 17.00 B, avg 2.00 B, max 17.00 B, min 0.00 
+                - OutputBlockBytes: sum 17.00 B, avg 2.00 B, max 17.00 B, min 0.00 
+                - RowsProduced: sum 1, avg 0, max 1, min 0
+                - WaitForDependency[LOCAL_EXCHANGE_OPERATOR_DEPENDENCY]Time: avg 29.514ms, max 29.587ms, min 29.430ms
+             CustomCounters:
+                - GetBlockFailedTime: sum 0, avg 0, max 0, min 0
+         Pipeline 1(instance_num=8):
+            - WaitWorkerTime: avg 31.958us, max 62.759us, min 15.852us
+           LOCAL_EXCHANGE_SINK_OPERATOR(PASSTHROUGH)(id=-6):
+             CommonCounters:
+                - ExecTime: avg 9.986us, max 40.74us, min 2.191us
+                - InputRows: sum 1, avg 0, max 1, min 0
+                - MemoryUsage: sum 320.00 B, avg 40.00 B, max 320.00 B, min 0.00 
+                - MemoryUsagePeak: sum 320.00 B, avg 40.00 B, max 320.00 B, min 0.00 
+                - WaitForDependency[LOCAL_EXCHANGE_SINK_DEPENDENCY]Time: avg 0ns, max 0ns, min 0ns
+             CustomCounters:
+           HASH_JOIN_OPERATOR(nereids_id=359)(id=3):
+              - PlanInfo
+                 - join op: LEFT OUTER JOIN(BROADCAST)[]
+                 - equal join conjunct: (id = id)
+                 - cardinality=1
+                 - vec output tuple id: 5
+                 - output tuple id: 5
+                 - vIntermediate tuple ids: 4 
+                 - hash output slot ids: 2 5 
+                 - projections: id, id
+                 - project output tuple id: 5
+             CommonCounters:
+                - BlocksProduced: sum 1, avg 0, max 1, min 0
+                - ExecTime: avg 17.914us, max 53.596us, min 11.264us
+                - MaxOutputBlockBytes: sum 17.00 B, avg 2.00 B, max 17.00 B, min 0.00 
+                - MemoryUsage: sum 144.00 B, avg 18.00 B, max 144.00 B, min 0.00 
+                - MemoryUsagePeak: sum 144.00 B, avg 18.00 B, max 144.00 B, min 0.00 
+                - MinOutputBlockBytes: sum 17.00 B, avg 2.00 B, max 17.00 B, min 0.00 
+                - OutputBlockBytes: sum 17.00 B, avg 2.00 B, max 17.00 B, min 0.00 
+                - RowsProduced: sum 1, avg 0, max 1, min 0
+                - WaitForDependency[HASH_JOIN_PROBE_DEPENDENCY]Time: avg 29.444ms, max 29.507ms, min 29.373ms
+             CustomCounters:
+                - MemoryUsageProbeKeyArena: sum 16.00 B, avg 2.00 B, max 16.00 B, min 0.00 
+                - MemoryUsageProbeKeyArenaPeak: sum 16.00 B, avg 2.00 B, max 16.00 B, min 0.00 
+                - ProbeIntermediateRows: sum 1, avg 0, max 1, min 0
+                - ProbeRows: sum 1, avg 0, max 1, min 0
+           LOCAL_EXCHANGE_OPERATOR(PASSTHROUGH)(id=-5):
+             CommonCounters:
+                - BlocksProduced: sum 1, avg 0, max 1, min 0
+                - ExecTime: avg 1.736us, max 5.604us, min 894ns
+                - MaxOutputBlockBytes: sum 8.00 B, avg 1.00 B, max 8.00 B, min 0.00 
+                - MemoryUsage: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MemoryUsagePeak: sum 128.00 B, avg 16.00 B, max 128.00 B, min 0.00 
+                - MinOutputBlockBytes: sum 8.00 B, avg 1.00 B, max 8.00 B, min 0.00 
+                - OutputBlockBytes: sum 8.00 B, avg 1.00 B, max 8.00 B, min 0.00 
+                - RowsProduced: sum 1, avg 0, max 1, min 0
+                - WaitForDependency[LOCAL_EXCHANGE_OPERATOR_DEPENDENCY]Time: avg 0ns, max 0ns, min 0ns
+             CustomCounters:
+                - GetBlockFailedTime: sum 0, avg 0, max 0, min 0
+         Pipeline 2(instance_num=1):
+            - WaitWorkerTime: avg 27.783us, max 27.783us, min 27.783us
+           LOCAL_EXCHANGE_SINK_OPERATOR(PASSTHROUGH)(id=-5):
+             CommonCounters:
+                - ExecTime: avg 9.206us, max 9.206us, min 9.206us
+                - InputRows: sum 1, avg 1, max 1, min 1
+                - MemoryUsage: sum 128.00 B, avg 128.00 B, max 128.00 B, min 128.00 B
+                - MemoryUsagePeak: sum 128.00 B, avg 128.00 B, max 128.00 B, min 128.00 B
+                - WaitForDependency[LOCAL_EXCHANGE_SINK_DEPENDENCY]Time: avg 0ns, max 0ns, min 0ns
+             CustomCounters:
+           JDBC_SCAN_OPERATOR(nereids_id=342. table_name=`sample_db`.`items`)(id=2):
+              - PlanInfo
+                 - CATALOG ID: 0
+                 - TABLE: `sample_db`.`items`
+                 - QUERY: SELECT `id` FROM `sample_db`.`items`
+                 - projections: id
+                 - project output tuple id: 3
+             CommonCounters:
+                - BlocksProduced: sum 1, avg 1, max 1, min 1
+                - ExecTime: avg 20.278ms, max 20.278ms, min 20.278ms
+                - MaxOutputBlockBytes: sum 8.00 B, avg 8.00 B, max 8.00 B, min 8.00 B
+                - MemoryUsage: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MemoryUsagePeak: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MinOutputBlockBytes: sum 8.00 B, avg 8.00 B, max 8.00 B, min 8.00 B
+                - OutputBlockBytes: sum 8.00 B, avg 8.00 B, max 8.00 B, min 8.00 B
+                - RowsProduced: sum 1, avg 1, max 1, min 1
+                - WaitForDependency[JDBC_SCAN_OPERATOR_DEPENDENCY]Time: avg 18.484ms, max 18.484ms, min 18.484ms
+             CustomCounters:
+                - RuntimeFilterInfo: sum , avg , max , min 
+                - ScanBytes: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - ScanRows: sum 0, avg 0, max 0, min 0
+               Scanner:
+         Pipeline 3(instance_num=8):
+            - WaitWorkerTime: avg 37.913us, max 67.864us, min 16.795us
+           HASH_JOIN_SINK_OPERATOR(nereids_id=359)(id=3):
+             CommonCounters:
+                - ExecTime: avg 19.208us, max 57.789us, min 9.665us
+                - InputRows: sum 1, avg 0, max 1, min 0
+                - MemoryUsage: sum 188.00 B, avg 23.00 B, max 188.00 B, min 0.00 
+                - MemoryUsagePeak: sum 188.00 B, avg 23.00 B, max 188.00 B, min 0.00 
+                - WaitForDependency[HASH_JOIN_BUILD_DEPENDENCY]Time: avg 25.745ms, max 29.458ms, min 0ns
+             CustomCounters:
+                - MemoryUsageBuildBlocks: sum 128.00 B, avg 16.00 B, max 128.00 B, min 0.00 
+                - MemoryUsageBuildKeyArena: sum 32.00 B, avg 4.00 B, max 32.00 B, min 0.00 
+                - MemoryUsageHashTable: sum 28.00 B, avg 3.00 B, max 28.00 B, min 0.00 
+                - RuntimeFilterInfo: sum , avg , max , min 
+                  - BuildTime: avg 18ns, max 147ns, min 0ns
+                  - PublishTime: avg 31ns, max 33ns, min 24ns
+           LOCAL_EXCHANGE_OPERATOR(PASS_TO_ONE)(id=-4):
+             CommonCounters:
+                - BlocksProduced: sum 1, avg 0, max 1, min 0
+                - ExecTime: avg 990ns, max 4.488us, min 410ns
+                - MaxOutputBlockBytes: sum 8.00 B, avg 1.00 B, max 8.00 B, min 0.00 
+                - MemoryUsage: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MemoryUsagePeak: sum 128.00 B, avg 16.00 B, max 128.00 B, min 0.00 
+                - MinOutputBlockBytes: sum 8.00 B, avg 1.00 B, max 8.00 B, min 0.00 
+                - OutputBlockBytes: sum 8.00 B, avg 1.00 B, max 8.00 B, min 0.00 
+                - RowsProduced: sum 1, avg 0, max 1, min 0
+                - WaitForDependency[LOCAL_EXCHANGE_OPERATOR_DEPENDENCY]Time: avg 3.667ms, max 29.343ms, min 0ns
+             CustomCounters:
+                - GetBlockFailedTime: sum 1, avg 0, max 1, min 0
+         Pipeline 4(instance_num=1):
+            - WaitWorkerTime: avg 38.258us, max 38.258us, min 38.258us
+           LOCAL_EXCHANGE_SINK_OPERATOR(PASS_TO_ONE)(id=-4):
+             CommonCounters:
+                - ExecTime: avg 28.718us, max 28.718us, min 28.718us
+                - InputRows: sum 1, avg 1, max 1, min 1
+                - MemoryUsage: sum 128.00 B, avg 128.00 B, max 128.00 B, min 128.00 B
+                - MemoryUsagePeak: sum 128.00 B, avg 128.00 B, max 128.00 B, min 128.00 B
+                - WaitForDependency[LOCAL_EXCHANGE_SINK_DEPENDENCY]Time: avg 0ns, max 0ns, min 0ns
+             CustomCounters:
+           EXCHANGE_OPERATOR(id=1):
+              - PlanInfo
+                 - offset: 0
+             CommonCounters:
+                - BlocksProduced: sum 1, avg 1, max 1, min 1
+                - ExecTime: avg 23.376us, max 23.376us, min 23.376us
+                - MaxOutputBlockBytes: sum 8.00 B, avg 8.00 B, max 8.00 B, min 8.00 B
+                - MemoryUsage: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MemoryUsagePeak: sum 128.00 B, avg 128.00 B, max 128.00 B, min 128.00 B
+                - MinOutputBlockBytes: sum 8.00 B, avg 8.00 B, max 8.00 B, min 8.00 B
+                - OutputBlockBytes: sum 8.00 B, avg 8.00 B, max 8.00 B, min 8.00 B
+                - RowsProduced: sum 1, avg 1, max 1, min 1
+             CustomCounters:
+                - WaitForDependencyTime: avg 0ns, max 0ns, min 0ns
+                  - WaitForData0: avg 29.313ms, max 29.313ms, min 29.313ms
+       Fragment 3:
+         Pipeline 0(instance_num=8):
+            - WaitWorkerTime: avg 42.669us, max 49.108us, min 33.362us
+           DATA_STREAM_SINK_OPERATOR(dest_id=1):
+             CommonCounters:
+                - ExecTime: avg 21.94us, max 38.490us, min 15.490us
+                - InputRows: sum 1, avg 0, max 1, min 0
+                - MemoryUsage: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MemoryUsagePeak: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - WaitForDependencyTime: avg 0ns, max 0ns, min 0ns
+                  - WaitForRpcBufferQueue: avg 0ns, max 0ns, min 0ns
+             CustomCounters:
+                - BlocksProduced: sum 9, avg 1, max 2, min 1
+                - OverallThroughput: sum 0.0 /sec, avg 0.0 /sec, max 0.0 /sec, min 0.0 /sec
+           LOCAL_EXCHANGE_OPERATOR(PASSTHROUGH)(id=-1):
+             CommonCounters:
+                - BlocksProduced: sum 1, avg 0, max 1, min 0
+                - ExecTime: avg 2.70us, max 6.506us, min 1.247us
+                - MaxOutputBlockBytes: sum 8.00 B, avg 1.00 B, max 8.00 B, min 0.00 
+                - MemoryUsage: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MemoryUsagePeak: sum 128.00 B, avg 16.00 B, max 128.00 B, min 0.00 
+                - MinOutputBlockBytes: sum 8.00 B, avg 1.00 B, max 8.00 B, min 0.00 
+                - OutputBlockBytes: sum 8.00 B, avg 1.00 B, max 8.00 B, min 0.00 
+                - RowsProduced: sum 1, avg 0, max 1, min 0
+                - WaitForDependency[LOCAL_EXCHANGE_OPERATOR_DEPENDENCY]Time: avg 29.159ms, max 29.182ms, min 29.106ms
+             CustomCounters:
+                - GetBlockFailedTime: sum 1, avg 0, max 1, min 0
+         Pipeline 1(instance_num=1):
+            - WaitWorkerTime: avg 32.951us, max 32.951us, min 32.951us
+           LOCAL_EXCHANGE_SINK_OPERATOR(PASSTHROUGH)(id=-1):
+             CommonCounters:
+                - ExecTime: avg 75.699us, max 75.699us, min 75.699us
+                - InputRows: sum 1, avg 1, max 1, min 1
+                - MemoryUsage: sum 128.00 B, avg 128.00 B, max 128.00 B, min 128.00 B
+                - MemoryUsagePeak: sum 128.00 B, avg 128.00 B, max 128.00 B, min 128.00 B
+                - WaitForDependency[LOCAL_EXCHANGE_SINK_DEPENDENCY]Time: avg 0ns, max 0ns, min 0ns
+             CustomCounters:
+           JDBC_SCAN_OPERATOR(nereids_id=347. table_name=`sample_db`.`items`)(id=0):
+              - PlanInfo
+                 - CATALOG ID: 0
+                 - TABLE: `sample_db`.`items`
+                 - QUERY: SELECT `id` FROM `sample_db`.`items`
+                 - projections: id
+                 - project output tuple id: 1
+             CommonCounters:
+                - BlocksProduced: sum 1, avg 1, max 1, min 1
+                - ExecTime: avg 29.71ms, max 29.71ms, min 29.71ms
+                - MaxOutputBlockBytes: sum 8.00 B, avg 8.00 B, max 8.00 B, min 8.00 B
+                - MemoryUsage: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MemoryUsagePeak: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MinOutputBlockBytes: sum 8.00 B, avg 8.00 B, max 8.00 B, min 8.00 B
+                - OutputBlockBytes: sum 8.00 B, avg 8.00 B, max 8.00 B, min 8.00 B
+                - RowsProduced: sum 1, avg 1, max 1, min 1
+                - WaitForDependency[JDBC_SCAN_OPERATOR_DEPENDENCY]Time: avg 27.626ms, max 27.626ms, min 27.626ms
+             CustomCounters:
+                - RuntimeFilterInfo: sum , avg , max , min 
+                - ScanBytes: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - ScanRows: sum 0, avg 0, max 0, min 0
+               Scanner:
+

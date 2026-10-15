@@ -1,6 +1,6 @@
 //! Profile analysis data models
 //!
-//! These models represent the structured data extracted from StarRocks query profiles.
+//! These models represent structured runtime data from StarRocks and Doris query profiles.
 //! They are designed to be serializable for API responses and optimized for frontend visualization.
 
 use serde::{Deserialize, Serialize};
@@ -568,6 +568,16 @@ pub struct HotSpot {
 /// Complete analysis response for API
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProfileAnalysisResponse {
+    #[serde(default)]
+    pub engine: String,
+    #[serde(default)]
+    pub metric_basis: String,
+    #[serde(default)]
+    pub topology_warnings: Vec<String>,
+    #[serde(default)]
+    pub root_cause_paths: Vec<RootCausePath>,
+    #[serde(default)]
+    pub operator_diagnostics: HashMap<String, Vec<DiagnosticResult>>,
     pub hotspots: Vec<HotSpot>,
     pub conclusion: String,
     pub suggestions: Vec<String>,
@@ -589,6 +599,15 @@ pub struct ProfileAnalysisResponse {
     /// Fragment and Pipeline information for node detail view
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub fragments: Vec<Fragment>,
+}
+
+/// A measured operator and its downstream dependency path, not a wall-clock critical path.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RootCausePath {
+    pub node_ids: Vec<String>,
+    pub message: String,
+    pub evidence: Vec<String>,
+    pub suggestions: Vec<String>,
 }
 
 /// Aggregated diagnostic for overview display

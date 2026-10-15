@@ -3,8 +3,8 @@ import { ActivatedRoute } from '@angular/router';
 import { Location } from '@angular/common'; // Import Location
 import { NbToastrService, NbDialogService } from '@nebular/theme';
 import { LocalDataSource } from 'ng2-smart-table';
-import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { Subject, forkJoin, of } from 'rxjs';
+import { catchError, takeUntil } from 'rxjs/operators';
 import { NodeService, ProfileListItem } from '../../../../@core/data/node.service';
 import { ClusterContextService } from '../../../../@core/data/cluster-context.service';
 import { Cluster } from '../../../../@core/data/cluster.service';
@@ -58,6 +58,35 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
   nativeProfileText = '';
   nativeProfileError = '';
   private explainRequestId = 0;
+  diagnosticsState = 'UNKNOWN';
+  diagnosticsUpdatedAt: Date | null = null;
+  diagnosticsNotice = '';
+  diagnosticsAutoRefresh = true;
+  diagnosticsRefreshing = false;
+  diagnosticsFinal = false;
+  private diagnosticsTimer: any;
+  private diagnosticsEpoch = 0;
+  private diagnosticsRetries = 0;
+  private diagnosticsStop$ = new Subject<void>();
+  private diagnosticsDialog: any;
+
+  private stopDiagnostics(): void {
+    clearTimeout(this.diagnosticsTimer);
+    this.diagnosticsTimer = null;
+    this.diagnosticsEpoch++;
+    this.diagnosticsStop$.next();
+    this.diagnosticsRefreshing = false;
+  }
+
+  toggleDiagnosticsRefresh(): void {
+    this.diagnosticsAutoRefresh = !this.diagnosticsAutoRefresh;
+    clearTimeout(this.diagnosticsTimer);
+    if (this.diagnosticsAutoRefresh) { this.refreshAnalysis(); }
+  }
+
+  get diagnosticsProvisional(): boolean {
+    return !this.diagnosticsFinal;
+  }
   
   get runningProfileCount(): number {
     return this.profiles.filter(query => query.State === 'RUNNING').length;
@@ -67,6 +96,36 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
   }
   get unsuccessfulProfileCount(): number {
     return this.profiles.filter(query => ['FAILED', 'CANCELLED', 'CANCELED', 'ABORTED'].includes(query.State)).length;
+  }
+
+  activeCauseNodeIds = new Set<string>();
+  selectedCauseIndex: number | null = null;
+
+  selectCausePath(index: number): void {
+    this.selectedCauseIndex = this.selectedCauseIndex === index ? null : index;
+    const path = this.analysisData?.root_cause_paths?.[this.selectedCauseIndex as number];
+    this.activeCauseNodeIds = new Set(path?.node_ids || []);
+  }
+
+  isCauseEdge(edge: any): boolean {
+    const path = this.analysisData?.root_cause_paths?.[this.selectedCauseIndex as number]?.node_ids || [];
+    return path.some((id: string, index: number) => id === edge.v && path[index + 1] === edge.w);
+  }
+
+  causeNodeName(nodeId: string): string {
+    const node = this.graphNodes.find(item => item.id === nodeId);
+    return node ? `${node.operator_name} · F${node.fragment_id ?? '—'}/P${node.pipeline_id ?? '—'}` : nodeId;
+  }
+
+  getDorisTimingMetrics(): {key: string; value: string}[] {
+    if (this.analysisData?.engine !== 'doris' || !this.selectedNode) { return []; }
+    return Object.entries(this.selectedNode.unique_metrics || {})
+      .filter(([key]) => key.includes('Time') && key !== 'OperatorTotalTime')
+      .map(([key, value]) => ({ key, value: String(value) }))
+      .sort((a, b) => {
+        const rank = (key: string) => key === 'ExecTime' ? 0 : key === 'InitConnectorTime' ? 1 : key.startsWith('WaitForDependency') ? 2 : 3;
+        return rank(a.key) - rank(b.key) || a.key.localeCompare(b.key);
+      });
   }
 
   // DAG Analysis
@@ -528,7 +587,7 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
         custom: [{ name: 'explain', title: '<span role="img" aria-label="Explain SQL" title="Explain SQL"><i class="fas fa-code" aria-hidden="true"></i></span>' }],
       },
       edit: {
-        editButtonContent: '<i class="nb-search"></i>',
+        editButtonContent: '<span role="img" aria-label="Query diagnostics" title="Query diagnostics"><i class="nb-search" aria-hidden="true"></i></span>',
       },
       pager: {
         display: true,
@@ -615,6 +674,10 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(cluster => {
         this.activeCluster = cluster;
+        if (this.clusterId !== cluster?.id) {
+          this.stopDiagnostics();
+          this.diagnosticsDialog?.close();
+        }
         if (cluster) {
           // Always use the active cluster (override route parameter)
           const newClusterId = cluster.id;
@@ -632,6 +695,8 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopAutoRefresh();
+    this.stopDiagnostics();
+    this.diagnosticsDialog?.close();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -768,10 +833,6 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
 
   // Handle profile edit action (view profile)
   onProfileEdit(event: any): void {
-    if (event.data.Engine === 'doris') {
-      this.openExplain(event.data);
-      return;
-    }
     this.viewProfileDetail(event.data.QueryId);
   }
 
@@ -888,6 +949,13 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
 
   // View profile detail from profile list
   viewProfileDetail(queryId: string): void {
+    this.stopDiagnostics();
+    this.diagnosticsState = this.profiles.find(query => query.QueryId === queryId)?.State || 'UNKNOWN';
+    this.diagnosticsUpdatedAt = null;
+    this.diagnosticsNotice = '';
+    this.diagnosticsAutoRefresh = true;
+    this.diagnosticsFinal = false;
+    this.diagnosticsRetries = 0;
     this.currentQueryId = queryId;
     this.profileDetailLoading = true;
     this.analysisLoading = true;
@@ -898,9 +966,11 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
     this.graphNodes = [];
     this.graphEdges = [];
     this.selectedNode = null;
+    this.activeCauseNodeIds = new Set();
+    this.selectedCauseIndex = null;
     
     // Open dialog first with loading state
-    this.dialogService.open(this.profileDetailDialogTemplate, {
+    this.diagnosticsDialog = this.dialogService.open(this.profileDetailDialogTemplate, {
       context: { profile: this.currentProfileDetail },
       hasBackdrop: true,
       closeOnBackdropClick: true,
@@ -908,44 +978,73 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
       dialogClass: 'profile-dialog-lg',
     });
     
-    // Load analysis data (includes profile_content)
+    const epoch = this.diagnosticsEpoch;
+    this.diagnosticsDialog.onClose.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      if (epoch === this.diagnosticsEpoch) { this.stopDiagnostics(); }
+    });
     this.loadAnalysis(queryId);
   }
   
-  // Load profile analysis for DAG (includes profile_content)
+  // Poll status and the original runtime profile together; never rerun SQL.
   loadAnalysis(queryId: string): void {
-    this.analysisLoading = true;
+    if (this.diagnosticsRefreshing) { return; }
+    clearTimeout(this.diagnosticsTimer);
+    const epoch = this.diagnosticsEpoch;
+    this.diagnosticsRefreshing = true;
+    this.analysisLoading = !this.analysisData;
     this.profileDetailLoading = true;
-    this.analysisError = '';
-    
-    this.nodeService.analyzeProfile(queryId).subscribe({
-      next: (data) => {
+    forkJoin({
+      status: this.nodeService.getProfileStatus(queryId).pipe(catchError(error => of({ error }))),
+      analysis: this.nodeService.analyzeProfile(queryId).pipe(catchError(error => of({ error }))),
+    }).pipe(takeUntil(this.destroy$), takeUntil(this.diagnosticsStop$)).subscribe((result: any) => {
+      if (epoch !== this.diagnosticsEpoch || queryId !== this.currentQueryId) { return; }
+      const data = result.analysis.error ? null : result.analysis;
+      const reportedState = data?.summary?.query_state;
+      const liveState = result.status.error ? null : result.status.State;
+      this.diagnosticsState = this.safeState(liveState || reportedState || 'UNKNOWN');
+      const terminal = (state: string) => ['FINISHED', 'EOF', 'OK', 'SUCCESS', 'FAILED', 'ERROR', 'ERR',
+        'CANCELLED', 'CANCELED', 'ABORTED'].includes(this.safeState(state));
+      this.diagnosticsFinal = !!data && terminal(this.diagnosticsState) && terminal(reportedState)
+        && data.summary?.is_profile_complete !== false;
+      this.diagnosticsNotice = '';
+      if (data) {
+        const selectedId = this.selectedNode?.id;
+        const previousPath = this.analysisData?.root_cause_paths?.[this.selectedCauseIndex as number]?.node_ids?.join('|');
+        const hadGraph = !!this.analysisData;
         this.analysisData = data;
+        this.analysisError = '';
         this.topNodes = data.summary?.top_time_consuming_nodes || [];
-        // Set profile content from analysis response
-        if (data.profile_content) {
-          this.currentProfileDetail = data.profile_content;
-        }
-        if (data.execution_tree) {
-          this.buildGraph(data.execution_tree);
-        }
-        this.analysisLoading = false;
-        this.profileDetailLoading = false;
-      },
-      error: (err) => {
-        console.error('Failed to analyze profile', err);
-        this.analysisError = this.translate.instant('profile.analysis.failed', {
-          error: err.error?.message || err.message || this.translate.instant('profile.analysis.unknownError'),
-        });
-        this.analysisLoading = false;
-        this.profileDetailLoading = false;
+        this.currentProfileDetail = data.profile_content || '';
+        this.diagnosticsUpdatedAt = new Date();
+        if (data.execution_tree) { this.buildGraph(data.execution_tree, hadGraph); }
+        this.selectedNode = this.graphNodes.find(node => node.id === selectedId) || null;
+        const matchingPath = data.root_cause_paths?.findIndex(path => path.node_ids.join('|') === previousPath);
+        this.selectedCauseIndex = matchingPath >= 0 ? matchingPath : (!hadGraph && data.root_cause_paths?.length ? 0 : null);
+        this.activeCauseNodeIds = new Set(data.root_cause_paths?.[this.selectedCauseIndex as number]?.node_ids || []);
+      } else {
+        const error = result.analysis.error;
+        // Keep the last good graph visible on a transient fetch/collection failure.
+        this.analysisError = this.analysisData ? '' : ErrorHandler.extractErrorMessage(error);
+        this.diagnosticsNotice = 'profile.live.waiting';
+      }
+      const active = !result.status.error && ['RUNNING', 'PENDING', 'QUEUED'].includes(this.diagnosticsState);
+      this.diagnosticsRetries = active ? 0 : this.diagnosticsRetries + 1;
+      if (result.status.error && data) { this.diagnosticsNotice = 'profile.live.statusUnavailable'; }
+      const retry = !this.diagnosticsFinal && (active || this.diagnosticsRetries < 6);
+      if (!this.diagnosticsFinal && !retry) { this.diagnosticsNotice = 'profile.live.unavailable'; }
+      this.diagnosticsRefreshing = false;
+      this.analysisLoading = false;
+      this.profileDetailLoading = false;
+      this.cdr.markForCheck();
+      if (retry && this.diagnosticsAutoRefresh && this.authService.isAuthenticated()) {
+        this.diagnosticsTimer = setTimeout(() => this.loadAnalysis(queryId), 5000);
       }
     });
   }
-  
-  // Refresh analysis
+
   refreshAnalysis(): void {
     if (this.currentQueryId) {
+      this.diagnosticsRetries = 0;
       this.loadAnalysis(this.currentQueryId);
     }
   }
@@ -973,7 +1072,7 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
   }
 
   // Build DAG graph using dagre
-  buildGraph(tree: any): void {
+  buildGraph(tree: any, preserveView = false): void {
     const g = new dagre.graphlib.Graph();
     g.setGraph({ 
       rankdir: this.graphDirection,
@@ -1179,13 +1278,14 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
     
     // Center the graph after layout, then update edges based on actual DOM heights
     setTimeout(() => {
-      this.centerGraph();
+      if (!preserveView) { this.resetZoom(); }
       this.updateEdgesAfterRender();
     });
   }
   
   // Update edge positions after DOM has rendered (measure actual node heights)
   private updateEdgesAfterRender(): void {
+    if (this.graphDirection !== 'BT') { return; }
     const nodeElements = document.querySelectorAll('.dag-node');
     if (!nodeElements.length) return;
     
@@ -1228,7 +1328,8 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
         // Update points
         if (edge.points && edge.points.length >= 2) {
           edge.points[0] = { x: edge.points[0].x, y: newStartY };
-          edge.points[1] = { x: edge.points[1].x, y: newEndY };
+          const last = edge.points.length - 1;
+          edge.points[last] = { x: edge.points[last].x, y: newEndY };
         }
         
         // Update label position (middle of line)
@@ -1281,6 +1382,12 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
     const node = this.graphNodes.find(n => n.id === nodeId);
     if (node) {
       this.selectedNode = node;
+      const viewport = document.querySelector('.dag-center-panel') as HTMLElement;
+      if (viewport) {
+        this.zoomLevel = Math.max(this.zoomLevel, 0.8);
+        this.translateX = viewport.clientWidth / 2 - node.x * this.zoomLevel;
+        this.translateY = viewport.clientHeight / 2 - node.y * this.zoomLevel;
+      }
     }
   }
   
@@ -1447,7 +1554,7 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
   // If node has NetworkTime -> show CPUTime + NetworkTime
   // Otherwise -> show CPUTime only (100%)
   getExecutionTimeBreakdown(): { items: { label: string; time: string; percent: number; color: string }[] } | null {
-    if (!this.selectedNode) return null;
+    if (!this.selectedNode || this.analysisData?.engine === 'doris') return null;
     
     const allMetrics = this.getAllNodeMetrics();
     const items: { label: string; time: string; percent: number; color: string }[] = [];
@@ -1836,6 +1943,10 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
   getNodeOperatorsFromPipeline(): any[] {
     const pipeline = this.getNodePipelineFromFragments();
     if (!pipeline?.operators) return [];
+
+    if (this.analysisData?.engine === 'doris') {
+      return pipeline.operators.filter((op: any) => op.operator_id === this.selectedNode?.id);
+    }
     
     const planNodeId = this.selectedNode?.plan_node_id?.toString();
     if (!planNodeId) return pipeline.operators;
@@ -1852,7 +1963,7 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
   
   // Format bytes to human readable
   formatBytes(bytes: any): string {
-    if (bytes === null || bytes === undefined) return '0 B';
+    if (bytes === null || bytes === undefined) return '—';
     const val = Number(bytes);
     if (isNaN(val)) return String(bytes);
     if (val < 1024) return val + ' B';
@@ -1863,6 +1974,9 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
 
   // Get diagnostics for a specific node by plan_node_id
   getNodeDiagnostics(node: any): any[] {
+    if (this.analysisData?.operator_diagnostics?.[node?.id]) {
+      return this.analysisData.operator_diagnostics[node.id];
+    }
     // Note: plan_node_id can be 0, so use explicit null/undefined check
     if (node?.plan_node_id == null || !this.analysisData?.node_diagnostics) {
       return [];
@@ -1935,9 +2049,10 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
   }
 
   resetZoom(): void {
-    this.zoomLevel = 1;
-    this.translateX = 0;
-    this.translateY = 0;
+    const viewport = document.querySelector('.dag-center-panel') as HTMLElement;
+    if (!viewport || !this.graphWidth || !this.graphHeight) { return; }
+    this.zoomLevel = Math.max(0.2, Math.min(1, (viewport.clientWidth - 48) / this.graphWidth, (viewport.clientHeight - 48) / this.graphHeight));
+    this.centerGraph();
   }
   
   toggleFullscreen(): void {
@@ -2118,7 +2233,7 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
   
   // Format duration in nanoseconds
   formatDurationNs(ns: any): string {
-    if (!ns) return '-';
+    if (ns === null || ns === undefined || ns === '') return '—';
     const val = Number(ns);
     if (isNaN(val)) return ns;
     

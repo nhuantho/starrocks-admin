@@ -271,6 +271,11 @@ export interface AggregatedDiagnostic {
 }
 
 export interface ProfileAnalysisResult {
+  engine?: 'starrocks' | 'doris';
+  metric_basis?: string;
+  topology_warnings?: string[];
+  operator_diagnostics?: { [nodeId: string]: DiagnosticResult[] };
+  root_cause_paths?: Array<{node_ids: string[]; message: string; evidence: string[]; suggestions: string[]}>;
   hotspots: any[];
   conclusion: string;
   suggestions: string[];

@@ -434,7 +434,7 @@
   },
   "workspace": {
     "eyebrow": "查询观测",
-    "description": "从执行状态到物理计划，了解每一条查询。",
+    "description": "查看运行时执行图、主要耗时算子和基于证据的优化建议。",
     "summary": "可见查询概览",
     "visible": "可见查询",
     "running": "运行中",
@@ -445,5 +445,26 @@
     "planOutput": "执行计划",
     "planEmpty": "在此查看执行计划",
     "planEmptyHint": "选择 Catalog 和数据库，然后生成 EXPLAIN 计划。"
+  },
+  "runtime": {
+    "method": "计时与拓扑",
+    "paths": "根因路径",
+    "pathHint": "基于已测量依赖的候选原因。选择路径可高亮，选择算子可查看计数器。",
+    "evidence": "运行时证据",
+    "recommendations": "优化建议",
+    "counters": "Doris 运行时计数器",
+    "waitHint": "ExecTime 与依赖等待是独立计数器，不能相加作为查询墙钟时间。",
+    "openDiagnostics": "打开查询诊断"
+  },
+  "live": {
+    "pause": "暂停实时更新 · 5秒",
+    "resume": "恢复实时更新 · 5秒",
+    "final": "最终运行时快照 · 已停止实时更新。",
+    "provisional": "临时运行时快照 · 查询执行期间计数器和候选诊断可能变化。",
+    "updated": "快照更新时间",
+    "refreshing": "刷新中…",
+    "waiting": "等待运行时 Profile。必须在原查询会话中开启采集。保留最后可用快照。",
+    "statusUnavailable": "暂时无法获取查询状态；显示 Profile 报告的状态。",
+    "unavailable": "无法确认完整的最终 Profile。已停止自动重试；可手动刷新。保留最后快照。"
   }
 }

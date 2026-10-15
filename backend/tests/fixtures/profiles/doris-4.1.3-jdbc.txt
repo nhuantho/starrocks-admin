@@ -1,0 +1,365 @@
+Summary:
+   - Profile ID: 0000000000000000-0000000000000001
+   - Task Type: QUERY
+   - Start Time: 2026-10-15 14:22:51
+   - End Time: 2026-10-15 14:22:51
+   - Total: 41ms
+   - Task State: OK
+   - User: profile_reader
+   - Default Catalog: internal
+   - Default Db: sample_db
+   - Sql Statement: SELECT `id` FROM `external_catalog`.`sample_db`.`items` LIMIT 5
+   - Distributed Plan: N/A
+Execution Summary:
+   - Workload Group: normal
+   - Parse SQL Time: 0ms
+   - Plan Time: 3ms
+     - Garbage Collect During Plan Time: 0ms
+     - Nereids Preload External Metadata Time: 0ms
+     - Nereids Lock Table Time: 0ms
+     - Nereids Analysis Time: 1ms
+     - Nereids Rewrite Time: 0ms
+       - Nereids Fold Const By BE Time: 0ms
+     - Nereids Collect Table Partition Time: 0ms
+   - Nereids Pre Rewrite By Mv Time: N/A
+     - Nereids Optimize Time: N/A
+     - Nereids Translate Time: 0ms
+       - Init Scan Node Time: N/A
+       - Finalize Scan Node Time: N/A
+         - Get Splits Time: N/A
+         - Get Partitions Time: N/A
+         - Get Partition Files Time: N/A
+         - Sink Set Partition Values Time: N/A
+       - Create Scan Range Time: N/A
+         - Iceberg Scan Metrics: N/A
+         - Paimon Scan Metrics: N/A
+     - Nereids Distribute Time: 0ms
+   - Get Meta Version Time: 0ns
+     - Get Partition Version Time: N/A
+     - Get Partition Version Count (hasData): 0
+     - Get Partition Version Count: 0
+     - Get Table Version Time: N/A
+     - Get Table Version Count: 0
+   - Schedule Time: 4ms
+     - Fragment Assign Time: 0ms
+     - Fragment Serialize Time: 1ms
+     - Fragment RPC Phase1 Time: 2ms
+     - Fragment RPC Phase2 Time: 1ms
+     - Fragment Compressed Size: 2.22 KB
+     - Fragment RPC Count: 2
+   - Schedule Time Of BE: {"phase1":{"backend.example: 8060":{"RPC Work Time":"1ms","RPC Latency From FE To BE":"1ms","RPC Work Queue Time":"0ms","RPC Latency From BE To FE":"0ms"}},"phase2":{"backend.example: 8060":{"RPC Work Time":"0ms","RPC Latency From FE To BE":"0ms","RPC Work Queue Time":"0ms","RPC Latency From BE To FE":"1ms"}}}
+   - Wait and Fetch Result Time: 34ms
+   - Fetch Result Time: 34ms
+   - Write Result Time: 0ms
+   - Doris Version: doris-4.1.3-rc02-7126cf65d96
+   - Is Nereids: Yes
+   - Is Cached: No
+   - Total Instances Num: 2
+   - Instances Num Per BE: backend.example:8060:2
+   - Parallel Fragment Exec Instance Num: 8
+   - Trace ID: 
+   - Transaction Commit Time: N/A
+   - System Message: N/A
+   - Executed By Frontend: N/A
+   - Splits Assignment Weight: N/A
+
+ChangedSessionVariables:
+[
+  {
+    "VarName": "enable_profile",
+    "CurrentValue": "true",
+    "DefaultValue": "false"
+  },
+  {
+    "VarName": "max_allowed_packet",
+    "CurrentValue": "67108864",
+    "DefaultValue": "16777216"
+  }
+]
+MergedProfile:
+     Fragments:
+       Fragment 0:
+         Pipeline 0(instance_num=1):
+            - WaitWorkerTime: avg 50.83us, max 50.83us, min 50.83us
+           RESULT_SINK_OPERATOR(id=2):
+             CommonCounters:
+                - ExecTime: avg 129.342us, max 129.342us, min 129.342us
+                - InputRows: sum 1, avg 1, max 1, min 1
+                - MemoryUsage: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MemoryUsagePeak: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - WaitForDependency[RESULT_SINK_OPERATOR_DEPENDENCY]Time: avg 0ns, max 0ns, min 0ns
+             CustomCounters:
+                - WaitForDependencyTime: avg 0ns, max 0ns, min 0ns
+           EXCHANGE_OPERATOR(id=1):
+              - PlanInfo
+                 - offset: 0
+                 - limit: 5
+             CommonCounters:
+                - BlocksProduced: sum 1, avg 1, max 1, min 1
+                - ExecTime: avg 31.228us, max 31.228us, min 31.228us
+                - MaxOutputBlockBytes: sum 8.00 B, avg 8.00 B, max 8.00 B, min 8.00 B
+                - MemoryUsage: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MemoryUsagePeak: sum 128.00 B, avg 128.00 B, max 128.00 B, min 128.00 B
+                - MinOutputBlockBytes: sum 8.00 B, avg 8.00 B, max 8.00 B, min 8.00 B
+                - OutputBlockBytes: sum 8.00 B, avg 8.00 B, max 8.00 B, min 8.00 B
+                - RowsProduced: sum 1, avg 1, max 1, min 1
+             CustomCounters:
+                - WaitForDependencyTime: avg 0ns, max 0ns, min 0ns
+                  - WaitForData0: avg 32.995ms, max 32.995ms, min 32.995ms
+       Fragment 1:
+         Pipeline 0(instance_num=1):
+            - WaitWorkerTime: avg 41.861us, max 41.861us, min 41.861us
+           DATA_STREAM_SINK_OPERATOR(dest_id=1):
+             CommonCounters:
+                - ExecTime: avg 45.922us, max 45.922us, min 45.922us
+                - InputRows: sum 1, avg 1, max 1, min 1
+                - MemoryUsage: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MemoryUsagePeak: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - WaitForDependencyTime: avg 0ns, max 0ns, min 0ns
+                  - WaitForRpcBufferQueue: avg 0ns, max 0ns, min 0ns
+             CustomCounters:
+                - BlocksProduced: sum 1, avg 1, max 1, min 1
+                - OverallThroughput: sum 0.0 /sec, avg 0.0 /sec, max 0.0 /sec, min 0.0 /sec
+           JDBC_SCAN_OPERATOR(nereids_id=82. table_name=`sample_db`.`items`)(id=0):
+              - PlanInfo
+                 - CATALOG ID: 0
+                 - TABLE: `sample_db`.`items`
+                 - QUERY: SELECT `id` FROM `sample_db`.`items` LIMIT 5
+                 - limit: 5
+                 - projections: id
+                 - project output tuple id: 1
+             CommonCounters:
+                - BlocksProduced: sum 1, avg 1, max 1, min 1
+                - ExecTime: avg 34.680ms, max 34.680ms, min 34.680ms
+                - MaxOutputBlockBytes: sum 8.00 B, avg 8.00 B, max 8.00 B, min 8.00 B
+                - MemoryUsage: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MemoryUsagePeak: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - MinOutputBlockBytes: sum 8.00 B, avg 8.00 B, max 8.00 B, min 8.00 B
+                - OutputBlockBytes: sum 8.00 B, avg 8.00 B, max 8.00 B, min 8.00 B
+                - RowsProduced: sum 1, avg 1, max 1, min 1
+                - WaitForDependency[JDBC_SCAN_OPERATOR_DEPENDENCY]Time: avg 32.835ms, max 32.835ms, min 32.835ms
+             CustomCounters:
+                - RuntimeFilterInfo: sum , avg , max , min 
+                - ScanBytes: sum 0.00 , avg 0.00 , max 0.00 , min 0.00 
+                - ScanRows: sum 0, avg 0, max 0, min 0
+               Scanner:
+
+DetailProfile(0000000000000000-0000000000000001):
+  Fragments:
+    Fragment 0:
+      FragmentLevelProfile:(host=TNetworkAddress(hostname:backend.example, port:9050)):
+         - BuildPipelinesTime: 13.981us
+         - BuildTasksTime: 97.295us
+         - InitContextTime: 9.116us
+         - PlanLocalLocalExchangerTime: 960ns
+         - PrepareAllPipelinesTime: 13.309us
+         - PrepareTime: 140.208us
+      Pipeline 0(host=TNetworkAddress(hostname:backend.example, port:9050)):
+        PipelineTask(index=0):
+           - TaskState: FINALIZED
+           - BlockedByDependency: 
+           - WakeUpEarly: 0
+           - CoreChangeTimes: 0
+           - ExecuteTime: 155.642us
+             - CloseTime: 8.993us
+             - GetBlockTime: 10.248us
+             - OpenTime: 9.517us
+             - PrepareTime: 62.276us
+             - SinkTime: 116.380us
+           - GetBlockCounter: 2
+           - MemoryReserveFailedTimes: 0
+           - MemoryReserveTimes: 4
+           - NumScheduleTimes: 3
+           - NumYieldTimes: 0
+           - TaskCpuTime: 243.980us
+           - WaitWorkerTime: 50.83us
+          RESULT_SINK_OPERATOR(id=2):
+            CommonCounters:
+               - IsColocate: 0
+               - IsShuffled: 0
+               - FollowedByShuffledOperator: 0
+               - CloseTime: 4.653us
+               - ExecTime: 129.342us
+               - InitTime: 6.884us
+               - InputRows: 1
+               - MemoryUsage: 0.00 
+               - MemoryUsagePeak: 0.00 
+               - OpenTime: 6.843us
+               - PendingFinishDependency: 0ns
+               - WaitForDependency[RESULT_SINK_OPERATOR_DEPENDENCY]Time: 0ns
+            CustomCounters:
+               - AppendBatchTime: 109.208us
+                 - ResultSendTime: 89.960us
+                 - TupleConvertTime: 6.121us
+               - BytesSent: 5.00 B
+               - FetchRowIdTime: 0ns
+               - NumSentRows: 1
+               - WaitForDependencyTime: 0ns
+               - WriteDataTime: 110.120us
+          EXCHANGE_OPERATOR(id=1):
+            CommonCounters:
+               - IsColocate: 0
+               - IsShuffled: 0
+               - FollowedByShuffledOperator: 0
+               - BlocksProduced: 1
+               - CloseTime: 3.11us
+               - ExecTime: 31.228us
+               - InitTime: 22.416us
+               - MaxOutputBlockBytes: 8.00 B
+               - MemoryUsage: 0.00 
+               - MemoryUsagePeak: 128.00 B
+               - MinOutputBlockBytes: 8.00 B
+               - OpenTime: 501ns
+               - OutputBlockBytes: 8.00 B
+               - ProjectionTime: 0ns
+               - RowsProduced: 1
+            CustomCounters:
+               - InstanceID: a89f1cea6af640a7-8a3069a6c6a9b7f0
+               - BlocksProduced: 0
+               - CreateMergerTime: 0ns
+               - DataArrivalWaitTime: 0ns
+               - DecompressBytes: 0.00 
+               - DecompressTime: 0ns
+               - DeserializeRowBatchTimer: 0ns
+               - FilterTime: 443ns
+               - FirstBatchArrivalWaitTime: 0ns
+               - GetDataFromRecvrTime: 3.184us
+               - LocalBytesReceived: 128.00 B
+               - MaxFindRecvrTime(NS): 0
+               - MaxWaitForWorkerTime: 0
+               - MaxWaitToProcessTime: 0
+               - RemoteBytesReceived: 0.00 
+               - SendersBlockedTotalTimer(*): 0ns
+               - WaitForDependencyTime: 0ns
+                 - WaitForData0: 32.995ms
+    Fragment 1:
+      FragmentLevelProfile:(host=TNetworkAddress(hostname:backend.example, port:9050)):
+         - BuildPipelinesTime: 13.497us
+         - BuildTasksTime: 97.393us
+         - InitContextTime: 3.184us
+         - PlanLocalLocalExchangerTime: 665ns
+         - PrepareAllPipelinesTime: 9.329us
+         - PrepareTime: 130.57us
+      Pipeline 0(host=TNetworkAddress(hostname:backend.example, port:9050)):
+        PipelineTask(index=0):
+           - TaskState: FINALIZED
+           - BlockedByDependency: 
+           - WakeUpEarly: 0
+           - CoreChangeTimes: 0
+           - ExecuteTime: 1.888ms
+             - CloseTime: 1.733ms
+             - GetBlockTime: 38.448us
+             - OpenTime: 77.545us
+             - PrepareTime: 64.615us
+             - SinkTime: 1.753ms
+           - GetBlockCounter: 1
+           - MemoryReserveFailedTimes: 0
+           - MemoryReserveTimes: 2
+           - NumScheduleTimes: 3
+           - NumYieldTimes: 0
+           - TaskCpuTime: 605.211us
+           - WaitWorkerTime: 41.861us
+          DATA_STREAM_SINK_OPERATOR(dest_id=1):
+            CommonCounters:
+               - IsColocate: 0
+               - IsShuffled: 0
+               - FollowedByShuffledOperator: 0
+               - CloseTime: 541ns
+               - ExecTime: 45.922us
+               - InitTime: 21.554us
+               - InputRows: 1
+               - MemoryUsage: 0.00 
+               - MemoryUsagePeak: 0.00 
+               - OpenTime: 2.839us
+               - PendingFinishDependency: 0ns
+               - WaitForDependencyTime: 0ns
+                 - WaitForBroadcastBuffer: 0ns
+                 - WaitForRpcBufferQueue: 0ns
+            CustomCounters:
+               - BlocksProduced: 1
+               - BytesSent: 0.00 
+               - CompressTime: 0ns
+               - DistributeRowsIntoChannelsTime: 0ns
+               - LocalBytesSent: 8.00 B
+               - LocalSendTime: 18.503us
+               - LocalSentRows: 1
+               - MergeBlockTime: 0ns
+               - OverallThroughput: 0.0 /sec
+               - SendNewPartitionTime: 0ns
+                 - AddPartitionRequestTime: 0ns
+               - SerializeBatchTime: 0ns
+               - SplitBlockHashComputeTime: 0ns
+               - UncompressedRowBatchSize: 0.00 
+          JDBC_SCAN_OPERATOR(nereids_id=82. table_name=`sample_db`.`items`)(id=0):
+            CommonCounters:
+               - IsColocate: 0
+               - IsShuffled: 0
+               - FollowedByShuffledOperator: 0
+               - BlocksProduced: 1
+               - CloseTime: 1.729ms
+               - ExecTime: 34.680ms
+               - InitTime: 9.805us
+               - MaxOutputBlockBytes: 8.00 B
+               - MemoryUsage: 0.00 
+               - MemoryUsagePeak: 0.00 
+               - MinOutputBlockBytes: 8.00 B
+               - OpenTime: 72.647us
+               - OutputBlockBytes: 8.00 B
+               - ProjectionTime: 0ns
+               - RowsProduced: 1
+               - WaitForDependency[JDBC_SCAN_OPERATOR_DEPENDENCY]Time: 32.835ms
+               - WaitForRuntimeFilter: 0ns
+            CustomCounters:
+               - TopNFilterSourceNodeIds: 
+               - RemainedPredicates: 
+               - PushDownPredicates: 
+               - MaxScanConcurrency: 1
+               - MinScanConcurrency: 1
+               - NumScanners: 1
+               - RowsRead: 1
+               - RuntimeFilterInfo: 
+                 - AcquireRuntimeFilter: 443ns
+               - ScanBytes: 0.00 
+               - ScanRows: 0
+               - ScannerWorkerWaitTime: 31.589us
+              Scanner:
+                 - JdbcDriverClass: com.mysql.cj.jdbc.Driver
+                 - QuerySql: SELECT `id` FROM `sample_db`.`items` LIMIT 5
+                 - PerScannerRunningTime: [32.813ms, ]
+                 - PerScannerRowsRead: [1, ]
+                 - PerScannerWaitTime: [31.589us, ]
+                 - PerScannerProjectionTime: [5.563us, ]
+                 - EOS: True
+                 - CheckTypeTime: 0ns
+                 - ConnectorCloseTime: 0ns
+                 - ExecteReadTime: 7.262ms
+                 - GetDataTime: 68.257us
+                   - CastTime: 2.175us
+                   - FillBlockTime: 5.382us
+                   - HasNextTime: 8.264us
+                   - JniSetupTime: 296ns
+                   - PrepareParamsTime: 23.556us
+                   - ReadAndFillVectorTableTime: 27.463us
+                 - InitConnectorTime: 25.294ms
+                 - LoadJarTime: 0ns
+                 - NewlyCreateFreeBlocksNum: 1
+                 - RunningScanner: 0
+                 - RunningScannerPeak: 1
+                 - ScannerCpuTime: 1.445ms
+                 - ScannerFilterTime: 279ns
+                 - ScannerGetBlockTime: 70.407us
+  LoadChannels:
+
+Appendix:
+
+PhysicalPlan:
+PhysicalResultSink[102] ( outputExprs=[id#0] )
+     +--PhysicalLimit[98]@3 ( limit=5, offset=0, phase=GLOBAL, stats=1 )
+        +--PhysicalDistribute[94]@2 ( stats=1, distributionSpec=DistributionSpecGather )
+           +--PhysicalLimit[90]@2 ( limit=5, offset=0, phase=LOCAL, stats=1 )
+              +--PhysicalProject[86]@1 ( stats=1, projects=[id#0] )
+                 +--PhysicalJdbcScan ( qualified=external_catalog.sample_db.items, output=[id#0, name#1], stats=1 actualRows=1 )
+     PhysicalJdbcScan ( qualified=external_catalog.sample_db.items, output=[id#0, name#1], stats=1 actualRows=1 )
+       id#0 -> unknown(1.0)
+       name#1 -> unknown(1.0)
+     

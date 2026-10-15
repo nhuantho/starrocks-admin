@@ -103,6 +103,9 @@
         </nb-tab>
         <nb-tab [tabTitle]="'profile.inspect.runtimeTab' | translate">
           <p class="text-hint">{{ 'profile.inspect.runtimeHint' | translate }}</p>
+          <button *ngIf="inspectedQuery" nbButton status="primary" class="mr-2" (click)="ref.close(); viewProfileDetail(inspectedQuery.QueryId)">
+            <nb-icon icon="activity-outline"></nb-icon>{{ 'profile.runtime.openDiagnostics' | translate }}
+          </button>
           <button nbButton status="info" (click)="loadNativeProfile()" [disabled]="nativeProfileLoading || !inspectedQuery">
             {{ (nativeProfileLoading ? 'profile.inspect.loading' : 'profile.inspect.loadRuntime') | translate }}
           </button>
@@ -121,18 +124,29 @@
            [ngStyle]="{'width': '90vw', 'max-width': '1400px', 'height': '85vh', 'overflow': 'hidden'}">
     <nb-card-header class="profile-dialog-header-compact">
       <div class="header-title-row">
-        <span class="header-title">Query Profile</span>
+        <span class="header-title">Query Profile Diagnostics</span>
+        <span *ngIf="analysisData?.engine" class="profile-engine-badge">{{ analysisData.engine | uppercase }}</span>
+        <span class="profile-engine-badge diagnostics-state" [attr.data-state]="diagnosticsState">{{ diagnosticsState }}</span>
         <span class="header-query-id" *ngIf="currentQueryId">{{ currentQueryId }}</span>
       </div>
       <div class="header-actions">
-        <button nbButton ghost status="primary" size="tiny" (click)="refreshAnalysis()" [disabled]="profileDetailLoading">
+        <button nbButton ghost size="tiny" (click)="toggleDiagnosticsRefresh()" [disabled]="diagnosticsFinal" aria-label="Toggle live diagnostics">
+          {{ (diagnosticsAutoRefresh ? 'profile.live.pause' : 'profile.live.resume') | translate }}
+        </button>
+        <button nbButton ghost status="primary" size="tiny" (click)="refreshAnalysis()" aria-label="Refresh diagnostics" [disabled]="profileDetailLoading">
           <nb-icon icon="refresh-outline"></nb-icon>
         </button>
-        <button nbButton ghost status="basic" size="tiny" (click)="ref.close()">
+        <button nbButton ghost status="basic" size="tiny" (click)="ref.close()" aria-label="Close diagnostics">
           <nb-icon icon="close-outline"></nb-icon>
         </button>
       </div>
     </nb-card-header>
+    <div class="diagnostics-live-banner" role="status" aria-live="polite">
+      <span>{{ (diagnosticsFinal ? 'profile.live.final' : 'profile.live.provisional') | translate }}</span>
+      <span *ngIf="diagnosticsUpdatedAt">{{ 'profile.live.updated' | translate }} {{ diagnosticsUpdatedAt | date:'HH:mm:ss' }}</span>
+      <span *ngIf="diagnosticsRefreshing">{{ 'profile.live.refreshing' | translate }}</span>
+      <span *ngIf="diagnosticsNotice">{{ diagnosticsNotice | translate }}</span>
+    </div>
     <nb-card-body class="p-0">
       <nb-tabset>
         <!-- Tab 1: DAG 执行分析 (默认) -->
@@ -162,22 +176,22 @@
                    (click)="onDagPanelClick($event)">
                 <!-- Toolbar -->
                 <div class="dag-toolbar">
-                  <button nbButton size="tiny" status="basic" ghost (click)="toggleFullscreen()" [nbTooltip]="(isFullscreen ? 'profile.toolbar.exitFullscreen' : 'profile.toolbar.fullscreen') | translate">
+                  <button nbButton size="tiny" status="basic" ghost (click)="toggleFullscreen()" [attr.aria-label]="(isFullscreen ? 'profile.toolbar.exitFullscreen' : 'profile.toolbar.fullscreen') | translate" [nbTooltip]="(isFullscreen ? 'profile.toolbar.exitFullscreen' : 'profile.toolbar.fullscreen') | translate">
                     <nb-icon [icon]="isFullscreen ? 'collapse-outline' : 'expand-outline'"></nb-icon>
                   </button>
-                  <button nbButton size="tiny" status="basic" ghost (click)="zoomIn()" [nbTooltip]="'profile.toolbar.zoomIn' | translate">
+                  <button nbButton size="tiny" status="basic" ghost (click)="zoomIn()" [attr.aria-label]="'profile.toolbar.zoomIn' | translate" [nbTooltip]="'profile.toolbar.zoomIn' | translate">
                     <nb-icon icon="plus-outline"></nb-icon>
                   </button>
-                  <button nbButton size="tiny" status="basic" ghost (click)="zoomOut()" [nbTooltip]="'profile.toolbar.zoomOut' | translate">
+                  <button nbButton size="tiny" status="basic" ghost (click)="zoomOut()" [attr.aria-label]="'profile.toolbar.zoomOut' | translate" [nbTooltip]="'profile.toolbar.zoomOut' | translate">
                     <nb-icon icon="minus-outline"></nb-icon>
                   </button>
-                  <button nbButton size="tiny" status="basic" ghost (click)="resetZoom()" [nbTooltip]="'profile.toolbar.reset' | translate">
+                  <button nbButton size="tiny" status="basic" ghost (click)="resetZoom()" [attr.aria-label]="'profile.toolbar.reset' | translate" [nbTooltip]="'profile.toolbar.reset' | translate">
                     <nb-icon icon="maximize-outline"></nb-icon>
                   </button>
-                  <button nbButton size="tiny" status="basic" ghost (click)="toggleGraphDirection()" [nbTooltip]="(graphDirection === 'BT' ? 'profile.toolbar.horizontal' : 'profile.toolbar.vertical') | translate">
+                  <button nbButton size="tiny" status="basic" ghost (click)="toggleGraphDirection()" [attr.aria-label]="(graphDirection === 'BT' ? 'profile.toolbar.horizontal' : 'profile.toolbar.vertical') | translate" [nbTooltip]="(graphDirection === 'BT' ? 'profile.toolbar.horizontal' : 'profile.toolbar.vertical') | translate">
                     <nb-icon [icon]="graphDirection === 'BT' ? 'swap-outline' : 'flip-2-outline'"></nb-icon>
                   </button>
-                  <button nbButton size="tiny" status="basic" ghost (click)="exportDagAsPng()" [nbTooltip]="'profile.toolbar.exportImage' | translate">
+                  <button nbButton size="tiny" status="basic" ghost (click)="exportDagAsPng()" [attr.aria-label]="'profile.toolbar.exportImage' | translate" [nbTooltip]="'profile.toolbar.exportImage' | translate">
                     <nb-icon icon="download-outline"></nb-icon>
                   </button>
                 </div>
@@ -187,7 +201,7 @@
                        [style.width.px]="graphWidth" 
                        [style.height.px]="graphHeight"
                        [style.transform]="'translate(' + translateX + 'px, ' + translateY + 'px) scale(' + zoomLevel + ')'"
-                       [style.transformOrigin]="'center center'">
+                       [style.transformOrigin]="'top left'">
                     
                     <!-- Edges - Lines with dynamic width based on rows -->
                     <svg class="edges-svg" [attr.width]="graphWidth" [attr.height]="graphHeight">
@@ -203,13 +217,13 @@
                                 markerUnits="userSpaceOnUse">
                           <!-- Triangle pointing RIGHT (orient=auto rotates to path direction) -->
                           <polygon [attr.points]="'0,0 ' + edge.arrowSize + ',' + (edge.arrowSize/2) + ' 0,' + edge.arrowSize"
-                                   [attr.fill]="edge.strokeColor"/>
+                                   [attr.fill]="isCauseEdge(edge) ? '#d9a936' : edge.strokeColor"/>
                         </marker>
                       </defs>
                       <g *ngFor="let edge of graphEdges">
                         <path [attr.d]="getEdgePath(edge.points)" 
                               class="edge-path" 
-                              [attr.stroke]="edge.strokeColor"
+                              [attr.stroke]="isCauseEdge(edge) ? '#d9a936' : edge.strokeColor"
                               [attr.stroke-width]="edge.strokeWidth"
                               [attr.marker-end]="'url(#' + edge.markerId + ')'" />
                       </g>
@@ -229,9 +243,12 @@
                     
                     <!-- Nodes - 复刻图1样式 -->
                     <div *ngFor="let node of graphNodes" 
-                         class="dag-node" [attr.data-node-id]="node.id"
+                         class="dag-node" [attr.data-node-id]="node.id" role="button" tabindex="0"
+                         [attr.aria-label]="node.operator_name + ' · Fragment ' + node.fragment_id + ' · Pipeline ' + node.pipeline_id"
+                         (keydown.enter)="selectNode(node, $event)"
                          [ngClass]="{
                            'selected': selectedNode?.id === node.id,
+                           'on-cause-path': activeCauseNodeIds.has(node.id),
                            'is-top-1': getNodeRank(node) === 1, 
                            'is-top-node': getNodeRank(node) > 0
                          }"
@@ -252,12 +269,12 @@
                       <!-- Body -->
                       <div class="node-body">
                         <div class="node-row id-row">
-                          <span>plan_node_id={{ node.plan_node_id }}</span>
+                          <span>F{{ node.fragment_id }} / P{{ node.pipeline_id }} · id={{ node.plan_node_id ?? '—' }}</span>
                         </div>
                         <!-- Horizontal layout: Time | Percentage (复刻图1) -->
                         <div class="node-row metric-row-horizontal">
                           <span class="time-value">{{ 'profile.dag.time' | translate }}: {{ formatDurationNs(node.metrics?.operator_total_time) }}</span>
-                          <span class="pct-value">{{ node.time_percentage | number:'1.2-2' }}%</span>
+                          <span class="pct-value">{{ node.time_percentage == null ? '—' : (node.time_percentage | number:'1.2-2') + '%' }}</span>
                         </div>
                       </div>
 
@@ -275,6 +292,34 @@
               
               <div class="dag-right-panel" [style.width.px]="isRightPanelCollapsed ? 40 : rightPanelWidth" [class.collapsed]="isRightPanelCollapsed">
                 
+                <div class="right-section runtime-method" *ngIf="!isRightPanelCollapsed">
+                  <details><summary>{{ 'profile.runtime.method' | translate }} · {{ analysisData?.engine | uppercase }}</summary>
+                    <p>{{ analysisData?.metric_basis }}</p>
+                    <p>{{ analysisData?.conclusion }}</p>
+                    <p class="topology-warning" *ngFor="let warning of analysisData?.topology_warnings">{{ warning }}</p>
+                  </details>
+                </div>
+                <div class="right-section causal-paths" *ngIf="!selectedNode && !isRightPanelCollapsed && analysisData?.root_cause_paths?.length">
+                  <div class="section-header"><span class="title">{{ 'profile.runtime.paths' | translate }}</span></div>
+                  <div class="section-body">
+                    <p class="causal-note">{{ 'profile.runtime.pathHint' | translate }}</p>
+                    <article *ngFor="let path of analysisData.root_cause_paths; let index = index" class="causal-card" [class.active]="selectedCauseIndex === index">
+                      <button type="button" class="causal-title" (click)="selectCausePath(index)" [attr.aria-expanded]="selectedCauseIndex === index">{{ path.message }}</button>
+                      <div *ngIf="selectedCauseIndex === index">
+                        <div class="causal-steps">
+                          <ng-container *ngFor="let id of path.node_ids; let last = last">
+                            <button type="button" (click)="selectNodeById(id)">{{ causeNodeName(id) }}</button><span *ngIf="!last" aria-hidden="true">→</span>
+                          </ng-container>
+                        </div>
+                        <strong class="causal-caption">{{ 'profile.runtime.evidence' | translate }}</strong>
+                        <p class="causal-evidence" *ngFor="let item of path.evidence">{{ item }}</p>
+                        <strong class="causal-caption">{{ 'profile.runtime.recommendations' | translate }}</strong>
+                        <ul><li *ngFor="let item of path.suggestions">{{ item }}</li></ul>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+
                 <!-- Top 10 By Time/Memory Section (only when no node selected) -->
                 <div class="right-section top10-section" *ngIf="!selectedNode">
                   <div class="section-header">
@@ -296,7 +341,7 @@
                             (click)="selectNodeById(node.id)" 
                             [class.selected]="selectedNode?.id === node.id">
                           <td class="node-name">{{ node.operator_name }}</td>
-                          <td class="node-time">{{ node.time_percentage | number:'1.2-2' }}%</td>
+                          <td class="node-time">{{ node.time_percentage == null ? '—' : (node.time_percentage | number:'1.2-2') + '%' }}</td>
                         </tr>
                         <tr *ngIf="!top10NodesByTime?.length">
                           <td colspan="2" class="text-center text-hint">{{ 'profile.noData' | translate }}</td>
@@ -347,7 +392,7 @@
                     <div class="summary-row">
                       <span class="label">Execution time</span>
                     </div>
-                    <div class="exec-time-bar">
+                    <div class="exec-time-bar" *ngIf="analysisData?.engine !== 'doris'">
                       <div class="bar-fill io" [style.width.%]="getScanTimePercentage()"></div>
                       <div class="bar-fill processing" [style.width.%]="getCpuTimePercentage()"></div>
                     </div>
@@ -553,7 +598,7 @@
                         <span>{{ analysisData?.summary?.query_spill_bytes }}</span>
                       </div>
                       <!-- DataCache Hit Rate (for disaggregated storage-compute clusters) -->
-                      <div class="metric-row-simple" *ngIf="analysisData?.summary?.datacache_hit_rate !== null">
+                      <div class="metric-row-simple" *ngIf="analysisData?.summary?.datacache_hit_rate != null">
                         <span class="metric-label">
                           {{ 'profile.summary.dataCacheHitRate' | translate }}
                           <nb-icon icon="question-mark-circle-outline" class="metric-hint" 
@@ -589,6 +634,11 @@
                       <!-- 节点 Tab (Core Metrics - like official UI) -->
                       <nb-tab [tabTitle]="'profile.node.tab' | translate">
                         <div class="node-tab-content">
+                          <div class="metric-section doris-timing" *ngIf="analysisData?.engine === 'doris'">
+                            <div class="section-title">{{ 'profile.runtime.counters' | translate }}</div>
+                            <p class="causal-note">{{ 'profile.runtime.waitHint' | translate }}</p>
+                            <div class="doris-counter" *ngFor="let metric of getDorisTimingMetrics()"><span>{{ metric.key }}</span><code>{{ metric.value }}</code></div>
+                          </div>
                           <!-- Execution time section (like official UI) -->
                           <div class="metric-section" *ngIf="getExecutionTimeBreakdown() as execTime">
                             <div class="section-title">Execution time</div>
@@ -674,6 +724,7 @@
                                   <span class="diag-name-inline">{{ diag.rule_name }}</span>
                                 </div>
                                 <div class="diag-message-inline">{{ diag.message }}</div>
+                                <div class="diag-message-inline" *ngIf="diag.reason">{{ diag.reason }}</div>
                                 <div class="diag-suggestions-inline" *ngIf="diag.suggestions?.length">
                                   <div *ngFor="let suggestion of diag.suggestions" class="suggestion-item">
                                     💡 {{ suggestion }}
