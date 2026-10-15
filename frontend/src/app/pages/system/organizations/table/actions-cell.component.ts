@@ -15,7 +15,7 @@ import { PermissionService } from '../../../../@core/data/permission.service';
         ghost
         size="tiny"
         status="primary"
-        nbTooltip="编辑组织"
+        [nbTooltip]="'system.organizations.edit' | translate"
         nbTooltipPlacement="top"
         [disabled]="!canEdit"
         (click)="onEditClick($event)"
@@ -27,7 +27,7 @@ import { PermissionService } from '../../../../@core/data/permission.service';
         ghost
         size="tiny"
         status="danger"
-        nbTooltip="删除组织"
+        [nbTooltip]="'system.organizations.delete' | translate"
         nbTooltipPlacement="top"
         [disabled]="!canDelete"
         (click)="onDeleteClick($event)"

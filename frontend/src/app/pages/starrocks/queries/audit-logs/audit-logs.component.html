@@ -4,22 +4,22 @@
       <nb-card-header>
         <div class="d-flex justify-content-between align-items-center">
           <div class="d-flex align-items-center gap-2">
-            <h5 class="mb-0">审计日志</h5>
+            <h5 class="mb-0">{{ 'audit.title' | translate }}</h5>
             <span class="text-hint">|</span>
             <span class="text-hint" style="font-size: 13px;">
-              集群: <strong>{{ activeCluster?.name || '未选择集群' }}</strong>
+              {{ 'audit.cluster' | translate }}: <strong>{{ activeCluster?.name || ('audit.noClusterSelected' | translate) }}</strong>
             </span>
           </div>
           <div class="d-flex align-items-center gap-2">
             <button nbButton status="primary" size="small" (click)="loadHistoryQueries()" [disabled]="loading || !clusterId">
               <nb-icon icon="refresh-outline"></nb-icon>
-              刷新
+              {{ 'audit.refresh.button' | translate }}
             </button>
             
             <nb-select 
               [(selected)]="selectedRefreshInterval" 
               size="small" 
-              placeholder="自动刷新"
+              [placeholder]="'audit.refresh.auto' | translate"
               (selectedChange)="onRefreshIntervalChange($event)"
               [disabled]="!clusterId"
               style="min-width: 100px;"
@@ -42,7 +42,7 @@
                     <input 
                       nbInput 
                       fullWidth 
-                      placeholder="搜索 Query ID / SQL / 用户"
+                      [placeholder]="'audit.filters.searchPlaceholder' | translate"
                       [(ngModel)]="searchKeyword"
                       (keyup.enter)="searchHistory()">
                   </nb-form-field>
@@ -53,7 +53,7 @@
                     <input 
                       nbInput 
                       fullWidth 
-                      placeholder="开始时间"
+                      [placeholder]="'audit.filters.startTime' | translate"
                       type="datetime-local"
                       [(ngModel)]="searchStartTime">
                   </nb-form-field>
@@ -64,7 +64,7 @@
                     <input 
                       nbInput 
                       fullWidth 
-                      placeholder="结束时间"
+                      [placeholder]="'audit.filters.endTime' | translate"
                       type="datetime-local"
                       [(ngModel)]="searchEndTime">
                   </nb-form-field>
@@ -76,30 +76,30 @@
                     fullWidth
                     size="small"
                     (click)="searchHistory()">
-                    搜索
+                    {{ 'audit.filters.search' | translate }}
                   </button>
                 </div>
               </div>
               <div class="row mt-2" *ngIf="hasActiveFilters()">
                 <div class="col-12">
                   <div class="active-filters">
-                    <span class="filter-label">当前筛选条件：</span>
+                    <span class="filter-label">{{ 'audit.filters.active' | translate }}</span>
                     <nb-badge 
                       *ngIf="searchKeyword" 
                       status="info" 
-                      text="{{ '关键词: ' + searchKeyword }}"
+                      text="{{ ('audit.filters.keyword' | translate) + ': ' + searchKeyword }}"
                       class="filter-badge">
                     </nb-badge>
                     <nb-badge 
                       *ngIf="searchStartTime" 
                       status="warning" 
-                      text="{{ '开始时间: ' + searchStartTime }}"
+                      text="{{ ('audit.filters.startTime' | translate) + ': ' + searchStartTime }}"
                       class="filter-badge">
                     </nb-badge>
                     <nb-badge 
                       *ngIf="searchEndTime" 
                       status="warning" 
-                      text="{{ '结束时间: ' + searchEndTime }}"
+                      text="{{ ('audit.filters.endTime' | translate) + ': ' + searchEndTime }}"
                       class="filter-badge">
                     </nb-badge>
                     <button 
@@ -110,7 +110,7 @@
                       (click)="clearFilters()"
                       class="clear-filters-btn">
                       <nb-icon icon="close-outline"></nb-icon>
-                      清除筛选
+                      {{ 'audit.filters.clear' | translate }}
                     </button>
                   </div>
                 </div>
@@ -131,17 +131,17 @@
         <!-- Custom pagination -->
         <div *ngIf="!loading && historyTotalCount > 0" class="pagination-container">
           <div class="pagination-info">
-            <span>显示第 {{ (historyCurrentPage - 1) * historyPageSize + 1 }} - {{ Math.min(historyCurrentPage * historyPageSize, historyTotalCount) }} 条，共 {{ historyTotalCount }} 条</span>
+            <span>{{ 'audit.pagination.showing' | translate: { from: (historyCurrentPage - 1) * historyPageSize + 1, to: Math.min(historyCurrentPage * historyPageSize, historyTotalCount), total: historyTotalCount } }}</span>
             <nb-select 
               [(selected)]="historyPageSize" 
               size="tiny"
               (selectedChange)="onHistoryPageSizeChange($event)"
               class="page-size-select">
-              <nb-option [value]="5">5 条/页</nb-option>
-              <nb-option [value]="10">10 条/页</nb-option>
-              <nb-option [value]="20">20 条/页</nb-option>
-              <nb-option [value]="50">50 条/页</nb-option>
-              <nb-option [value]="100">100 条/页</nb-option>
+              <nb-option [value]="5">{{ 'audit.pagination.perPage' | translate: { n: 5 } }}</nb-option>
+              <nb-option [value]="10">{{ 'audit.pagination.perPage' | translate: { n: 10 } }}</nb-option>
+              <nb-option [value]="20">{{ 'audit.pagination.perPage' | translate: { n: 20 } }}</nb-option>
+              <nb-option [value]="50">{{ 'audit.pagination.perPage' | translate: { n: 50 } }}</nb-option>
+              <nb-option [value]="100">{{ 'audit.pagination.perPage' | translate: { n: 100 } }}</nb-option>
             </nb-select>
           </div>
           <div class="pagination-controls">
@@ -161,7 +161,7 @@
               (click)="onHistoryPageChange(historyCurrentPage - 1)">
               <nb-icon icon="chevron-left-outline"></nb-icon>
             </button>
-            <span class="page-info">第 {{ historyCurrentPage }} / {{ historyTotalPages }} 页</span>
+            <span class="page-info">{{ 'audit.pagination.page' | translate: { current: historyCurrentPage, total: historyTotalPages } }}</span>
             <button 
               nbButton 
               size="tiny" 
@@ -201,10 +201,10 @@
         <p><strong>Query ID:</strong> {{ currentProfile.query_id }}</p>
         <p><strong>SQL:</strong></p>
         <pre class="sql-statement">{{ currentProfile.sql }}</pre>
-        <p><strong>执行时间:</strong> {{ currentProfile.execution_time_ms }} ms</p>
-        <p><strong>状态:</strong> {{ currentProfile.status }}</p>
+        <p><strong>{{ 'audit.profile.executionTime' | translate }}:</strong> {{ currentProfile.execution_time_ms }} ms</p>
+        <p><strong>{{ 'audit.profile.status' | translate }}:</strong> {{ currentProfile.status }}</p>
         <hr>
-        <p><strong>Profile 内容:</strong></p>
+        <p><strong>{{ 'audit.profile.content' | translate }}:</strong></p>
         <pre class="profile-content">{{ currentProfile.profile_content }}</pre>
       </div>
     </nb-card-body>

@@ -13,6 +13,7 @@ import { MetricThresholds, renderMetricBadge, parseStarRocksDuration } from '../
 import { renderLongText } from '../../../../@core/utils/text-truncate';
 import { AuthService } from '../../../../@core/data/auth.service';
 import * as dagre from 'dagre';
+import { TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'ngx-profile-queries',
@@ -31,14 +32,7 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
   autoRefresh = false; // Default: disabled
   refreshInterval: any;
   selectedRefreshInterval: number | 'off' = 'off'; // Default: off (Grafana style)
-  refreshIntervalOptions = [
-    { value: 'off', label: '关闭' },
-    { value: 3, label: '3秒' },
-    { value: 5, label: '5秒' },
-    { value: 10, label: '10秒' },
-    { value: 30, label: '30秒' },
-    { value: 60, label: '1分钟' },
-  ];
+  refreshIntervalOptions: { value: number | 'off'; label: string }[] = [];
   private destroy$ = new Subject<void>();
   private profileDurationThresholds: MetricThresholds = { warn: 120000, danger: 240000 }; // Will be updated dynamically
 
@@ -102,462 +96,452 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
 
   // Metric descriptions for tooltips
   // Reference: https://docs.starrocks.io/zh/docs/best_practices/query_tuning/query_profile_operator_metrics/
-  metricDescriptions: { [key: string]: string } = {
+  // Descriptions live in assets/i18n/<lang>/profile.json under `profile.metrics.<Key>`
+  private readonly metricDescriptionKeys: string[] = [
     // ============================================
     // 概要指标 (Summary Metrics)
     // ============================================
-    'Total': '查询消耗的总时间，包括计划、执行和分析阶段的持续时间',
-    'QueryState': '查询状态，可能的状态包括Finished、Error和Running',
-    'QueryId': '查询的唯一标识符',
-    'StartTime': '查询开始的时间戳',
-    'EndTime': '查询结束的时间戳',
-    'QueryType': '查询的类型',
-    'StarRocksVersion': '使用的StarRocks版本',
-    'User': '执行查询的用户',
-    'DefaultDb': '查询使用的默认数据库',
-    'SqlStatement': '执行的SQL语句',
-    'Variables': '查询中使用的重要变量',
-    'NonDefaultSessionVariables': '查询中使用的非默认会话变量',
-    'CollectProfileTime': '收集概要所花费的时间',
-    'IsProfileAsync': '指示概要收集是否为异步',
-
+    'Total',
+    'QueryState',
+    'QueryId',
+    'StartTime',
+    'EndTime',
+    'QueryType',
+    'StarRocksVersion',
+    'User',
+    'DefaultDb',
+    'SqlStatement',
+    'Variables',
+    'NonDefaultSessionVariables',
+    'CollectProfileTime',
+    'IsProfileAsync',
     // ============================================
     // 执行概览指标 (Execution Overview Metrics)
     // ============================================
-    'FrontendProfileMergeTime': 'FE端概要处理时间',
-    'QueryAllocatedMemoryUsage': '节点间分配的总内存',
-    'QueryDeallocatedMemoryUsage': '节点间释放的总内存',
-    'QueryPeakMemoryUsagePerNode': '每个节点的最大内存峰值',
-    'QuerySumMemoryUsage': '节点间的总内存峰值',
-    'QueryExecutionWallTime': '执行的墙钟时间',
-    'ExecutionWallTime': 'Query执行总耗时',
-    'QueryCumulativeCpuTime': '节点间的总CPU时间',
-    'QueryCpuTime': '查询累积CPU使用时间，所有并发进程累加，因此该指标会大于实际的执行时间',
-    'QueryCumulativeOperatorTime': 'Operator执行的总时间，为Operator时间百分比的分母',
-    'OperatorTime': '所有Operator累计执行时间',
-    'QueryCumulativeNetworkTime': 'Exchange节点的总网络时间',
-    'QueryNetworkTime': '所有Exchange节点网络传输耗时之和',
-    'QueryCumulativeScanTime': 'Scan节点的总IO时间',
-    'QueryScanTime': '所有SCAN节点扫描耗时之和',
-    'QueryPeakScheduleTime': '最大Pipeline调度时间',
-    'PeakScheduleTime': 'Pipeline调度峰值等待时间',
-    'QuerySpillBytes': '溢出到磁盘的数据',
-    'SpillBytes': '溢出到磁盘的数据量',
-    'ResultDeliverTime': '结果传输耗时',
-    'MemoryUsage': '查询内存使用量',
-
+    'FrontendProfileMergeTime',
+    'QueryAllocatedMemoryUsage',
+    'QueryDeallocatedMemoryUsage',
+    'QueryPeakMemoryUsagePerNode',
+    'QuerySumMemoryUsage',
+    'QueryExecutionWallTime',
+    'ExecutionWallTime',
+    'QueryCumulativeCpuTime',
+    'QueryCpuTime',
+    'QueryCumulativeOperatorTime',
+    'OperatorTime',
+    'QueryCumulativeNetworkTime',
+    'QueryNetworkTime',
+    'QueryCumulativeScanTime',
+    'QueryScanTime',
+    'QueryPeakScheduleTime',
+    'PeakScheduleTime',
+    'QuerySpillBytes',
+    'SpillBytes',
+    'ResultDeliverTime',
+    'MemoryUsage',
     // ============================================
     // Fragment 指标
     // ============================================
-    'InstanceNum': 'FragmentInstances的数量',
-    'InstanceIds': '所有FragmentInstances的ID',
-    'BackendNum': '参与的BE数量',
-    'BackendAddresses': 'BE地址',
-    'FragmentInstancePrepareTime': 'Fragment准备阶段的持续时间',
-    'InstanceAllocatedMemoryUsage': '实例分配的总内存',
-    'InstanceDeallocatedMemoryUsage': '实例释放的总内存',
-    'InstancePeakMemoryUsage': '实例间的内存峰值',
-    'FragmentID': 'Fragment标识符',
-
+    'InstanceNum',
+    'InstanceIds',
+    'BackendNum',
+    'BackendAddresses',
+    'FragmentInstancePrepareTime',
+    'InstanceAllocatedMemoryUsage',
+    'InstanceDeallocatedMemoryUsage',
+    'InstancePeakMemoryUsage',
+    'FragmentID',
     // ============================================
     // Pipeline 指标
     // ============================================
-    'DriverTotalTime': 'Driver消耗的总时间。DriverTotalTime = ActiveTime + PendingTime + ScheduleTime',
-    'ActiveTime': 'Driver执行时间。ActiveTime = ∑OperatorTotalTime + OverheadTime',
-    'PendingTime': 'Driver因为输入或者前置条件不满足等待的时间',
-    'ScheduleTime': 'Driver调度等待时间',
-    'InputEmptyTime': '输入为空的等待时间',
-    'FirstInputEmptyTime': '首次输入为空的等待时间',
-    'OutputFullTime': '输出满的等待时间',
-    'PreconditionBlockTime': '前置条件阻塞时间',
-    'PipelineID': 'Pipeline标识符',
-    'Depth': '节点在执行树中的深度',
-    'NodeType': '节点类型',
-    'IsHotspot': '是否为热点节点',
-    'HotspotSeverity': '热点严重程度',
-    'IsGroupExecution': '是否为分组执行',
-    'BlockByInputEmpty': '因输入为空而阻塞的次数',
-    'BlockByOutputFull': '因输出满而阻塞的次数',
-    'BlockByPrecondition': '因前置条件不满足而阻塞的次数',
-    'DegreeOfParallelism': '并行度',
-    'TotalDegreeOfParallelism': '总并行度',
-    'PeakDriverQueueSize': 'Driver队列峰值大小',
-    'ScheduleCount': '调度次数',
-    'YieldByLocalWait': '因本地等待而让出的次数',
-    'YieldByPreempt': '因抢占而让出的次数',
-    'YieldByTimeLimit': '因时间限制而让出的次数',
-    'EnableEventScheduler': '是否启用事件调度器',
-    'InitialProcessDriverCount': '初始处理Driver数量',
-    'InitialProcessMem': '初始处理内存',
-    'JITCounter': 'JIT编译计数',
-    'JITTotalCostTime': 'JIT编译总耗时',
-    'QueryMemoryLimit': '查询内存限制',
-    'BackendProfileMergeTime': 'BE端Profile合并时间',
-
+    'DriverTotalTime',
+    'ActiveTime',
+    'PendingTime',
+    'ScheduleTime',
+    'InputEmptyTime',
+    'FirstInputEmptyTime',
+    'OutputFullTime',
+    'PreconditionBlockTime',
+    'PipelineID',
+    'Depth',
+    'NodeType',
+    'IsHotspot',
+    'HotspotSeverity',
+    'IsGroupExecution',
+    'BlockByInputEmpty',
+    'BlockByOutputFull',
+    'BlockByPrecondition',
+    'DegreeOfParallelism',
+    'TotalDegreeOfParallelism',
+    'PeakDriverQueueSize',
+    'ScheduleCount',
+    'YieldByLocalWait',
+    'YieldByPreempt',
+    'YieldByTimeLimit',
+    'EnableEventScheduler',
+    'InitialProcessDriverCount',
+    'InitialProcessMem',
+    'JITCounter',
+    'JITTotalCostTime',
+    'QueryMemoryLimit',
+    'BackendProfileMergeTime',
     // ============================================
     // Operator 通用指标
     // ============================================
-    'OperatorTotalTime': 'Operator消耗的总时间',
-    'PushRowNum': 'Operator累积输出行数',
-    'PullRowNum': 'Operator累积输入行数',
-    'PullChunkNum': 'Operator累积输入Chunk数',
-    'PushChunkNum': 'Operator累积输出Chunk数',
-    'PullTotalTime': 'Pull操作总耗时',
-    'PushTotalTime': 'Push操作总耗时',
-    'PeakMemoryUsage': 'Operator最大内存使用量',
-    'OutputRows': 'Operator输出行数',
-    'TimePercentage': '该Operator耗时占总耗时的百分比',
-    'OutputChunkBytes': 'Operator输出Chunk的字节数',
-    'IsSubordinate': '是否为从属Operator',
-    'ConjunctsInputRows': '谓词输入行数',
-    'ConjunctsOutputRows': '谓词输出行数',
-    'ConjunctsTime': '谓词计算耗时',
-    'RuntimeFilterNum': 'Runtime Filter数量',
-    'RuntimeInFilterNum': 'Runtime In Filter数量',
-    'JoinRuntimeFilterEvaluate': 'Join Runtime Filter评估次数',
-    'JoinRuntimeFilterHashTime': 'Join Runtime Filter哈希计算耗时',
-    'JoinRuntimeFilterInputRows': 'Join Runtime Filter输入行数',
-    'JoinRuntimeFilterOutputRows': 'Join Runtime Filter输出行数',
-    'JoinRuntimeFilterTime': 'Join Runtime Filter耗时',
-    'SetFinishingTime': '设置完成状态耗时',
-    'RequestReceived': '接收的请求数',
-    'SinkType': 'Sink类型',
-    'AppendChunkTime': '追加Chunk耗时',
-    'ResultRendTime': '结果渲染耗时',
-    'TupleConvertTime': '元组转换耗时',
-    'NumSentRows': '发送的行数',
-
+    'OperatorTotalTime',
+    'PushRowNum',
+    'PullRowNum',
+    'PullChunkNum',
+    'PushChunkNum',
+    'PullTotalTime',
+    'PushTotalTime',
+    'PeakMemoryUsage',
+    'OutputRows',
+    'TimePercentage',
+    'OutputChunkBytes',
+    'IsSubordinate',
+    'ConjunctsInputRows',
+    'ConjunctsOutputRows',
+    'ConjunctsTime',
+    'RuntimeFilterNum',
+    'RuntimeInFilterNum',
+    'JoinRuntimeFilterEvaluate',
+    'JoinRuntimeFilterHashTime',
+    'JoinRuntimeFilterInputRows',
+    'JoinRuntimeFilterOutputRows',
+    'JoinRuntimeFilterTime',
+    'SetFinishingTime',
+    'RequestReceived',
+    'SinkType',
+    'AppendChunkTime',
+    'ResultRendTime',
+    'TupleConvertTime',
+    'NumSentRows',
     // ============================================
     // Scan Operator (OLAP/Connector)
     // ============================================
-    'Table': '表名称',
-    'Rollup': '使用的物化视图或Rollup名称',
-    'ScanTime': 'Scan累计时间，Scan操作在异步I/O线程池中完成',
-    'TabletCount': 'Tablet数量',
-    'MorselsCount': 'Morsel数量',
-    'PushdownPredicates': '下推的谓词数量',
-    'BytesRead': '读取数据的大小',
-    'RowsRead': '读取的行数',
-    'RawRowsRead': '实际扫描到的原始记录行数',
-    'CompressedBytesRead': '读取压缩数据的大小',
-    'UncompressedBytesRead': '读取解压后数据的大小',
-    'IOTime': '累计I/O时间',
-    'IOTimeTotal': '总I/O时间',
-    'IOTimeLocalDisk': '从本地缓存读取数据时所产生的I/O操作耗时',
-    'IOTimeRemote': '从OSS读取数据时所产生的I/O操作耗时',
-    'BitmapIndexFilterRows': 'Bitmap索引过滤的数据行数',
-    'BitmapIndexFilter': 'Bitmap索引过滤耗时',
-    'BloomFilterFilterRows': 'Bloomfilter过滤的数据行数',
-    'BloomFilterFilter': 'Bloomfilter过滤耗时',
-    'SegmentRuntimeZoneMapFilterRows': 'Runtime Zone Map过滤的数据行数',
-    'SegmentZoneMapFilterRows': 'Zone Map过滤的数据行数',
-    'ZoneMapIndexFilterRows': 'Zone Map索引过滤的数据行数',
-    'ZoneMapIndexFiter': 'Zone Map索引过滤耗时',
-    'ShortKeyFilterRows': 'Short Key过滤的数据行数',
-    'ShortKeyFilter': 'Short Key过滤耗时',
-    'PredFilter': '谓词过滤耗时',
-    'PredFilterRows': '谓词过滤的行数',
-    'DelVecFilterRows': '删除向量过滤的行数',
-    'SegmentInit': 'Segment初始化耗时',
-    'SegmentRead': 'Segment读取耗时',
-    'ColumnIteratorInit': '列迭代器初始化耗时',
-    'BlockSeek': 'Block寻址耗时',
-    'BlockSeekCount': 'Block寻址次数',
-    'BlockFetch': 'Block获取耗时',
-    'BlockFetchCount': 'Block获取次数',
-    'ChunkCopy': 'Chunk复制耗时',
-    'DecompressT': '解压耗时',
-    'CreateSegmentIter': '创建Segment迭代器耗时',
-    'GetDelVec': '获取删除向量耗时',
-    'GetDeltaColumnGroup': '获取Delta列组耗时',
-    'PrepareChunkSourceTime': '准备Chunk源耗时',
-    'SubmitTaskTime': '提交任务耗时',
-    'SubmitTaskCount': '提交任务次数',
-    'IOTaskWaitTime': 'IO任务等待时间',
-    'IOTaskExecTime': 'IO任务执行时间',
-    'PrefetchHitCount': '预取命中次数',
-    'PrefetchPendingTime': '预取等待时间',
-    'PrefetchWaitFinishTime': '预取完成等待时间',
-    
+    'Table',
+    'Rollup',
+    'ScanTime',
+    'TabletCount',
+    'MorselsCount',
+    'PushdownPredicates',
+    'BytesRead',
+    'RowsRead',
+    'RawRowsRead',
+    'CompressedBytesRead',
+    'UncompressedBytesRead',
+    'IOTime',
+    'IOTimeTotal',
+    'IOTimeLocalDisk',
+    'IOTimeRemote',
+    'BitmapIndexFilterRows',
+    'BitmapIndexFilter',
+    'BloomFilterFilterRows',
+    'BloomFilterFilter',
+    'SegmentRuntimeZoneMapFilterRows',
+    'SegmentZoneMapFilterRows',
+    'ZoneMapIndexFilterRows',
+    'ZoneMapIndexFiter',
+    'ShortKeyFilterRows',
+    'ShortKeyFilter',
+    'PredFilter',
+    'PredFilterRows',
+    'DelVecFilterRows',
+    'SegmentInit',
+    'SegmentRead',
+    'ColumnIteratorInit',
+    'BlockSeek',
+    'BlockSeekCount',
+    'BlockFetch',
+    'BlockFetchCount',
+    'ChunkCopy',
+    'DecompressT',
+    'CreateSegmentIter',
+    'GetDelVec',
+    'GetDeltaColumnGroup',
+    'PrepareChunkSourceTime',
+    'SubmitTaskTime',
+    'SubmitTaskCount',
+    'IOTaskWaitTime',
+    'IOTaskExecTime',
+    'PrefetchHitCount',
+    'PrefetchPendingTime',
+    'PrefetchWaitFinishTime',
     // Connector Scan (存算分离)
-    'CompressedBytesReadLocalDisk': '从计算节点的本地缓存读取的经过压缩后的数据量',
-    'CompressedBytesReadRemote': '从OSS读取的经过压缩的数据总量',
-    'CompressedBytesReadRequest': '请求读取的压缩数据大小',
-    'CompressedBytesReadTotal': '读取的压缩数据总量',
-    'IOCountLocalDisk': '本地磁盘IO次数',
-    'IOCountRemote': '远程IO次数',
-    'IOCountRequest': '请求IO次数',
-    'IOCountTotal': '总IO次数',
-    'PagesCountLocalDisk': '本地磁盘页数',
-    'PagesCountRemote': '远程页数',
-    'PagesCountMemory': '内存页数',
-    'PagesCountTotal': '总页数',
-    'DataSourceType': '数据源类型',
-    'SharedScan': '是否共享扫描',
-    'MorselQueueType': 'Morsel队列类型',
-    'AdaptiveIOTasks': '是否启用自适应IO任务',
-    'PeakIOTasks': 'IO任务峰值数',
-    'ChunkBufferCapacity': 'Chunk缓冲区容量',
-    'DefaultChunkBufferCapacity': '默认Chunk缓冲区容量',
-    'PeakChunkBufferSize': 'Chunk缓冲区峰值大小',
-    'PeakChunkBufferMemoryUsage': 'Chunk缓冲区内存使用峰值',
-    'PeakScanTaskQueueSize': '扫描任务队列峰值大小',
-    'RowsetsReadCount': '读取的Rowset数量',
-    'SegmentsReadCount': '读取的Segment数量',
-    'TotalColumnsDataPageCount': '总列数据页数',
-    'AccessPathHits': '访问路径命中次数',
-    'AccessPathUnhits': '访问路径未命中次数',
-    'PushdownAccessPaths': '下推的访问路径数',
-    'ShortKeyRangeNumber': 'Short Key范围数',
-    'RemainingRowsAfterShortKeyFilter': 'Short Key过滤后剩余行数',
-    'MemAllocFailed': '内存分配失败次数',
-    'IOStatistics': 'IO统计信息',
-    'ReadPKIndex': '读取主键索引耗时',
-    'BitmapIndexIteratorInit': 'Bitmap索引迭代器初始化耗时',
-    'RawInputBytes': '原始输入字节数',
-
+    'CompressedBytesReadLocalDisk',
+    'CompressedBytesReadRemote',
+    'CompressedBytesReadRequest',
+    'CompressedBytesReadTotal',
+    'IOCountLocalDisk',
+    'IOCountRemote',
+    'IOCountRequest',
+    'IOCountTotal',
+    'PagesCountLocalDisk',
+    'PagesCountRemote',
+    'PagesCountMemory',
+    'PagesCountTotal',
+    'DataSourceType',
+    'SharedScan',
+    'MorselQueueType',
+    'AdaptiveIOTasks',
+    'PeakIOTasks',
+    'ChunkBufferCapacity',
+    'DefaultChunkBufferCapacity',
+    'PeakChunkBufferSize',
+    'PeakChunkBufferMemoryUsage',
+    'PeakScanTaskQueueSize',
+    'RowsetsReadCount',
+    'SegmentsReadCount',
+    'TotalColumnsDataPageCount',
+    'AccessPathHits',
+    'AccessPathUnhits',
+    'PushdownAccessPaths',
+    'ShortKeyRangeNumber',
+    'RemainingRowsAfterShortKeyFilter',
+    'MemAllocFailed',
+    'IOStatistics',
+    'ReadPKIndex',
+    'BitmapIndexIteratorInit',
+    'RawInputBytes',
     // ============================================
     // Exchange Operator
     // ============================================
     // Sink
-    'PartType': '数据分布模式，包括UNPARTITIONED、RANDOM、HASH_PARTITIONED和BUCKET_SHUFFLE_HASH_PARTITIONED',
-    'DestFragments': '目标Fragment',
-    'DestID': '目标ID',
-    'ChannelNum': '通道数量',
-    'BytesSent': '发送的数据大小',
-    'BytesUnsent': '未发送的数据大小',
-    'RequestSent': '已发送请求数',
-    'RequestUnsent': '未发送请求数',
-    'BytesPassThrough': 'PassThrough的字节数',
-    'PassThroughBufferPeakMemoryUsage': 'PassThrough缓冲区内存使用峰值',
-    'OverallThroughput': '吞吐速率',
-    'OverallTime': '总体时间',
-    'NetworkTime': '数据包传输时间（不包括接收后处理时间）',
-    'WaitTime': '由于发送端队列满而导致的等待时间',
-    'NetworkBandwidth': '网络带宽',
-    'SerializeChunkTime': '序列化Chunk耗时',
-    'SerializedBytes': '序列化字节数',
-    'CompressTime': '压缩耗时',
-    'CompressedBytes': '压缩后字节数',
-    'RpcCount': 'RPC调用次数',
-    'RpcAvgTime': 'RPC平均耗时',
-    'ShuffleHashTime': 'Shuffle哈希计算耗时',
-    'ShuffleChunkAppendTime': 'Shuffle Chunk追加耗时',
-    'ShuffleChunkAppendCounter': 'Shuffle Chunk追加计数',
-    'BufferUnplugCount': '缓冲区解除阻塞次数',
-    'ClosureBlockCount': '闭包阻塞次数',
-    'ClosureBlockTime': '闭包阻塞时间',
-    
+    'PartType',
+    'DestFragments',
+    'DestID',
+    'ChannelNum',
+    'BytesSent',
+    'BytesUnsent',
+    'RequestSent',
+    'RequestUnsent',
+    'BytesPassThrough',
+    'PassThroughBufferPeakMemoryUsage',
+    'OverallThroughput',
+    'OverallTime',
+    'NetworkTime',
+    'WaitTime',
+    'NetworkBandwidth',
+    'SerializeChunkTime',
+    'SerializedBytes',
+    'CompressTime',
+    'CompressedBytes',
+    'RpcCount',
+    'RpcAvgTime',
+    'ShuffleHashTime',
+    'ShuffleChunkAppendTime',
+    'ShuffleChunkAppendCounter',
+    'BufferUnplugCount',
+    'ClosureBlockCount',
+    'ClosureBlockTime',
     // Source
-    'SenderWaitLockTime': '等锁时间',
-    'WaitLockTime': '等锁时间',
-    'BytesReceived': '接收的数据大小',
-    'DecompressChunkTime': '解压时间',
-    'DeserializeChunkTime': '反序列化时间',
-    'SenderTotalTime': '发送总时间',
-    'ReceiverProcessTotalTime': '接收端处理总时间',
-    'PeakBufferMemoryBytes': '缓冲区内存峰值字节数',
-
+    'SenderWaitLockTime',
+    'WaitLockTime',
+    'BytesReceived',
+    'DecompressChunkTime',
+    'DeserializeChunkTime',
+    'SenderTotalTime',
+    'ReceiverProcessTotalTime',
+    'PeakBufferMemoryBytes',
     // ============================================
     // Aggregate Operator
     // ============================================
-    'GroupingKeys': 'GROUP BY列',
-    'AggregateFunctions': '聚合函数',
-    'AggComputeTime': '聚合函数计算耗时',
-    'ExprComputeTime': '表达式计算耗时',
-    'HashTableSize': 'Hash Table大小',
-    'HashTableMemoryUsage': 'Hash Table内存使用量',
-    'InputRowCount': '输入行数',
-    'PassThroughRowCount': 'PassThrough行数',
-    'ResultAggAppendTime': '结果聚合追加耗时',
-    'ResultGroupByAppendTime': '结果分组追加耗时',
-    'GetResultsTime': '获取结果耗时',
-    'IteratorMergeTime': '迭代器合并耗时',
-    'StreamingTime': '流式处理耗时',
-    'AggStateName': '聚合状态名称',
-
+    'GroupingKeys',
+    'AggregateFunctions',
+    'AggComputeTime',
+    'ExprComputeTime',
+    'HashTableSize',
+    'HashTableMemoryUsage',
+    'InputRowCount',
+    'PassThroughRowCount',
+    'ResultAggAppendTime',
+    'ResultGroupByAppendTime',
+    'GetResultsTime',
+    'IteratorMergeTime',
+    'StreamingTime',
+    'AggStateName',
     // ============================================
     // Join Operator
     // ============================================
     // Probe
-    'DistributionMode': '数据分布模式',
-    'JoinType': 'Join类型',
-    'OtherJoinConjunctEvaluateTime': '其他JoinConjunct耗时',
-    'ProbeConjunctEvaluateTime': 'Probe Conjunct耗时',
-    'SearchHashTableTime': '查询Hash Table耗时',
-    'SearchHashTableCount': '查询Hash Table次数',
-    'WhereConjunctEvaluateTime': 'Where Conjunct耗时',
-    'OutputBuildColumnTime': '输出Build列耗时',
-    'OutputProbeColumnTime': '输出Probe列耗时',
-    'OutputTupleColumnTime': '输出Tuple列耗时',
-    'ProbeRowsCounter': 'Probe行计数',
-    
+    'DistributionMode',
+    'JoinType',
+    'OtherJoinConjunctEvaluateTime',
+    'ProbeConjunctEvaluateTime',
+    'SearchHashTableTime',
+    'SearchHashTableCount',
+    'WhereConjunctEvaluateTime',
+    'OutputBuildColumnTime',
+    'OutputProbeColumnTime',
+    'OutputTupleColumnTime',
+    'ProbeRowsCounter',
     // Build
-    'JoinPredicates': 'Join谓词',
-    'BuildBuckets': 'Hash Table的Bucket数量',
-    'BuildHashTableTime': '构建Hash Table耗时',
-    'CopyRightTableChunkTime': '复制右表Chunk耗时',
-    'RuntimeFilterBuildTime': 'Runtime Filter构建时间',
-    'BuildConjunctEvaluateTime': 'Build Conjunct评估耗时',
-    'BuildRowsCounter': 'Build行计数',
-    'RuntimeBloomFilterNum': 'Runtime Bloom Filter个数',
-
+    'JoinPredicates',
+    'BuildBuckets',
+    'BuildHashTableTime',
+    'CopyRightTableChunkTime',
+    'RuntimeFilterBuildTime',
+    'BuildConjunctEvaluateTime',
+    'BuildRowsCounter',
+    'RuntimeBloomFilterNum',
     // ============================================
     // Window Function Operator
     // ============================================
-    'ComputeTime': '窗口函数计算耗时',
-    'PartitionKeys': '分区列',
-    'PartitionChunksNum': '分区Chunk数',
-    'PartitionRowsNum': '分区行数',
-    'PeerGroupChunksNum': 'Peer Group Chunk数',
-    'PeerGroupRowsNum': 'Peer Group行数',
-    'ColumnResize': '列调整大小次数',
-
+    'ComputeTime',
+    'PartitionKeys',
+    'PartitionChunksNum',
+    'PartitionRowsNum',
+    'PeerGroupChunksNum',
+    'PeerGroupRowsNum',
+    'ColumnResize',
     // ============================================
     // Sort Operator
     // ============================================
-    'SortKeys': '排序键',
-    'SortType': '查询结果排序方式：全排序或者排序Top N个结果',
-    'MaxBufferedRows': '缓冲行数的峰值',
-    'MaxBufferedBytes': '缓冲字节数的峰值',
-    'NumSortedRuns': '排序运行的次数',
-    'BuildingTime': '排序期间维护内部数据结构所花费的时间',
-    'MergingTime': '排序期间合并排序运行所花费的时间',
-    'SortingTime': '排序所花费的时间',
-    'OutputTime': '构建输出排序序列所花费的时间',
-
+    'SortKeys',
+    'SortType',
+    'MaxBufferedRows',
+    'MaxBufferedBytes',
+    'NumSortedRuns',
+    'BuildingTime',
+    'MergingTime',
+    'SortingTime',
+    'OutputTime',
     // ============================================
     // Merge Operator
     // ============================================
-    'Limit': '限制返回的行数',
-    'Offset': '偏移量',
-    'StreamingBatchSize': '当在流模式下执行合并时，每次合并操作处理的数据大小',
-    'LateMaterializationMaxBufferChunkNum': '启用延迟物化时缓冲区中的最大Chunk数量',
-    'OverallStageCount': '所有阶段的总执行次数',
-    'OverallStageTime': '每个阶段的总执行时间',
-    'LateMaterializationGenerateOrdinalTime': '延迟物化期间生成序数列所花费的时间',
-    'SortedRunProviderTime': '在Process阶段从提供者检索数据所花费的时间',
-
+    'Limit',
+    'Offset',
+    'StreamingBatchSize',
+    'LateMaterializationMaxBufferChunkNum',
+    'OverallStageCount',
+    'OverallStageTime',
+    'LateMaterializationGenerateOrdinalTime',
+    'SortedRunProviderTime',
     // ============================================
     // TableFunction Operator
     // ============================================
-    'TableFunctionExecTime': 'Table Function计算耗时',
-    'TableFunctionExecCount': 'Table Function执行次数',
-
+    'TableFunctionExecTime',
+    'TableFunctionExecCount',
     // ============================================
     // Project Operator
     // ============================================
-    'CommonSubExprComputeTime': '公共子表达式计算耗时',
-
+    'CommonSubExprComputeTime',
     // ============================================
     // LocalExchange Operator
     // ============================================
-    'Type': 'Local Exchange类型，包括：Passthrough、Partition和Broadcast',
-    'ShuffleNum': 'Shuffle数量，该指标仅当Type为Partition时有效',
-    'LocalExchangePeakMemoryUsage': '内存使用峰值',
-    'LocalExchangePeakBufferSize': '缓冲区的大小峰值',
-    'LocalExchangePeakBufferMemoryUsage': '缓冲区的内存使用峰值',
-    'LocalExchangePeakBufferChunkNum': '缓冲区中的Chunk数量峰值',
-    'LocalExchangePeakBufferRowNum': '缓冲区中的行数峰值',
-    'LocalExchangePeakBufferBytes': '缓冲区中的数据大小峰值',
-    'LocalExchangePeakBufferChunkSize': '缓冲区中的Chunk大小峰值',
-    'LocalExchangePeakBufferChunkRowNum': '缓冲区中每个Chunk的行数峰值',
-    'LocalExchangePeakBufferChunkBytes': '缓冲区中每个Chunk的数据大小峰值',
-
+    'Type',
+    'ShuffleNum',
+    'LocalExchangePeakMemoryUsage',
+    'LocalExchangePeakBufferSize',
+    'LocalExchangePeakBufferMemoryUsage',
+    'LocalExchangePeakBufferChunkNum',
+    'LocalExchangePeakBufferRowNum',
+    'LocalExchangePeakBufferBytes',
+    'LocalExchangePeakBufferChunkSize',
+    'LocalExchangePeakBufferChunkRowNum',
+    'LocalExchangePeakBufferChunkBytes',
     // ============================================
     // OlapTableSink Operator
     // ============================================
-    'IndexNum': '为目标表创建的同步物化视图的数量',
-    'ReplicatedStorage': '是否启用了单领导者复制',
-    'TxnID': '导入事务的ID',
-    'RowsFiltered': '由于数据质量不足而被过滤掉的行数',
-    'RowsReturned': '写入目标表的行数',
-    'RpcClientSideTime': '客户端记录的导入的总RPC时间消耗',
-    'RpcServerSideTime': '服务器端记录的导入的总RPC时间消耗',
-    'PrepareDataTime': '数据准备阶段的总时间消耗，包括数据格式转换和数据质量检查',
-    'SendDataTime': '发送数据的本地时间消耗，包括序列化和压缩数据的时间，以及将任务提交到发送者队列的时间',
-
+    'IndexNum',
+    'ReplicatedStorage',
+    'TxnID',
+    'RowsFiltered',
+    'RowsReturned',
+    'RpcClientSideTime',
+    'RpcServerSideTime',
+    'PrepareDataTime',
+    'SendDataTime',
     // ============================================
     // 执行时间分类 (Execution Time Categories)
     // ============================================
-    'IO': '所有SCAN节点IO耗时之和',
-    'Processing': 'Operator节点用于记录其执行计算操作的总耗时',
-    'IoSeekTime': 'IO Seek寻址过程产生的总耗时，该指标仅适用于存算分离实例',
-    'LocalDiskReadIOTime': '从本地缓存读取数据产生的I/O耗时，该指标仅适用于存算分离实例',
-    'RemoteReadIOTime': '从远端OSS读取数据产生的I/O耗时，该指标仅适用于存算分离实例',
+    'IO',
+    'Processing',
+    'IoSeekTime',
+    'LocalDiskReadIOTime',
+    'RemoteReadIOTime',
+  ];
 
-  };
+  // Lower-cased metric name -> canonical metric name (for case-insensitive lookup)
+  private readonly metricDescriptionKeyMap: Map<string, string> = new Map(
+    this.metricDescriptionKeys.map(k => [k.toLowerCase(), k] as [string, string]),
+  );
 
   // Get metric description (case-insensitive matching)
   getMetricDescription(key: string): string | null {
-    // Direct match first
-    if (this.metricDescriptions[key]) {
-      return this.metricDescriptions[key];
+    if (!key) {
+      return null;
     }
-    // Case-insensitive match
-    const lowerKey = key.toLowerCase();
-    for (const [k, v] of Object.entries(this.metricDescriptions)) {
-      if (k.toLowerCase() === lowerKey) {
-        return v;
-      }
-    }
-    return null;
+    const canonicalKey = this.metricDescriptionKeyMap.get(key.toLowerCase());
+    return canonicalKey ? this.translate.instant(`profile.metrics.${canonicalKey}`) : null;
+  }
+
+  // Exact-match metric description lookup
+  private getExactMetricDescription(key: string): string | undefined {
+    return this.metricDescriptionKeyMap.get(key.toLowerCase()) === key
+      ? this.translate.instant(`profile.metrics.${key}`)
+      : undefined;
   }
 
   // Profile management settings
-  profileSettings = {
-    mode: 'external',
-    hideSubHeader: false, // Enable search
-    noDataMessage: '暂无Profile记录',
-    actions: {
-      add: false,
-      edit: true,
-      delete: false,
-      position: 'right',
-      width: '80px',
-    },
-    edit: {
-      editButtonContent: '<i class="nb-search"></i>',
-    },
-    pager: {
-      display: true,
-      perPage: 20,
-    },
-    columns: {
-      QueryId: { title: 'Query ID', type: 'string', width: '25%' },
-      StartTime: { title: '开始时间', type: 'string', width: '15%' },
-      Time: {
-        title: '执行时间',
-        type: 'html',
-        width: '10%',
-        valuePrepareFunction: (value: string | number) => {
-          // Parse StarRocks duration string to milliseconds for accurate threshold comparison
-          const durationMs = parseStarRocksDuration(value);
-          return renderMetricBadge(durationMs, this.profileDurationThresholds, {
-            labelFormatter: (val) => {
-              // Use original string for display, but parsed number for thresholds
-              return typeof value === 'string' ? value : `${val}ms`;
-            }
-          });
+  profileSettings: any;
+
+  private buildProfileSettings(): any {
+    return {
+      mode: 'external',
+      hideSubHeader: false, // Enable search
+      noDataMessage: this.translate.instant('profile.list.noData'),
+      actions: {
+        add: false,
+        edit: true,
+        delete: false,
+        position: 'right',
+        width: '80px',
+      },
+      edit: {
+        editButtonContent: '<i class="nb-search"></i>',
+      },
+      pager: {
+        display: true,
+        perPage: 20,
+      },
+      columns: {
+        QueryId: { title: 'Query ID', type: 'string', width: '25%' },
+        StartTime: { title: this.translate.instant('profile.list.startTime'), type: 'string', width: '15%' },
+        Time: {
+          title: this.translate.instant('profile.list.executionTime'),
+          type: 'html',
+          width: '10%',
+          valuePrepareFunction: (value: string | number) => {
+            // Parse StarRocks duration string to milliseconds for accurate threshold comparison
+            const durationMs = parseStarRocksDuration(value);
+            return renderMetricBadge(durationMs, this.profileDurationThresholds, {
+              labelFormatter: (val) => {
+                // Use original string for display, but parsed number for thresholds
+                return typeof value === 'string' ? value : `${val}ms`;
+              }
+            });
+          },
+        },
+        State: {
+          title: this.translate.instant('profile.list.state'),
+          type: 'html',
+          width: '10%',
+          valuePrepareFunction: (value: string) => {
+            const status = value === 'Finished' ? 'success' : 'warning';
+            return `<span class="badge badge-${status}">${value}</span>`;
+          },
+        },
+        Statement: { 
+          title: this.translate.instant('profile.list.sqlStatement'), 
+          type: 'html', 
+          width: '40%',
+          valuePrepareFunction: (value: any) => renderLongText(value, 100),
         },
       },
-      State: {
-        title: '状态',
-        type: 'html',
-        width: '10%',
-        valuePrepareFunction: (value: string) => {
-          const status = value === 'Finished' ? 'success' : 'warning';
-          return `<span class="badge badge-${status}">${value}</span>`;
-        },
-      },
-      Statement: { 
-        title: 'SQL语句', 
-        type: 'html', 
-        width: '40%',
-        valuePrepareFunction: (value: any) => renderLongText(value, 100),
-      },
-    },
-  };
+    };
+  }
 
   constructor(
     private route: ActivatedRoute,
@@ -568,13 +552,34 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private cdr: ChangeDetectorRef,
     private location: Location, // Inject Location
+    private translate: TranslateService,
   ) {
+    this.refreshIntervalOptions = this.buildRefreshIntervalOptions();
+    this.profileSettings = this.buildProfileSettings();
     // Try to get clusterId from route first (for direct navigation)
     const routeClusterId = parseInt(this.route.snapshot.paramMap.get('clusterId') || '0', 10);
     this.clusterId = routeClusterId;
   }
 
+  private buildRefreshIntervalOptions(): { value: number | 'off'; label: string }[] {
+    return [
+      { value: 'off', label: this.translate.instant('profile.refresh.off') },
+      { value: 3, label: this.translate.instant('profile.refresh.seconds', { n: 3 }) },
+      { value: 5, label: this.translate.instant('profile.refresh.seconds', { n: 5 }) },
+      { value: 10, label: this.translate.instant('profile.refresh.seconds', { n: 10 }) },
+      { value: 30, label: this.translate.instant('profile.refresh.seconds', { n: 30 }) },
+      { value: 60, label: this.translate.instant('profile.refresh.minutes', { n: 1 }) },
+    ];
+  }
+
   ngOnInit(): void {
+    this.translate.onLangChange
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.refreshIntervalOptions = this.buildRefreshIntervalOptions();
+        this.profileSettings = this.buildProfileSettings();
+      });
+
     // Subscribe to active cluster changes
     this.clusterContextService.activeCluster$
       .pipe(takeUntil(this.destroy$))
@@ -656,7 +661,7 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
         this.loading = false;
       },
       error => {
-        this.toastrService.danger(ErrorHandler.handleClusterError(error), '加载失败');
+        this.toastrService.danger(ErrorHandler.handleClusterError(error), this.translate.instant('profile.loadFailed'));
         this.loading = false;
       }
     );
@@ -777,7 +782,9 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         console.error('Failed to analyze profile', err);
-        this.analysisError = '分析失败: ' + (err.error?.message || err.message || '未知错误');
+        this.analysisError = this.translate.instant('profile.analysis.failed', {
+          error: err.error?.message || err.message || this.translate.instant('profile.analysis.unknownError'),
+        });
         this.analysisLoading = false;
         this.profileDetailLoading = false;
       }
@@ -1235,11 +1242,7 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
     const remote = s.datacache_bytes_remote_display || '0 B';
     const hitRate = s.datacache_hit_rate != null ? (s.datacache_hit_rate * 100).toFixed(1) : '0';
     
-    return `存算分离架构 DataCache 命中率\n` +
-           `本地缓存读取: ${local}\n` +
-           `远程存储读取: ${remote}\n` +
-           `命中率: ${hitRate}%\n` +
-           `(命中率 >= 70% 为健康)`;
+    return this.translate.instant('profile.summary.dataCacheTooltip', { local, remote, hitRate });
   }
   
   // Get metric keys from metrics object (filter out null/undefined and specialized)
@@ -1523,10 +1526,10 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
         .map(([key, value]) => ({
           key,
           value,
-          description: this.metricDescriptions[key]
+          description: this.getExactMetricDescription(key)
         }));
       if (metrics.length > 0) {
-        categories.push({ category: '唯一指标', metrics });
+        categories.push({ category: this.translate.instant('profile.node.uniqueMetrics'), metrics });
       }
     }
     
@@ -1537,10 +1540,10 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
         .map(([key, value]) => ({
           key,
           value,
-          description: this.metricDescriptions[key]
+          description: this.getExactMetricDescription(key)
         }));
       if (metrics.length > 0) {
-        categories.push({ category: '聚合指标', metrics });
+        categories.push({ category: this.translate.instant('profile.node.aggregatedMetrics'), metrics });
       }
     }
     
@@ -1806,7 +1809,10 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
   exportDagAsPng(): void {
     const graphContent = document.querySelector('.graph-content') as HTMLElement;
     if (!graphContent) {
-      this.toastrService.warning('无法找到图表内容', '导出失败');
+      this.toastrService.warning(
+        this.translate.instant('profile.export.graphNotFound'),
+        this.translate.instant('profile.export.failedTitle'),
+      );
       return;
     }
 
@@ -1824,14 +1830,23 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
         link.download = `profile-dag-${this.currentQueryId || 'export'}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
-        this.toastrService.success('图表已导出', '导出成功');
+        this.toastrService.success(
+          this.translate.instant('profile.export.success'),
+          this.translate.instant('profile.export.successTitle'),
+        );
       }).catch(err => {
         console.error('Export failed:', err);
-        this.toastrService.danger('导出图片失败', '错误');
+        this.toastrService.danger(
+          this.translate.instant('profile.export.imageFailed'),
+          this.translate.instant('profile.errorTitle'),
+        );
       });
     }).catch(err => {
       console.error('Failed to load html2canvas:', err);
-      this.toastrService.danger('加载导出模块失败', '错误');
+      this.toastrService.danger(
+        this.translate.instant('profile.export.moduleLoadFailed'),
+        this.translate.instant('profile.errorTitle'),
+      );
     });
   }
 
@@ -2021,7 +2036,10 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(this.currentProfileDetail)
         .then(() => {
-          this.toastrService.success('Profile 内容已复制到剪贴板', '复制成功');
+          this.toastrService.success(
+            this.translate.instant('profile.copy.profileCopied'),
+            this.translate.instant('profile.copy.successTitle'),
+          );
         })
         .catch(err => {
           console.error('Failed to copy:', err);
@@ -2046,13 +2064,22 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
     try {
       const successful = document.execCommand('copy');
       if (successful) {
-        this.toastrService.success('Profile 内容已复制到剪贴板', '复制成功');
+        this.toastrService.success(
+          this.translate.instant('profile.copy.profileCopied'),
+          this.translate.instant('profile.copy.successTitle'),
+        );
       } else {
-        this.toastrService.warning('复制失败，请手动复制', '提示');
+        this.toastrService.warning(
+          this.translate.instant('profile.copy.failedManual'),
+          this.translate.instant('profile.noticeTitle'),
+        );
       }
     } catch (err) {
       console.error('Failed to copy:', err);
-      this.toastrService.warning('复制失败，请手动复制', '提示');
+      this.toastrService.warning(
+        this.translate.instant('profile.copy.failedManual'),
+        this.translate.instant('profile.noticeTitle'),
+      );
     } finally {
       document.body.removeChild(textArea);
     }
@@ -2065,11 +2092,17 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(text)
         .then(() => {
-          this.toastrService.success('已复制到剪贴板', '复制成功');
+          this.toastrService.success(
+            this.translate.instant('profile.copy.copied'),
+            this.translate.instant('profile.copy.successTitle'),
+          );
         })
         .catch(err => {
           console.error('Failed to copy:', err);
-          this.toastrService.warning('复制失败', '提示');
+          this.toastrService.warning(
+            this.translate.instant('profile.copy.failed'),
+            this.translate.instant('profile.noticeTitle'),
+          );
         });
     } else {
       // Fallback
@@ -2081,9 +2114,15 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
       textArea.select();
       try {
         document.execCommand('copy');
-        this.toastrService.success('已复制到剪贴板', '复制成功');
+        this.toastrService.success(
+          this.translate.instant('profile.copy.copied'),
+          this.translate.instant('profile.copy.successTitle'),
+        );
       } catch (err) {
-        this.toastrService.warning('复制失败', '提示');
+        this.toastrService.warning(
+          this.translate.instant('profile.copy.failed'),
+          this.translate.instant('profile.noticeTitle'),
+        );
       } finally {
         document.body.removeChild(textArea);
       }

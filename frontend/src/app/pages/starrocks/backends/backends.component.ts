@@ -3,6 +3,7 @@ import { interval, Subject } from 'rxjs';
 import { takeUntil, switchMap } from 'rxjs/operators';
 import { NbToastrService } from '@nebular/theme';
 import { LocalDataSource } from 'ng2-smart-table';
+import { TranslateService } from '@ngx-translate/core';
 import { NodeService, Backend } from '../../../@core/data/node.service';
 import { ClusterService, Cluster } from '../../../@core/data/cluster.service';
 import { ClusterContextService } from '../../../@core/data/cluster-context.service';
@@ -21,7 +22,7 @@ export class BackendsComponent implements OnInit, OnDestroy {
   activeCluster: Cluster | null = null;
   clusterName: string = '';
   deploymentMode: string = '';
-  pageTitle: string = 'Backend 节点';
+  pageTitle: string = 'cluster.backends.title';
   deploymentModeText: string = '';
   deploymentModeBadgeClass: string = '';
   loading = true;
@@ -30,99 +31,103 @@ export class BackendsComponent implements OnInit, OnDestroy {
   private readonly cpuThresholds: MetricThresholds = { warn: 60, danger: 85 };
   private readonly memoryThresholds: MetricThresholds = { warn: 65, danger: 85 };
 
-  settings = {
-    mode: 'external',
-    hideSubHeader: false, // Enable search
-    noDataMessage: '暂无计算节点数据',
-    actions: {
-      columnTitle: '操作',
-      add: false,
-      edit: false,
-      delete: true,
-      position: 'right',
-    },
-    delete: {
-      deleteButtonContent: '<i class="nb-trash"></i>',
-      confirmDelete: true,  // Enable custom confirmation via deleteConfirm event
-    },
-    pager: {
-      display: true,
-      perPage: 15,
-    },
-    columns: {
-      BackendId: {
-        title: '节点 ID',
-        type: 'string',
-        width: '8%',
+  settings: any;
+
+  private buildSettings(): any {
+    return {
+      mode: 'external',
+      hideSubHeader: false, // Enable search
+      noDataMessage: this.translate.instant('cluster.backends.noData'),
+      actions: {
+        columnTitle: this.translate.instant('cluster.shared.actions'),
+        add: false,
+        edit: false,
+        delete: true,
+        position: 'right',
       },
-      IP: {
-        title: '主机',
-        type: 'string',
+      delete: {
+        deleteButtonContent: '<i class="nb-trash"></i>',
+        confirmDelete: true,  // Enable custom confirmation via deleteConfirm event
       },
-      HeartbeatPort: {
-        title: '心跳端口',
-        type: 'string',
-        width: '10%',
+      pager: {
+        display: true,
+        perPage: 15,
       },
-      BePort: {
-        title: '服务端口',
-        type: 'string',
-        width: '10%',
-      },
-      Alive: {
-        title: '状态',
-        type: 'html',
-        width: '8%',
-        valuePrepareFunction: (value: string) => {
-          const status = value === 'true' ? 'success' : 'danger';
-          const text = value === 'true' ? '在线' : '离线';
-          return `<span class="badge badge-${status}">${text}</span>`;
+      columns: {
+        BackendId: {
+          title: this.translate.instant('cluster.backends.columns.nodeId'),
+          type: 'string',
+          width: '8%',
+        },
+        IP: {
+          title: this.translate.instant('cluster.backends.columns.host'),
+          type: 'string',
+        },
+        HeartbeatPort: {
+          title: this.translate.instant('cluster.backends.columns.heartbeatPort'),
+          type: 'string',
+          width: '10%',
+        },
+        BePort: {
+          title: this.translate.instant('cluster.backends.columns.bePort'),
+          type: 'string',
+          width: '10%',
+        },
+        Alive: {
+          title: this.translate.instant('cluster.shared.status'),
+          type: 'html',
+          width: '8%',
+          valuePrepareFunction: (value: string) => {
+            const status = value === 'true' ? 'success' : 'danger';
+            const text = value === 'true' ? this.translate.instant('cluster.shared.online') : this.translate.instant('cluster.shared.offline');
+            return `<span class="badge badge-${status}">${text}</span>`;
+          },
+        },
+        TabletNum: {
+          title: this.translate.instant('cluster.backends.columns.tabletNum'),
+          type: 'string',
+          width: '10%',
+        },
+        DataUsedCapacity: {
+          title: this.translate.instant('cluster.backends.columns.dataUsed'),
+          type: 'string',
+        },
+        TotalCapacity: {
+          title: this.translate.instant('cluster.backends.columns.totalCapacity'),
+          type: 'string',
+        },
+        UsedPct: {
+          title: this.translate.instant('cluster.backends.columns.diskUsage'),
+          type: 'html',
+          width: '10%',
+          valuePrepareFunction: (value: string) => renderMetricBadge(value, this.diskThresholds),
+        },
+        CpuUsedPct: {
+          title: this.translate.instant('cluster.backends.columns.cpuUsage'),
+          type: 'html',
+          width: '12%',
+          valuePrepareFunction: (value: string) => renderMetricBadge(value, this.cpuThresholds),
+        },
+        MemUsedPct: {
+          title: this.translate.instant('cluster.backends.columns.memUsage'),
+          type: 'html',
+          width: '10%',
+          valuePrepareFunction: (value: string) => renderMetricBadge(value, this.memoryThresholds),
+        },
+        NumRunningQueries: {
+          title: this.translate.instant('cluster.backends.columns.runningQueries'),
+          type: 'string',
+          width: '10%',
         },
       },
-      TabletNum: {
-        title: 'Tablet 数',
-        type: 'string',
-        width: '10%',
-      },
-      DataUsedCapacity: {
-        title: '已用存储',
-        type: 'string',
-      },
-      TotalCapacity: {
-        title: '总存储',
-        type: 'string',
-      },
-      UsedPct: {
-        title: '磁盘使用率',
-        type: 'html',
-        width: '10%',
-        valuePrepareFunction: (value: string) => renderMetricBadge(value, this.diskThresholds),
-      },
-      CpuUsedPct: {
-        title: 'CPU 使用率',
-        type: 'html',
-        width: '12%',
-        valuePrepareFunction: (value: string) => renderMetricBadge(value, this.cpuThresholds),
-      },
-      MemUsedPct: {
-        title: '内存使用率',
-        type: 'html',
-        width: '10%',
-        valuePrepareFunction: (value: string) => renderMetricBadge(value, this.memoryThresholds),
-      },
-      NumRunningQueries: {
-        title: '运行查询数',
-        type: 'string',
-        width: '10%',
-      },
-    },
-  };
+    };
+  }
 
   onDeleteConfirm(event: any): void {
     const backend = event.data;
     const itemName = `${backend.IP}:${backend.HeartbeatPort}`;
     const nodeType = this.deploymentMode === 'shared_data' ? 'CN (Compute Node)' : 'BE (Backend)';
-    const additionalWarning = `⚠️ 警告: 删除${nodeType}节点是危险操作，请确保：\n1. 节点数据已迁移完成\n2. 集群有足够的副本数\n3. 该节点已停止服务`;
+    const additionalWarning = this.translate.instant('cluster.backends.deleteWarning', { nodeType });
     
     this.confirmDialogService.confirmDelete(itemName, additionalWarning)
       .subscribe(confirmed => {
@@ -135,8 +140,8 @@ export class BackendsComponent implements OnInit, OnDestroy {
           .subscribe({
             next: () => {
               this.toastrService.success(
-                `${nodeType} 节点 ${itemName} 已删除`,
-                '成功'
+                this.translate.instant('cluster.backends.deleteSuccess', { nodeType, itemName }),
+                this.translate.instant('cluster.shared.success')
               );
               event.confirm.resolve();
               this.loadBackends();
@@ -144,7 +149,7 @@ export class BackendsComponent implements OnInit, OnDestroy {
             error: (error) => {
               this.toastrService.danger(
                 ErrorHandler.extractErrorMessage(error),
-                '删除失败',
+                this.translate.instant('cluster.detail.deleteFailed'),
               );
               event.confirm.reject();
             },
@@ -158,12 +163,20 @@ export class BackendsComponent implements OnInit, OnDestroy {
     private clusterContext: ClusterContextService,
     private toastrService: NbToastrService,
     private confirmDialogService: ConfirmDialogService,
+    private translate: TranslateService,
   ) {
+    this.settings = this.buildSettings();
     // Get clusterId from ClusterContextService
     this.clusterId = this.clusterContext.getActiveClusterId() || 0;
   }
 
   ngOnInit(): void {
+    this.translate.onLangChange
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.settings = this.buildSettings();
+      });
+
     // Subscribe to active cluster changes
     // activeCluster$ is a BehaviorSubject, so it emits immediately on subscribe
     this.clusterContext.activeCluster$
@@ -204,12 +217,12 @@ export class BackendsComponent implements OnInit, OnDestroy {
           
           // Update page title and badge based on deployment mode
           if (this.deploymentMode === 'shared_data') {
-            this.pageTitle = 'Compute Nodes (CN)';
-            this.deploymentModeText = '存算分离';
+            this.pageTitle = 'cluster.backends.titleCn';
+            this.deploymentModeText = 'cluster.shared.sharedData';
             this.deploymentModeBadgeClass = 'badge-info';
           } else {
-            this.pageTitle = 'Backend Nodes (BE)';
-            this.deploymentModeText = '存算一体';
+            this.pageTitle = 'cluster.backends.titleBe';
+            this.deploymentModeText = 'cluster.shared.sharedNothing';
             this.deploymentModeBadgeClass = 'badge-success';
           }
         },
@@ -229,7 +242,7 @@ export class BackendsComponent implements OnInit, OnDestroy {
         error: (error) => {
           this.toastrService.danger(
             ErrorHandler.handleClusterError(error),
-            '错误',
+            this.translate.instant('cluster.shared.error'),
           );
           this.source.load([]);
           this.loading = false;

@@ -7,6 +7,8 @@ import { TabReuseService } from './tab-reuse.service';
 export interface TabItem {
   id: string;
   title: string;
+  /** Translation key for the title; when set, the tab bar renders it in the current language */
+  titleKey?: string;
   url: string;
   active: boolean;
   closable: boolean;
@@ -313,6 +315,7 @@ export class TabService {
     const tabsToSave = tabs.map(tab => ({
       id: tab.id,
       title: tab.title,
+      titleKey: tab.titleKey,
       url: tab.url,
       pinned: tab.pinned,
       closable: tab.closable,
@@ -336,8 +339,11 @@ export class TabService {
           if (cleanUrl && typeof cleanUrl === 'string') {
             cleanUrl = cleanUrl.replace(/(\/pages\/starrocks)(?:\/pages\/starrocks)+/g, '$1');
           }
+          // Tabs saved before i18n have no titleKey; give the home tab one so it follows the language
+          const titleKey = tab.titleKey || (tab.id === 'home' ? 'menu.clusterList' : undefined);
           return {
             ...tab,
+            titleKey,
             url: cleanUrl,
             active: tab.active || false,
             icon: tab.icon
@@ -362,7 +368,8 @@ export class TabService {
     if (!hasHomeTab) {
       const homeTab: TabItem = {
         id: 'home',
-        title: '集群列表',
+        title: 'Clusters',
+        titleKey: 'menu.clusterList',
         url: '/pages/starrocks/dashboard',
         active: true,
         closable: false,

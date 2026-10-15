@@ -22,6 +22,7 @@ import {
   UserFormDialogResult,
 } from './user-form/user-form-dialog.component';
 import { ConfirmDialogService } from '../../../@core/services/confirm-dialog.service';
+import { TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'ngx-users',
@@ -55,12 +56,17 @@ export class UsersComponent implements OnInit, OnDestroy {
     private dialogService: NbDialogService,
     private confirmDialogService: ConfirmDialogService,
     private toastrService: NbToastrService,
+    private translate: TranslateService,
   ) {}
 
   ngOnInit(): void {
     this.permissionService.permissions$
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.applyPermissionState());
+
+    this.translate.onLangChange
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.applyTableSettings());
 
     this.applyPermissionState();
   }
@@ -154,7 +160,10 @@ export class UsersComponent implements OnInit, OnDestroy {
 
     if (!this.roleCatalog.length) {
       this.loadRoleCatalog();
-      this.toastrService.info('正在加载角色数据，请稍后重试', '提示');
+      this.toastrService.info(
+        this.translate.instant('system.users.rolesLoading'),
+        this.translate.instant('system.shared.notice'),
+      );
       return;
     }
 
@@ -184,7 +193,10 @@ export class UsersComponent implements OnInit, OnDestroy {
 
     if (!this.roleCatalog.length) {
       this.loadRoleCatalog();
-      this.toastrService.info('正在加载角色数据，请稍后重试', '提示');
+      this.toastrService.info(
+        this.translate.instant('system.users.rolesLoading'),
+        this.translate.instant('system.shared.notice'),
+      );
       return;
     }
 
@@ -218,7 +230,10 @@ export class UsersComponent implements OnInit, OnDestroy {
         if (confirmed) {
           this.userService.deleteUser(user.id).subscribe({
             next: () => {
-              this.toastrService.success('用户已删除', '成功');
+              this.toastrService.success(
+                this.translate.instant('system.users.deleted'),
+                this.translate.instant('system.shared.success'),
+              );
               this.loadUsers();
             },
             error: (error) => ErrorHandler.handleHttpError(error, this.toastrService),
@@ -235,7 +250,10 @@ export class UsersComponent implements OnInit, OnDestroy {
     const payload = result.payload as CreateUserPayload;
     this.userService.createUser(payload).subscribe({
       next: () => {
-        this.toastrService.success('用户已创建', '成功');
+        this.toastrService.success(
+          this.translate.instant('system.users.created'),
+          this.translate.instant('system.shared.success'),
+        );
         this.loadUsers();
       },
       error: (error) => ErrorHandler.handleHttpError(error, this.toastrService),
@@ -250,7 +268,10 @@ export class UsersComponent implements OnInit, OnDestroy {
     const payload = result.payload as UpdateUserPayload;
     this.userService.updateUser(userId, payload).subscribe({
       next: () => {
-        this.toastrService.success('用户信息已更新', '成功');
+        this.toastrService.success(
+          this.translate.instant('system.users.updated'),
+          this.translate.instant('system.shared.success'),
+        );
         this.loadUsers();
       },
       error: (error) => ErrorHandler.handleHttpError(error, this.toastrService),
@@ -264,14 +285,7 @@ export class UsersComponent implements OnInit, OnDestroy {
     this.canDeleteUser = this.permissionService.hasPermission('api:users:delete');
     this.isSuperAdmin = this.authService.isSuperAdmin();
 
-    this.settings = this.buildTableSettings();
-
-    this.settings.columns.actions.onComponentInitFunction = (
-      component: UsersActionsCellComponent,
-    ) => {
-      component.editUser.subscribe((row: UserWithRoles) => this.openEditUser(row));
-      component.deleteUser.subscribe((row: UserWithRoles) => this.onDeleteUser(row));
-    };
+    this.applyTableSettings();
 
     this.loadUsers();
 
@@ -288,11 +302,27 @@ export class UsersComponent implements OnInit, OnDestroy {
     this.loadCurrentOrganization();
   }
 
+  private applyTableSettings(): void {
+    const settings = this.buildTableSettings();
+
+    settings.columns.actions.onComponentInitFunction = (
+      component: UsersActionsCellComponent,
+    ) => {
+      component.editUser.subscribe((row: UserWithRoles) => this.openEditUser(row));
+      component.deleteUser.subscribe((row: UserWithRoles) => this.onDeleteUser(row));
+    };
+
+    this.settings = settings;
+  }
+
   private buildTableSettings(): any {
+    const t = (key: string) => this.translate.instant(key);
     return {
       mode: 'external',
       hideSubHeader: false,
-      noDataMessage: this.hasListPermission ? '暂无用户数据' : '您暂无查看用户的权限',
+      noDataMessage: this.hasListPermission
+        ? t('system.users.table.noData')
+        : t('system.users.table.noPermission'),
       actions: {
         add: false,
         edit: false,
@@ -310,33 +340,33 @@ export class UsersComponent implements OnInit, OnDestroy {
           width: '6%',
         },
         username: {
-          title: '用户名',
+          title: t('system.users.table.username'),
           type: 'string',
           width: '12%',
         },
         email: {
-          title: '邮箱',
+          title: t('system.users.table.email'),
           type: 'string',
           width: '18%',
         },
         organization_name: {
-          title: '所属组织',
+          title: t('system.users.table.organization'),
           type: 'string',
           width: '13%',
           valuePrepareFunction: (name: string) => name || '-',
         },
         is_org_admin: {
-          title: '管理员',
+          title: t('system.users.table.orgAdmin'),
           type: 'html',
           width: '8%',
           valuePrepareFunction: (isAdmin: boolean) => {
             return isAdmin
-              ? '<span class="badge badge-success">是</span>'
-              : '<span class="badge badge-basic">否</span>';
+              ? `<span class="badge badge-success">${t('system.shared.yes')}</span>`
+              : `<span class="badge badge-basic">${t('system.shared.no')}</span>`;
           },
         },
         roles: {
-          title: '角色',
+          title: t('system.users.table.roles'),
           type: 'custom',
           width: '18%',
           renderComponent: UsersRoleBadgeCellComponent,
@@ -344,13 +374,13 @@ export class UsersComponent implements OnInit, OnDestroy {
           sort: false,
         },
         created_at: {
-          title: '创建时间',
+          title: t('system.users.table.createdAt'),
           type: 'string',
           width: '12%',
-          valuePrepareFunction: (date: string) => new Date(date).toLocaleString('zh-CN'),
+          valuePrepareFunction: (date: string) => new Date(date).toLocaleString(this.translate.currentLang || 'en'),
         },
         actions: {
-          title: '操作',
+          title: t('system.users.table.actions'),
           type: 'custom',
           width: '10%',
           renderComponent: UsersActionsCellComponent,

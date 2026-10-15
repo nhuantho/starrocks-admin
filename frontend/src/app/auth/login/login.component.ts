@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { NbToastrService } from '@nebular/theme';
+import { TranslateService } from '@ngx-translate/core';
 import { AuthService } from '../../@core/data/auth.service';
 
 @Component({
@@ -24,7 +25,8 @@ export class LoginComponent implements OnInit {
     protected router: Router,
     private route: ActivatedRoute,
     private authService: AuthService,
-    private toastrService: NbToastrService
+    private toastrService: NbToastrService,
+    private translate: TranslateService,
   ) {}
 
   ngOnInit() {
@@ -50,7 +52,7 @@ export class LoginComponent implements OnInit {
     this.submitted = true;
 
     if (!this.user.username || !this.user.password) {
-      this.errors.push('Username and password are required!');
+      this.errors.push(this.translate.instant('auth.login.credentialsRequired'));
       this.submitted = false;
       return;
     }
@@ -75,7 +77,10 @@ export class LoginComponent implements OnInit {
           }, 500);
         } else {
           // Normal login - show single toast notification for login success
-          this.toastrService.success('Welcome back!', 'Login Successful');
+          this.toastrService.success(
+            this.translate.instant('auth.login.welcomeBack'),
+            this.translate.instant('auth.login.success'),
+          );
           // Navigate to return URL using absolute navigation to prevent path duplication
           setTimeout(() => {
             this.router.navigateByUrl(this.returnUrl, { replaceUrl: true });
@@ -84,7 +89,7 @@ export class LoginComponent implements OnInit {
       },
       error: (error) => {
         this.submitted = false;
-        let errorMessage = error.error?.message || 'Login failed. Please check your credentials.';
+        let errorMessage = error.error?.message || this.translate.instant('auth.login.failedMessage');
         let errorDetails = null;
 
         // 检查错误对象的类型
@@ -135,15 +140,21 @@ export class LoginComponent implements OnInit {
         if (errorDetails) {
           if (errorDetails.remaining_attempts !== undefined) {
             if (errorDetails.remaining_attempts > 0) {
-              const toastMessage = `${errorMessage} (${errorDetails.remaining_attempts} attempts remaining)`;
-              this.toastrService.danger(toastMessage, 'Login Failed');
+              const toastMessage = this.translate.instant('auth.login.attemptsRemaining', {
+                message: errorMessage,
+                count: errorDetails.remaining_attempts,
+              });
+              this.toastrService.danger(toastMessage, this.translate.instant('auth.login.failed'));
             } else {
               // Account is locked
               if (errorDetails.locked_until) {
                 const lockTime = new Date(errorDetails.locked_until);
                 const lockTimeStr = lockTime.toLocaleString();
-                const toastMessage = `${errorMessage} (Unlocks at ${lockTimeStr})`;
-                this.toastrService.danger(toastMessage, 'Account Locked');
+                const toastMessage = this.translate.instant('auth.login.unlocksAt', {
+                  message: errorMessage,
+                  time: lockTimeStr,
+                });
+                this.toastrService.danger(toastMessage, this.translate.instant('auth.login.accountLocked'));
               }
             }
           }

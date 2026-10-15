@@ -11,6 +11,7 @@ import { ErrorHandler } from '../../../../@core/utils/error-handler';
 import { MetricThresholds, renderMetricBadge } from '../../../../@core/utils/metric-badge';
 import { renderLongText } from '../../../../@core/utils/text-truncate';
 import { AuthService } from '../../../../@core/data/auth.service';
+import { TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'ngx-audit-logs',
@@ -31,14 +32,7 @@ export class AuditLogsComponent implements OnInit, OnDestroy {
   autoRefresh = false; // Default: disabled
   refreshInterval: any;
   selectedRefreshInterval: number | 'off' = 'off'; // Default: off (Grafana style)
-  refreshIntervalOptions = [
-    { value: 'off', label: '关闭' },
-    { value: 3, label: '3秒' },
-    { value: 5, label: '5秒' },
-    { value: 10, label: '10秒' },
-    { value: 30, label: '30秒' },
-    { value: 60, label: '1分钟' },
-  ];
+  refreshIntervalOptions: { value: number | 'off'; label: string }[] = [];
   private destroy$ = new Subject<void>();
   private readonly durationThresholds: MetricThresholds = { warn: 3000, danger: 10000 };
 
@@ -57,43 +51,47 @@ export class AuditLogsComponent implements OnInit, OnDestroy {
   historyTotalCount: number = 0;
 
   // History queries settings with Profile button
-  historySettings = {
-    mode: 'external',
-    hideSubHeader: false, // Enable search
-    noDataMessage: '暂无审计日志记录',
-    actions: {
-      add: false,
-      edit: true,
-      delete: false,
-      position: 'right',
-      width: '80px',
-    },
-    edit: {
-      editButtonContent: '<i class="nb-search"></i>',
-    },
-    pager: {
-      display: false, // Disable ng2-smart-table's built-in pagination (we'll use custom pagination)
-    },
-    columns: {
-      query_id: { title: 'Query ID', type: 'string' },
-      user: { title: '用户', type: 'string', width: '8%' },
-      default_db: { title: '数据库', type: 'string', width: '8%' },
-      query_type: { title: '类型', type: 'string', width: '8%' },
-      query_state: { title: '状态', type: 'string', width: '8%' },
-      start_time: { title: '开始时间', type: 'string', width: '12%' },
-      total_ms: {
-        title: '耗时(ms)',
-        type: 'html',
-        width: '8%',
-        valuePrepareFunction: (value: string | number) => renderMetricBadge(value, this.durationThresholds),
+  historySettings: any;
+
+  private buildHistorySettings(): any {
+    return {
+      mode: 'external',
+      hideSubHeader: false, // Enable search
+      noDataMessage: this.translate.instant('audit.table.noData'),
+      actions: {
+        add: false,
+        edit: true,
+        delete: false,
+        position: 'right',
+        width: '80px',
       },
-      sql_statement: { 
-        title: 'SQL', 
-        type: 'html',
-        valuePrepareFunction: (value: any) => renderLongText(value, 100),
+      edit: {
+        editButtonContent: '<i class="nb-search"></i>',
       },
-    },
-  };
+      pager: {
+        display: false, // Disable ng2-smart-table's built-in pagination (we'll use custom pagination)
+      },
+      columns: {
+        query_id: { title: 'Query ID', type: 'string' },
+        user: { title: this.translate.instant('audit.table.user'), type: 'string', width: '8%' },
+        default_db: { title: this.translate.instant('audit.table.database'), type: 'string', width: '8%' },
+        query_type: { title: this.translate.instant('audit.table.type'), type: 'string', width: '8%' },
+        query_state: { title: this.translate.instant('audit.table.state'), type: 'string', width: '8%' },
+        start_time: { title: this.translate.instant('audit.table.startTime'), type: 'string', width: '12%' },
+        total_ms: {
+          title: this.translate.instant('audit.table.durationMs'),
+          type: 'html',
+          width: '8%',
+          valuePrepareFunction: (value: string | number) => renderMetricBadge(value, this.durationThresholds),
+        },
+        sql_statement: { 
+          title: 'SQL', 
+          type: 'html',
+          valuePrepareFunction: (value: any) => renderLongText(value, 100),
+        },
+      },
+    };
+  }
 
   constructor(
     private nodeService: NodeService,
@@ -102,13 +100,34 @@ export class AuditLogsComponent implements OnInit, OnDestroy {
     private clusterContext: ClusterContextService,
     private dialogService: NbDialogService,
     private authService: AuthService,
+    private translate: TranslateService,
   ) {
+    this.refreshIntervalOptions = this.buildRefreshIntervalOptions();
+    this.historySettings = this.buildHistorySettings();
     // Try to get clusterId from route first (for direct navigation)
     const routeClusterId = parseInt(this.route.snapshot.paramMap.get('clusterId') || '0', 10);
     this.clusterId = routeClusterId;
   }
 
+  private buildRefreshIntervalOptions(): { value: number | 'off'; label: string }[] {
+    return [
+      { value: 'off', label: this.translate.instant('audit.refresh.off') },
+      { value: 3, label: this.translate.instant('audit.refresh.seconds', { n: 3 }) },
+      { value: 5, label: this.translate.instant('audit.refresh.seconds', { n: 5 }) },
+      { value: 10, label: this.translate.instant('audit.refresh.seconds', { n: 10 }) },
+      { value: 30, label: this.translate.instant('audit.refresh.seconds', { n: 30 }) },
+      { value: 60, label: this.translate.instant('audit.refresh.minutes', { n: 1 }) },
+    ];
+  }
+
   ngOnInit(): void {
+    this.translate.onLangChange
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.refreshIntervalOptions = this.buildRefreshIntervalOptions();
+        this.historySettings = this.buildHistorySettings();
+      });
+
     // Subscribe to active cluster changes
     this.clusterContext.activeCluster$
       .pipe(takeUntil(this.destroy$))
@@ -209,7 +228,7 @@ export class AuditLogsComponent implements OnInit, OnDestroy {
         error: (error) => {
           this.toastrService.danger(
             ErrorHandler.handleClusterError(error),
-            '加载失败'
+            this.translate.instant('audit.loadFailed')
           );
           this.historySource.load([]);
           this.loading = false;
@@ -284,7 +303,7 @@ export class AuditLogsComponent implements OnInit, OnDestroy {
         });
       },
       error: (error) => {
-        this.toastrService.danger(ErrorHandler.extractErrorMessage(error), '加载失败');
+        this.toastrService.danger(ErrorHandler.extractErrorMessage(error), this.translate.instant('audit.loadFailed'));
       },
     });
   }

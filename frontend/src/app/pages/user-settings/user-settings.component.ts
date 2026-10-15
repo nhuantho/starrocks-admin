@@ -4,6 +4,7 @@ import { NbToastrService } from '@nebular/theme';
 import { AuthService, User } from '../../@core/data/auth.service';
 import { ApiService } from '../../@core/data/api.service';
 import { DiceBearService } from '../../@core/services/dicebear.service';
+import { TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'ngx-user-settings',
@@ -39,7 +40,8 @@ export class UserSettingsComponent implements OnInit {
     private apiService: ApiService,
     private toastrService: NbToastrService,
     private router: Router,
-    private diceBearService: DiceBearService
+    private diceBearService: DiceBearService,
+    private translate: TranslateService,
   ) {}
 
   ngOnInit() {
@@ -60,14 +62,14 @@ export class UserSettingsComponent implements OnInit {
         if (user.first_log) {
           this.isFirstLogin = true;
           this.showPasswordFields = true; // Auto-show password fields for first login
-          this.toastrService.warning('初次登陆请修改账号密码', '提示', {
+          this.toastrService.warning(this.translate.instant('system.userSettings.firstLoginWarning'), this.translate.instant('system.shared.notice'), {
             duration: 0, // Set to 0 so the toast doesn't auto-close
             destroyByClick: true,
           });
         }
       },
       error: (error) => {
-        this.toastrService.danger('Failed to load user information', 'Error');
+        this.toastrService.danger(this.translate.instant('system.userSettings.loadFailed'), this.translate.instant('system.shared.error'));
         this.loading = false;
       }
     });
@@ -107,7 +109,7 @@ export class UserSettingsComponent implements OnInit {
 
     // Validation
     if (!this.userForm.username || !this.userForm.email) {
-      this.errors.push('用户名和邮箱不能为空');
+      this.errors.push(this.translate.instant('system.userSettings.errors.usernameEmailRequired'));
       this.submitted = false;
       return;
     }
@@ -115,7 +117,7 @@ export class UserSettingsComponent implements OnInit {
     // Validate email format
     const emailPattern = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,4}$/;
     if (!emailPattern.test(this.userForm.email)) {
-      this.errors.push('请输入有效的邮箱地址');
+      this.errors.push(this.translate.instant('system.userSettings.errors.emailInvalid'));
       this.submitted = false;
       return;
     }
@@ -123,19 +125,19 @@ export class UserSettingsComponent implements OnInit {
     // If changing password, validate password fields
     if (this.showPasswordFields) {
       if (!this.userForm.currentPassword) {
-        this.errors.push('请输入当前密码');
+        this.errors.push(this.translate.instant('system.userSettings.errors.currentPasswordRequired'));
         this.submitted = false;
         return;
       }
 
       if (!this.userForm.newPassword) {
-        this.errors.push('请输入新密码');
+        this.errors.push(this.translate.instant('system.userSettings.errors.newPasswordRequired'));
         this.submitted = false;
         return;
       }
 
       if (this.userForm.newPassword.length < 6) {
-        this.errors.push('新密码至少需要6个字符');
+        this.errors.push(this.translate.instant('system.userSettings.errors.newPasswordMinLength'));
         this.submitted = false;
         return;
       }
@@ -147,31 +149,31 @@ export class UserSettingsComponent implements OnInit {
       const hasSpecialChar = /[!@#$%^&*()_+=\[\]{};':"\\|,.<>\/?-]/.test(this.userForm.newPassword);
 
       if (!hasUpperCase) {
-        this.errors.push('新密码必须包含至少一个大写字母');
+        this.errors.push(this.translate.instant('system.userSettings.errors.newPasswordUppercase'));
         this.submitted = false;
         return;
       }
 
       if (!hasLowerCase) {
-        this.errors.push('新密码必须包含至少一个小写字母');
+        this.errors.push(this.translate.instant('system.userSettings.errors.newPasswordLowercase'));
         this.submitted = false;
         return;
       }
 
       if (!hasNumber) {
-        this.errors.push('新密码必须包含至少一个数字');
+        this.errors.push(this.translate.instant('system.userSettings.errors.newPasswordNumber'));
         this.submitted = false;
         return;
       }
 
       if (!hasSpecialChar) {
-        this.errors.push('新密码必须包含至少一个特殊字符');
+        this.errors.push(this.translate.instant('system.userSettings.errors.newPasswordSpecial'));
         this.submitted = false;
         return;
       }
 
       if (this.userForm.newPassword !== this.userForm.confirmPassword) {
-        this.errors.push('两次输入的密码不一致');
+        this.errors.push(this.translate.instant('system.userSettings.errors.passwordMismatch'));
         this.submitted = false;
         return;
       }
@@ -199,7 +201,7 @@ export class UserSettingsComponent implements OnInit {
         
         // If password was changed, logout and redirect to login
         if (isChangingPassword) {
-          this.toastrService.success('密码修改成功，请重新登录', '成功');
+          this.toastrService.success(this.translate.instant('system.userSettings.passwordChanged'), this.translate.instant('system.shared.success'));
           setTimeout(() => {
             // Clear auth data and redirect to login
             localStorage.removeItem('jwt_token');
@@ -208,7 +210,7 @@ export class UserSettingsComponent implements OnInit {
           }, 1500);
         } else {
           // Just show success message
-          this.toastrService.success('用户信息更新成功', '成功');
+          this.toastrService.success(this.translate.instant('system.userSettings.updated'), this.translate.instant('system.shared.success'));
           
           // Fetch latest user info from database to ensure we have the latest data
           this.authService.getMe().subscribe({
@@ -251,7 +253,7 @@ export class UserSettingsComponent implements OnInit {
       error: (error) => {
         this.submitted = false;
         // Show error in alert (form validation errors use alert, API errors use alert too for consistency)
-        const errorMessage = error.error?.message || '更新失败，请重试';
+        const errorMessage = error.error?.message || this.translate.instant('system.userSettings.updateFailed');
         this.errors = [errorMessage];
         // Don't show toast for API errors since we already show alert
         // this.toastrService.danger(errorMessage, '错误');

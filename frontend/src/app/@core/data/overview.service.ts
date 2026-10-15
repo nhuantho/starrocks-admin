@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import { TranslateService } from '@ngx-translate/core';
 import { ApiService } from './api.service';
 
 export interface ClusterOverview {
@@ -267,7 +268,7 @@ export interface Alert {
   providedIn: 'root',
 })
 export class OverviewService {
-  constructor(private api: ApiService) {}
+  constructor(private api: ApiService, private translate: TranslateService) {}
 
   /**
    * Format bytes to human-readable size with adaptive unit
@@ -342,41 +343,46 @@ export class OverviewService {
    * Transform ExtendedClusterOverview to HealthCard[] for display
    * Converts backend data structure to frontend card format
    */
+  /** Unit suffix for count cards ('个' in Chinese, none in English; the en value is a single space). */
+  private countUnit(): string {
+    return (this.translate.instant('cluster.overview.cards.unitCount') as string).trim();
+  }
+
   transformToHealthCards(overview: ExtendedClusterOverview): HealthCard[] {
     return [
       // ========== 核心健康指标 (P0, 7个) ==========
       // 1. StarRocks 版本
       {
-        title: 'SR 版本',
+        title: this.translate.instant('cluster.overview.cards.srVersion'),
         value: overview.health.starrocks_version || 'Unknown',
         unit: '',
         trend: 0,
         status: 'info',
         icon: 'info-outline',
-        description: 'StarRocks集群版本号',
+        description: this.translate.instant('cluster.overview.cards.srVersionDesc'),
         cardId: 'sr_version'
       },
       // 2. BE 节点状态
       {
-        title: 'BE 节点',
+        title: this.translate.instant('cluster.overview.cards.beNodes'),
         value: `${overview.health.be_nodes_online}/${overview.health.be_nodes_total}`,
         unit: '',
         trend: 0,
         status: overview.health.be_nodes_online === overview.health.be_nodes_total ? 'success' : 'danger',
         icon: 'radio-outline',
         navigateTo: '/pages/starrocks/backends',
-        description: 'Backend节点存活状态，负责数据存储和查询执行'
+        description: this.translate.instant('cluster.overview.cards.beNodesDesc')
       },
       // 2. FE 节点状态
       {
-        title: 'FE 节点',
+        title: this.translate.instant('cluster.overview.cards.feNodes'),
         value: `${overview.health.fe_nodes_online}/${overview.health.fe_nodes_total}`,
         unit: '',
         trend: 0,
         status: overview.health.fe_nodes_online === overview.health.fe_nodes_total ? 'success' : 'danger',
         icon: 'monitor-outline',
         navigateTo: '/pages/starrocks/frontends',
-        description: 'Frontend节点存活状态，负责元数据管理和SQL解析'
+        description: this.translate.instant('cluster.overview.cards.feNodesDesc')
       },
       // 3. Compaction Score
       {
@@ -390,113 +396,113 @@ export class OverviewService {
                 'success',
         icon: 'layers-outline',
         navigateTo: '/pages/starrocks/system',
-        description: 'Partition压缩评分 (>1000紧急 >500严重 >100警告)（点击查看详情）',
+        description: this.translate.instant('cluster.overview.cards.compactionScoreDesc'),
         cardId: 'compaction_score'
       },
       // 4. P99 延迟
       {
-        title: 'P99 延迟',
+        title: this.translate.instant('cluster.overview.latencyTitle', { percentile: 'P99' }),
         value: Math.round(overview.kpi.p99_latency_ms).toString(),
         unit: 'ms',
         trend: overview.kpi.p99_latency_trend || 0,
         status: overview.kpi.p99_latency_ms < 1000 ? 'success' : 
                 overview.kpi.p99_latency_ms < 5000 ? 'warning' : 'danger',
         icon: 'clock-outline',
-        description: '99%查询的响应时间，OLAP典型值100ms-5s',
+        description: this.translate.instant('cluster.overview.cards.latencyDesc'),
         cardId: 'latency_percentile'
       },
       // 5. 并发查询
       {
-        title: '并发查询',
+        title: this.translate.instant('cluster.overview.cards.runningQueries'),
         value: overview.sessions.running_queries?.length.toString() || '0',
-        unit: '个',
+        unit: this.countUnit(),
         trend: 0,
         status: 'info',
         icon: 'activity-outline',
         navigateTo: '/pages/starrocks/queries/execution',
-        description: '当前正在执行的查询数，OLAP典型值1-50'
+        description: this.translate.instant('cluster.overview.cards.runningQueriesDesc')
       },
       // 6. Session连接数
       {
         title: 'Session',
         value: (overview.sessions?.current_connections || 0).toString(),
-        unit: '个',
+        unit: this.countUnit(),
         trend: 0,
         status: 'info',
         icon: 'people-outline',
         navigateTo: '/pages/starrocks/sessions',
-        description: '当前活跃的Session连接数（点击查看详情）',
+        description: this.translate.instant('cluster.overview.cards.sessionsDesc'),
         cardId: 'sessions'
       },
       // 7. 数据库/表数量
       {
-        title: '数据库/表',
+        title: this.translate.instant('cluster.overview.cards.dbTables'),
         value: `${(overview.data_stats as any)?.database_count || 0}/${(overview.data_stats as any)?.table_count || 0}`,
         unit: '',
         trend: 0,
         status: 'info',
         icon: 'inbox-outline',
-        description: '集群中数据库和表的总数量',
+        description: this.translate.instant('cluster.overview.cards.dbTablesDesc'),
         cardId: 'database_table_count'
       },
       
       // ========== 资源状态 (P0, 2个) ==========
       // 8. CPU 使用
       {
-        title: 'CPU 使用',
+        title: this.translate.instant('cluster.overview.cards.cpu'),
         value: Math.round(overview.resources.cpu_usage_pct).toString(),
         unit: '%',
         trend: overview.resources.cpu_trend || 0,
         status: 'info',
         icon: 'flash-outline',
-        description: '集群平均CPU使用率'
+        description: this.translate.instant('cluster.overview.cards.cpuDesc')
       },
       // 9. 内存使用
       {
-        title: '内存使用',
+        title: this.translate.instant('cluster.overview.cards.memory'),
         value: Math.round(overview.resources.memory_usage_pct).toString(),
         unit: '%',
         trend: overview.resources.memory_trend || 0,
         status: 'info',
         icon: 'inbox-outline',
-        description: '集群平均内存使用率'
+        description: this.translate.instant('cluster.overview.cards.memoryDesc')
       },
       
       // ========== 节点与任务 (P1, 2个) ==========
       // 10. 导入任务
       {
-        title: '导入任务',
+        title: this.translate.instant('cluster.overview.cards.loadJobs'),
         value: (overview.load_jobs?.running || 0).toString(),
-        unit: '个',
+        unit: this.countUnit(),
         trend: 0,
         status: 'info',
         icon: 'upload-outline',
         navigateTo: '/pages/starrocks/system',
-        description: '正在运行的数据导入任务（点击查看详情）',
+        description: this.translate.instant('cluster.overview.cards.loadJobsDesc'),
         cardId: 'load_jobs'
       },
       // 11. Compaction 任务
       {
-        title: 'Compaction 任务',
+        title: this.translate.instant('cluster.overview.cards.compactionTasks'),
         value: (overview.compaction?.cumulativeCompactionRunning || 0).toString(),
-        unit: '个',
+        unit: this.countUnit(),
         trend: 0,
         status: 'info',
         icon: 'sync-outline',
         navigateTo: '/pages/starrocks/system',
-        description: '正在运行的 Compaction 任务（点击查看详情）',
+        description: this.translate.instant('cluster.overview.cards.compactionTasksDesc'),
         cardId: 'compactions'
       },
       // 12. 物化视图
       {
-        title: '物化视图',
+        title: this.translate.instant('cluster.overview.cards.mvs'),
         value: (overview.mv_stats?.total || 0).toString(),
-        unit: '个',
+        unit: this.countUnit(),
         trend: 0,
         status: 'success',
         icon: 'cube-outline',
         navigateTo: '/pages/starrocks/materialized-views',
-        description: '物化视图总数量'
+        description: this.translate.instant('cluster.overview.cards.mvsDesc')
       },
       
       // ========== 数据与容量 (P1, 3个) ==========
@@ -506,24 +512,24 @@ export class OverviewService {
           ? this.formatBytes(Math.abs(overview.capacity.daily_growth_bytes))
           : { value: '0', unit: 'B' };
         return {
-          title: '缓存增量',
+          title: this.translate.instant('cluster.overview.cards.cacheGrowth'),
           value: formatted.value,
-          unit: `${formatted.unit}/天`,
+          unit: this.translate.instant('cluster.overview.perDay', { unit: formatted.unit }),
           trend: 0,
           status: 'info',
           icon: 'trending-up-outline',
-          description: 'BE本地缓存数据的每日平均增长量（基于线性回归）'
+          description: this.translate.instant('cluster.overview.cards.cacheGrowthDesc')
         };
       })(),
       // 13. 本地磁盘/缓存使用 (switchable) - 点击切换显示使用率%或使用量TB
       {
-        title: '本地磁盘',
+        title: this.translate.instant('cluster.overview.localDisk'),
         value: overview.capacity ? Math.round(overview.capacity.disk_usage_pct).toString() : '0',
         unit: '%',
         trend: 0,
         status: overview.capacity && overview.capacity.disk_usage_pct > 80 ? 'warning' : 'info',
         icon: 'hard-drive-outline',
-        description: 'BE节点本地磁盘最大使用率（点击切换到缓存使用）',
+        description: this.translate.instant('cluster.overview.cards.localDiskDesc'),
         cardId: 'disk_cache_metric'
       },
       // 14. 真实数据
@@ -532,13 +538,13 @@ export class OverviewService {
           ? this.formatBytes(overview.capacity.real_data_size_bytes)
           : { value: '0', unit: 'B' };
         return {
-          title: '数据总量',
+          title: this.translate.instant('cluster.overview.cards.totalData'),
           value: formatted.value,
           unit: formatted.unit,
           trend: 0,
           status: 'success',
           icon: 'archive-outline',
-          description: '对象存储中的实际数据总量（从information_schema统计）'
+          description: this.translate.instant('cluster.overview.cards.totalDataDesc')
         };
       })()
     ];

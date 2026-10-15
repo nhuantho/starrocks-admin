@@ -4,7 +4,9 @@ import { NbAuthModule, NbDummyAuthStrategy } from '@nebular/auth';
 import { NbSecurityModule, NbRoleProvider } from '@nebular/security';
 import { of as observableOf } from 'rxjs';
 
+import { TranslateService } from '@ngx-translate/core';
 import { throwIfAlreadyLoaded } from './module-import-guard';
+import { ErrorHandler } from './utils/error-handler';
 import {
   LayoutService,
   SeoService,
@@ -136,8 +138,15 @@ export const NB_CORE_PROVIDERS = [
   declarations: [],
 })
 export class CoreModule {
-  constructor(@Optional() @SkipSelf() parentModule: CoreModule) {
+  constructor(
+    @Optional() @SkipSelf() parentModule: CoreModule,
+    @Optional() translate: TranslateService,
+  ) {
     throwIfAlreadyLoaded(parentModule, 'CoreModule');
+    // ErrorHandler is a static utility; give it access to translations.
+    if (translate) {
+      ErrorHandler.setTranslateService(translate);
+    }
   }
 
   static forRoot(): ModuleWithProviders<CoreModule> {

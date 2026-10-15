@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NbToastrService } from '@nebular/theme';
+import { TranslateService } from '@ngx-translate/core';
 import { ClusterService, Cluster, ClusterHealth } from '../../../../@core/data/cluster.service';
 import { ConfirmDialogService } from '../../../../@core/services/confirm-dialog.service';
 
@@ -21,6 +22,7 @@ export class ClusterDetailComponent implements OnInit {
     private router: Router,
     private toastrService: NbToastrService,
     private confirmDialogService: ConfirmDialogService,
+    private translate: TranslateService,
   ) {
     this.clusterId = parseInt(this.route.snapshot.paramMap.get('id') || '0', 10);
   }
@@ -38,7 +40,7 @@ export class ClusterDetailComponent implements OnInit {
         this.loading = false;
       },
       error: (error) => {
-        this.toastrService.danger(error.error?.message || '加载集群失败', '错误');
+        this.toastrService.danger(error.error?.message || this.translate.instant('cluster.detail.loadFailed'), this.translate.instant('cluster.shared.error'));
         this.loading = false;
       },
     });
@@ -97,11 +99,11 @@ export class ClusterDetailComponent implements OnInit {
 
         this.clusterService.deleteCluster(this.clusterId).subscribe({
           next: () => {
-            this.toastrService.success('集群删除成功', '成功');
+            this.toastrService.success(this.translate.instant('cluster.list.deleteSuccess'), this.translate.instant('cluster.shared.success'));
             this.router.navigate(['/pages/starrocks/clusters']);
           },
           error: (error) => {
-            this.toastrService.danger(error.error?.message || '删除失败', '错误');
+            this.toastrService.danger(error.error?.message || this.translate.instant('cluster.detail.deleteFailed'), this.translate.instant('cluster.shared.error'));
           },
         });
       });

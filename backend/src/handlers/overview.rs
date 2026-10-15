@@ -14,7 +14,7 @@ use crate::services::{
     CapacityPrediction, ClusterOverview, CompactionDetailStats, DataStatistics,
     ExtendedClusterOverview, HealthCard, PerformanceTrends, ResourceTrends, TimeRange,
 };
-use crate::utils::ApiResult;
+use crate::utils::{ApiResult, Lang};
 
 /// Query parameters for overview endpoints
 #[derive(Debug, Deserialize)]
@@ -248,6 +248,7 @@ pub async fn get_data_statistics(
     State(state): State<Arc<AppState>>,
     axum::extract::Extension(org_ctx): axum::extract::Extension<crate::middleware::OrgContext>,
     Query(params): Query<TrendQueryParams>,
+    lang: Lang,
 ) -> ApiResult<Json<DataStatistics>> {
     // Get the active cluster with organization isolation
     let cluster = if org_ctx.is_super_admin {
@@ -260,7 +261,7 @@ pub async fn get_data_statistics(
     };
     let stats = state
         .overview_service
-        .get_data_statistics(cluster.id, Some(&params.time_range))
+        .get_data_statistics(cluster.id, Some(&params.time_range), lang)
         .await?;
 
     Ok(Json(stats))
@@ -333,6 +334,7 @@ pub async fn get_extended_cluster_overview(
     State(state): State<Arc<AppState>>,
     axum::extract::Extension(org_ctx): axum::extract::Extension<crate::middleware::OrgContext>,
     Query(params): Query<OverviewQueryParams>,
+    lang: Lang,
 ) -> ApiResult<Json<ExtendedClusterOverview>> {
     // Get the active cluster with organization isolation
     let cluster = if org_ctx.is_super_admin {
@@ -345,7 +347,7 @@ pub async fn get_extended_cluster_overview(
     };
     let overview = state
         .overview_service
-        .get_extended_overview(cluster.id, params.time_range)
+        .get_extended_overview(cluster.id, params.time_range, lang)
         .await?;
 
     Ok(Json(overview))

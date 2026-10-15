@@ -96,7 +96,8 @@
   }
 
   // 主题切换器样式 - 放在左边logo旁边，原生、不突兀
-  .theme-switcher {
+  .theme-switcher,
+  .language-switcher {
     margin-left: 2rem;
     min-width: 110px;
     border: none;
@@ -124,6 +125,10 @@
         }
       }
     }
+  }
+
+  .language-switcher {
+    margin-left: 0.5rem;
   }
 
   @include media-breakpoint-down(sm) {

@@ -9,7 +9,7 @@ use validator::Validate;
 
 use crate::AppState;
 use crate::models::{CreateFunctionRequest, UpdateFunctionRequest, UpdateOrderRequest};
-use crate::utils::{ApiError, ApiResult};
+use crate::utils::{ApiError, ApiResult, Lang};
 
 // GET /api/clusters/system-functions
 pub async fn get_system_functions(
@@ -37,11 +37,15 @@ pub async fn create_system_function(
     State(state): State<Arc<AppState>>,
     axum::extract::Extension(org_ctx): axum::extract::Extension<crate::middleware::OrgContext>,
     Extension(user_id): Extension<i64>,
+    lang: Lang,
     Json(req): Json<CreateFunctionRequest>,
 ) -> ApiResult<impl IntoResponse> {
     // Validate request
     if let Err(validation_errors) = req.validate() {
-        return Err(ApiError::validation_error(format!("请求参数验证失败：{}", validation_errors)));
+        return Err(ApiError::validation_error(match lang {
+            Lang::Zh => format!("请求参数验证失败：{}", validation_errors),
+            Lang::En => format!("Request validation failed: {}", validation_errors),
+        }));
     }
 
     // Get the active cluster with organization isolation
@@ -55,7 +59,7 @@ pub async fn create_system_function(
     };
     let function = state
         .system_function_service
-        .create_function(cluster.id, req, user_id)
+        .create_function(cluster.id, req, user_id, lang)
         .await?;
     Ok((StatusCode::CREATED, Json(function)))
 }
@@ -153,11 +157,15 @@ pub async fn update_function(
     State(state): State<Arc<AppState>>,
     axum::extract::Extension(org_ctx): axum::extract::Extension<crate::middleware::OrgContext>,
     Path(function_id): Path<i64>,
+    lang: Lang,
     Json(req): Json<UpdateFunctionRequest>,
 ) -> ApiResult<impl IntoResponse> {
     // Validate request
     if let Err(validation_errors) = req.validate() {
-        return Err(ApiError::validation_error(format!("请求参数验证失败：{}", validation_errors)));
+        return Err(ApiError::validation_error(match lang {
+            Lang::Zh => format!("请求参数验证失败：{}", validation_errors),
+            Lang::En => format!("Request validation failed: {}", validation_errors),
+        }));
     }
 
     // Get the active cluster with organization isolation
@@ -171,7 +179,7 @@ pub async fn update_function(
     };
     let function = state
         .system_function_service
-        .update_function(cluster.id, function_id, req)
+        .update_function(cluster.id, function_id, req, lang)
         .await?;
     Ok(Json(function))
 }
@@ -192,10 +200,11 @@ pub async fn update_system_function_access_time(
 pub async fn delete_category(
     State(state): State<Arc<AppState>>,
     Path(category_name): Path<String>,
+    lang: Lang,
 ) -> ApiResult<impl IntoResponse> {
     state
         .system_function_service
-        .delete_category(&category_name)
+        .delete_category(&category_name, lang)
         .await?;
     Ok(StatusCode::NO_CONTENT)
 }

@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 
 import { NbToastrService, NbDialogService } from '@nebular/theme';
 import { LocalDataSource } from 'ng2-smart-table';
+import { TranslateService } from '@ngx-translate/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { ClusterContextService } from '../../../@core/data/cluster-context.service';
@@ -28,12 +29,13 @@ export class SessionsComponent implements OnInit, OnDestroy {
   refreshInterval: any;
   selectedRefreshInterval: number | 'off' = 'off'; // Default: off (Grafana style)
   refreshIntervalOptions = [
-    { value: 'off', label: '关闭' },
-    { value: 3, label: '3秒' },
-    { value: 5, label: '5秒' },
-    { value: 10, label: '10秒' },
-    { value: 30, label: '30秒' },
-    { value: 60, label: '1分钟' },
+    // label is a translation key
+    { value: 'off', label: 'cluster.shared.refreshIntervals.off' },
+    { value: 3, label: 'cluster.shared.refreshIntervals.s3' },
+    { value: 5, label: 'cluster.shared.refreshIntervals.s5' },
+    { value: 10, label: 'cluster.shared.refreshIntervals.s10' },
+    { value: 30, label: 'cluster.shared.refreshIntervals.s30' },
+    { value: 60, label: 'cluster.shared.refreshIntervals.m1' },
   ];
   private destroy$ = new Subject<void>();
   // Session duration thresholds: 1min(60s)=warn, 5min(300s)=danger
@@ -45,74 +47,78 @@ export class SessionsComponent implements OnInit, OnDestroy {
     slowOnly?: boolean;
   } = {};
 
-  settings = {
-    hideSubHeader: false, // Enable search
-    noDataMessage: '当前没有活动会话',
-    actions: {
-      add: false,
-      edit: false,
-      delete: true,
-      position: 'right',
-    },
-    delete: {
-      deleteButtonContent: '<i class="nb-trash"></i>',
-      confirmDelete: true,
-    },
-    pager: {
-      display: true,
-      perPage: 15,
-    },
-    columns: {
-      id: {
-        title: 'Session ID',
-        type: 'string',
-        width: '10%',
+  settings: any;
+
+  private buildSettings(): any {
+    return {
+      hideSubHeader: false, // Enable search
+      noDataMessage: this.translate.instant('cluster.sessions.noData'),
+      actions: {
+        add: false,
+        edit: false,
+        delete: true,
+        position: 'right',
       },
-      user: {
-        title: 'User',
-        type: 'string',
-        width: '10%',
+      delete: {
+        deleteButtonContent: '<i class="nb-trash"></i>',
+        confirmDelete: true,
       },
-      host: {
-        title: 'Host',
-        type: 'string',
-        width: '15%',
+      pager: {
+        display: true,
+        perPage: 15,
       },
-      db: {
-        title: 'Database',
-        type: 'string',
-        width: '10%',
-        valuePrepareFunction: (value: any) => value || 'N/A',
-      },
-      command: {
-        title: 'Command',
-        type: 'html',
-        width: '10%',
-        valuePrepareFunction: (value: string, row: Session) => this.renderCommandBadge(value, row),
-      },
-      time: {
-        title: 'Time (s)',
-        type: 'html',
-        width: '10%',
-        valuePrepareFunction: (value: string | number) => renderMetricBadge(value, this.sessionDurationThresholds),
-      },
-      state: {
-        title: 'State',
-        type: 'html',
-        width: '10%',
-        valuePrepareFunction: (value: string) => this.renderStateBadge(value),
-      },
-      info: {
-        title: 'Info',
-        type: 'html',
-        width: '25%',
-        valuePrepareFunction: (value: any) => {
-          if (!value) return 'N/A';
-          return renderLongText(value, 80);
+      columns: {
+        id: {
+          title: this.translate.instant('cluster.sessions.columns.id'),
+          type: 'string',
+          width: '10%',
+        },
+        user: {
+          title: this.translate.instant('cluster.sessions.columns.user'),
+          type: 'string',
+          width: '10%',
+        },
+        host: {
+          title: this.translate.instant('cluster.sessions.columns.host'),
+          type: 'string',
+          width: '15%',
+        },
+        db: {
+          title: this.translate.instant('cluster.sessions.columns.db'),
+          type: 'string',
+          width: '10%',
+          valuePrepareFunction: (value: any) => value || 'N/A',
+        },
+        command: {
+          title: this.translate.instant('cluster.sessions.columns.command'),
+          type: 'html',
+          width: '10%',
+          valuePrepareFunction: (value: string, row: Session) => this.renderCommandBadge(value, row),
+        },
+        time: {
+          title: this.translate.instant('cluster.sessions.columns.time'),
+          type: 'html',
+          width: '10%',
+          valuePrepareFunction: (value: string | number) => renderMetricBadge(value, this.sessionDurationThresholds),
+        },
+        state: {
+          title: this.translate.instant('cluster.sessions.columns.state'),
+          type: 'html',
+          width: '10%',
+          valuePrepareFunction: (value: string) => this.renderStateBadge(value),
+        },
+        info: {
+          title: this.translate.instant('cluster.sessions.columns.info'),
+          type: 'html',
+          width: '25%',
+          valuePrepareFunction: (value: any) => {
+            if (!value) return 'N/A';
+            return renderLongText(value, 80);
+          },
         },
       },
-    },
-  };
+    };
+  }
 
   constructor(
     
@@ -122,13 +128,20 @@ export class SessionsComponent implements OnInit, OnDestroy {
     private clusterContext: ClusterContextService,
     private nodeService: NodeService,
     private authService: AuthService,
+    private translate: TranslateService,
   ) {
+    this.settings = this.buildSettings();
     // Try to get clusterId from route first
     // Get clusterId from ClusterContextService
     this.clusterId = this.clusterContext.getActiveClusterId() || 0;
   }
 
   ngOnInit(): void {
+    this.translate.onLangChange
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.settings = this.buildSettings();
+      });
     
     // Subscribe to active cluster changes
     this.clusterContext.activeCluster$
@@ -171,7 +184,7 @@ export class SessionsComponent implements OnInit, OnDestroy {
         console.error('[Sessions] Error loading sessions:', error);
         this.toastrService.danger(
           ErrorHandler.handleClusterError(error),
-          '错误'
+          this.translate.instant('cluster.shared.error')
         );
         this.sessions = [];
         this.source.load([]);
@@ -224,10 +237,10 @@ export class SessionsComponent implements OnInit, OnDestroy {
     const session = event.data as Session;
 
     this.confirmDialogService.confirm(
-      '确认终止会话',
-      `确定要终止会话 ${session.id} 吗？`,
-      '终止',
-      '取消',
+      this.translate.instant('cluster.sessions.killConfirmTitle'),
+      this.translate.instant('cluster.sessions.killConfirmMessage', { id: session.id }),
+      this.translate.instant('cluster.sessions.kill'),
+      this.translate.instant('cluster.shared.cancel'),
       'danger'
     ).subscribe(confirmed => {
       if (!confirmed) {
@@ -238,14 +251,17 @@ export class SessionsComponent implements OnInit, OnDestroy {
       this.loading = true;
       this.nodeService.killSession(session.id).subscribe({
         next: () => {
-          this.toastrService.success(`会话 ${session.id} 已成功终止`, '成功');
+          this.toastrService.success(
+            this.translate.instant('cluster.sessions.killSuccess', { id: session.id }),
+            this.translate.instant('cluster.shared.success'),
+          );
           event.confirm.resolve();
           this.loadSessions();
         },
         error: (error) => {
           this.toastrService.danger(
-            error.error?.message || '终止会话失败',
-            '错误'
+            error.error?.message || this.translate.instant('cluster.sessions.killFailed'),
+            this.translate.instant('cluster.shared.error')
           );
           event.confirm.reject();
           this.loading = false;
@@ -368,15 +384,15 @@ export class SessionsComponent implements OnInit, OnDestroy {
         });
 
         if (sleepingSessions.length === 0) {
-          this.toastrService.info('当前没有睡眠连接', '提示');
+          this.toastrService.info(this.translate.instant('cluster.sessions.noSleeping'), this.translate.instant('cluster.shared.notice'));
           return;
         }
 
         this.confirmDialogService.confirm(
-          '确认清除睡眠连接',
-          `确定要清除 ${sleepingSessions.length} 个睡眠连接吗？`,
-          '清除',
-          '取消',
+          this.translate.instant('cluster.sessions.clearSleepingConfirmTitle'),
+          this.translate.instant('cluster.sessions.clearSleepingConfirmMessage', { count: sleepingSessions.length }),
+          this.translate.instant('cluster.sessions.clear'),
+          this.translate.instant('cluster.shared.cancel'),
           'warning'
         ).subscribe(confirmed => {
           if (!confirmed) {
@@ -396,9 +412,9 @@ export class SessionsComponent implements OnInit, OnDestroy {
                 if (completed === sleepingSessions.length) {
                   this.loading = false;
                   if (failCount === 0) {
-                    this.toastrService.success(`成功清除 ${successCount} 个睡眠连接`, '成功');
+                    this.toastrService.success(this.translate.instant('cluster.sessions.clearSleepingSuccess', { count: successCount }), this.translate.instant('cluster.shared.success'));
                   } else {
-                    this.toastrService.warning(`成功清除 ${successCount} 个，失败 ${failCount} 个`, '部分成功');
+                    this.toastrService.warning(this.translate.instant('cluster.sessions.clearPartial', { success: successCount, failed: failCount }), this.translate.instant('cluster.sessions.partialSuccess'));
                   }
                   this.loadSessions();
                 }
@@ -409,9 +425,9 @@ export class SessionsComponent implements OnInit, OnDestroy {
                 if (completed === sleepingSessions.length) {
                   this.loading = false;
                   if (successCount > 0) {
-                    this.toastrService.warning(`成功清除 ${successCount} 个，失败 ${failCount} 个`, '部分成功');
+                    this.toastrService.warning(this.translate.instant('cluster.sessions.clearPartial', { success: successCount, failed: failCount }), this.translate.instant('cluster.sessions.partialSuccess'));
                   } else {
-                    this.toastrService.danger('清除睡眠连接失败', '错误');
+                    this.toastrService.danger(this.translate.instant('cluster.sessions.clearSleepingFailed'), this.translate.instant('cluster.shared.error'));
                   }
                   this.loadSessions();
                 }
@@ -423,7 +439,7 @@ export class SessionsComponent implements OnInit, OnDestroy {
       error: (error) => {
         this.toastrService.danger(
           ErrorHandler.handleClusterError(error),
-          '获取会话列表失败'
+          this.translate.instant('cluster.sessions.fetchFailed')
         );
       },
     });
@@ -432,15 +448,15 @@ export class SessionsComponent implements OnInit, OnDestroy {
   // Batch kill all displayed sessions
   batchKillAllSessions(): void {
     if (this.sessions.length === 0) {
-      this.toastrService.warning('当前没有可查杀的会话', '提示');
+      this.toastrService.warning(this.translate.instant('cluster.sessions.noKillable'), this.translate.instant('cluster.shared.notice'));
       return;
     }
 
     this.confirmDialogService.confirm(
-      '确认批量查杀',
-      `确定要查杀当前显示的 ${this.sessions.length} 个会话吗？`,
-      '查杀',
-      '取消',
+      this.translate.instant('cluster.sessions.batchKillConfirmTitle'),
+      this.translate.instant('cluster.sessions.batchKillConfirmMessage', { count: this.sessions.length }),
+      this.translate.instant('cluster.sessions.batchKill'),
+      this.translate.instant('cluster.shared.cancel'),
       'danger'
     ).subscribe(confirmed => {
       if (!confirmed) {
@@ -460,9 +476,9 @@ export class SessionsComponent implements OnInit, OnDestroy {
             if (completed === this.sessions.length) {
               this.loading = false;
               if (failCount === 0) {
-                this.toastrService.success(`成功查杀 ${successCount} 个会话`, '成功');
+                this.toastrService.success(this.translate.instant('cluster.sessions.batchKillSuccess', { count: successCount }), this.translate.instant('cluster.shared.success'));
               } else {
-                this.toastrService.warning(`成功查杀 ${successCount} 个，失败 ${failCount} 个`, '部分成功');
+                this.toastrService.warning(this.translate.instant('cluster.sessions.batchKillPartial', { success: successCount, failed: failCount }), this.translate.instant('cluster.sessions.partialSuccess'));
               }
               this.loadSessions();
             }
@@ -473,9 +489,9 @@ export class SessionsComponent implements OnInit, OnDestroy {
             if (completed === this.sessions.length) {
               this.loading = false;
               if (successCount > 0) {
-                this.toastrService.warning(`成功查杀 ${successCount} 个，失败 ${failCount} 个`, '部分成功');
+                this.toastrService.warning(this.translate.instant('cluster.sessions.batchKillPartial', { success: successCount, failed: failCount }), this.translate.instant('cluster.sessions.partialSuccess'));
               } else {
-                this.toastrService.danger('批量查杀失败', '错误');
+                this.toastrService.danger(this.translate.instant('cluster.sessions.batchKillFailed'), this.translate.instant('cluster.shared.error'));
               }
               this.loadSessions();
             }

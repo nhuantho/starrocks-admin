@@ -9,8 +9,8 @@ impl DiagnosticRule for F001ExecutionTimeSkew {
     fn id(&self) -> &str {
         "F001"
     }
-    fn name(&self) -> &str {
-        "实例执行时间倾斜"
+    fn name(&self, lang: Lang) -> &str {
+        lang.pick("实例执行时间倾斜", "Instance execution time skew")
     }
 
     fn applicable_to(&self, _node: &ExecutionTreeNode) -> bool {
@@ -27,13 +27,16 @@ impl DiagnosticRule for F001ExecutionTimeSkew {
         if ratio > 2.0 {
             Some(Diagnostic {
                 rule_id: self.id().to_string(),
-                rule_name: self.name().to_string(),
+                rule_name: self.name(context.lang).to_string(),
                 severity: RuleSeverity::Warning,
                 node_path: format!("{} (plan_node_id={})", context.node.operator_name, context.node.plan_node_id.unwrap_or(-1)),
                 plan_node_id: context.node.plan_node_id,
-                message: format!("实例执行时间存在倾斜，max/avg 比率为 {:.2}", ratio),
-                reason: "Fragment 执行时间过长，是查询的主要瓶颈。需要分析 Fragment 内的算子找出具体问题。".to_string(),
-                suggestions: vec!["检查数据分布".to_string(), "优化分桶策略".to_string()],
+                message: match context.lang {
+                    Lang::Zh => format!("实例执行时间存在倾斜，max/avg 比率为 {:.2}", ratio),
+                    Lang::En => format!("Instance execution time is skewed; max/avg ratio is {:.2}", ratio),
+                },
+                reason: context.lang.pick("Fragment 执行时间过长，是查询的主要瓶颈。需要分析 Fragment 内的算子找出具体问题。", "The Fragment takes too long to execute and is the main bottleneck of the query. Analyze the operators within the Fragment to find the specific issue.").to_string(),
+                suggestions: vec![context.lang.pick("检查数据分布", "Check data distribution").to_string(), context.lang.pick("优化分桶策略", "Optimize the bucketing strategy").to_string()],
                 parameter_suggestions: vec![],
             })
         } else {
@@ -49,8 +52,8 @@ impl DiagnosticRule for F002MemorySkew {
     fn id(&self) -> &str {
         "F002"
     }
-    fn name(&self) -> &str {
-        "实例内存分配不均"
+    fn name(&self, lang: Lang) -> &str {
+        lang.pick("实例内存分配不均", "Uneven instance memory allocation")
     }
 
     fn applicable_to(&self, _node: &ExecutionTreeNode) -> bool {
@@ -69,7 +72,7 @@ impl DiagnosticRule for F002MemorySkew {
         if ratio > 2.0 {
             Some(Diagnostic {
                 rule_id: self.id().to_string(),
-                rule_name: self.name().to_string(),
+                rule_name: self.name(context.lang).to_string(),
                 severity: RuleSeverity::Warning,
                 node_path: format!(
                     "{} (plan_node_id={})",
@@ -77,9 +80,26 @@ impl DiagnosticRule for F002MemorySkew {
                     context.node.plan_node_id.unwrap_or(-1)
                 ),
                 plan_node_id: context.node.plan_node_id,
-                message: format!("实例内存分配不均，max/avg 比率为 {:.2}", ratio),
-                reason: "Fragment 内存使用过高，可能导致查询失败。".to_string(),
-                suggestions: vec!["检查数据倾斜".to_string()],
+                message: match context.lang {
+                    Lang::Zh => format!("实例内存分配不均，max/avg 比率为 {:.2}", ratio),
+                    Lang::En => format!(
+                        "Instance memory allocation is uneven; max/avg ratio is {:.2}",
+                        ratio
+                    ),
+                },
+                reason: context
+                    .lang
+                    .pick(
+                        "Fragment 内存使用过高，可能导致查询失败。",
+                        "Fragment memory usage is too high and may cause the query to fail.",
+                    )
+                    .to_string(),
+                suggestions: vec![
+                    context
+                        .lang
+                        .pick("检查数据倾斜", "Check for data skew")
+                        .to_string(),
+                ],
                 parameter_suggestions: vec![],
             })
         } else {
@@ -95,8 +115,8 @@ impl DiagnosticRule for F003PrepareTimeLong {
     fn id(&self) -> &str {
         "F003"
     }
-    fn name(&self) -> &str {
-        "Fragment 准备时间过长"
+    fn name(&self, lang: Lang) -> &str {
+        lang.pick("Fragment 准备时间过长", "Long Fragment prepare time")
     }
 
     fn applicable_to(&self, _node: &ExecutionTreeNode) -> bool {
@@ -108,7 +128,7 @@ impl DiagnosticRule for F003PrepareTimeLong {
         if prepare_time > 1_000_000_000.0 {
             Some(Diagnostic {
                 rule_id: self.id().to_string(),
-                rule_name: self.name().to_string(),
+                rule_name: self.name(context.lang).to_string(),
                 severity: RuleSeverity::Info,
                 node_path: format!(
                     "{} (plan_node_id={})",
@@ -116,9 +136,12 @@ impl DiagnosticRule for F003PrepareTimeLong {
                     context.node.plan_node_id.unwrap_or(-1)
                 ),
                 plan_node_id: context.node.plan_node_id,
-                message: format!("Fragment 准备时间 {:.1}s", prepare_time / 1_000_000_000.0),
-                reason: "Fragment 各实例执行时间差异大，存在数据倾斜或资源不均。".to_string(),
-                suggestions: vec!["检查元数据加载".to_string()],
+                message: match context.lang {
+                    Lang::Zh => format!("Fragment 准备时间 {:.1}s", prepare_time / 1_000_000_000.0),
+                    Lang::En => format!("Fragment prepare time is {:.1}s", prepare_time / 1_000_000_000.0),
+                },
+                reason: context.lang.pick("Fragment 各实例执行时间差异大，存在数据倾斜或资源不均。", "Execution times vary widely across Fragment instances, indicating data skew or uneven resources.").to_string(),
+                suggestions: vec![context.lang.pick("检查元数据加载", "Check metadata loading").to_string()],
                 parameter_suggestions: vec![],
             })
         } else {

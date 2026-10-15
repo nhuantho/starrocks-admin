@@ -15,6 +15,7 @@ pub mod sink;
 pub mod sort;
 
 use crate::services::profile_analyzer::models::*;
+pub use crate::utils::i18n::Lang;
 
 // ============================================================================
 // Rule Trait and Types
@@ -65,120 +66,176 @@ pub enum ParameterType {
 }
 
 /// Get parameter metadata (description and impact) for common StarRocks parameters
-pub fn get_parameter_metadata(name: &str) -> ParameterMetadata {
+pub fn get_parameter_metadata(name: &str, lang: Lang) -> ParameterMetadata {
+    let meta = |desc_zh: &str, desc_en: &str, impact_zh: &str, impact_en: &str| ParameterMetadata {
+        description: lang.pick(desc_zh, desc_en).to_string(),
+        impact: lang.pick(impact_zh, impact_en).to_string(),
+    };
     match name {
         // ========== DataCache 相关 ==========
-        "enable_scan_datacache" => ParameterMetadata {
-            description: "启用 DataCache 读取缓存，允许从本地缓存读取数据而非远程存储".to_string(),
-            impact: "提升存算分离架构下的查询性能，减少网络 IO".to_string(),
-        },
-        "enable_populate_datacache" => ParameterMetadata {
-            description: "启用 DataCache 写入填充，将远程读取的数据缓存到本地".to_string(),
-            impact: "后续查询可命中本地缓存，但首次查询会有额外写入开销".to_string(),
-        },
-        "datacache_evict_probability" => ParameterMetadata {
-            description: "DataCache 淘汰概率 (0-100)，控制缓存数据被淘汰的可能性".to_string(),
-            impact: "降低该值可减少缓存抖动，但可能导致缓存空间不足".to_string(),
-        },
+        "enable_scan_datacache" => meta(
+            "启用 DataCache 读取缓存，允许从本地缓存读取数据而非远程存储",
+            "Enable DataCache reads, allowing data to be read from the local cache instead of remote storage",
+            "提升存算分离架构下的查询性能，减少网络 IO",
+            "Improves query performance in shared-data deployments and reduces network IO",
+        ),
+        "enable_populate_datacache" => meta(
+            "启用 DataCache 写入填充，将远程读取的数据缓存到本地",
+            "Enable DataCache population, caching data read from remote storage locally",
+            "后续查询可命中本地缓存，但首次查询会有额外写入开销",
+            "Subsequent queries can hit the local cache, but the first query incurs extra write overhead",
+        ),
+        "datacache_evict_probability" => meta(
+            "DataCache 淘汰概率 (0-100)，控制缓存数据被淘汰的可能性",
+            "DataCache eviction probability (0-100), controlling how likely cached data is evicted",
+            "降低该值可减少缓存抖动，但可能导致缓存空间不足",
+            "Lowering it reduces cache thrashing but may leave insufficient cache space",
+        ),
 
         // ========== 查询优化相关 ==========
-        "enable_query_cache" => ParameterMetadata {
-            description: "启用查询结果缓存，相同查询可直接返回缓存结果".to_string(),
-            impact: "对重复查询有显著加速，但会占用额外内存".to_string(),
-        },
-        "enable_adaptive_sink_dop" => ParameterMetadata {
-            description: "启用自适应 Sink 并行度，根据数据量动态调整写入并行度".to_string(),
-            impact: "可优化数据写入性能，减少小文件产生".to_string(),
-        },
-        "enable_runtime_adaptive_dop" => ParameterMetadata {
-            description: "启用运行时自适应并行度，根据实际数据量动态调整执行并行度".to_string(),
-            impact: "可优化资源利用率，避免小数据量查询占用过多资源".to_string(),
-        },
-        "enable_spill" => ParameterMetadata {
-            description: "启用中间结果落盘，当内存不足时将数据写入磁盘".to_string(),
-            impact: "可处理超大数据量查询，但会降低查询性能".to_string(),
-        },
+        "enable_query_cache" => meta(
+            "启用查询结果缓存，相同查询可直接返回缓存结果",
+            "Enable the query cache so identical queries can return cached results directly",
+            "对重复查询有显著加速，但会占用额外内存",
+            "Significantly speeds up repeated queries but uses extra memory",
+        ),
+        "enable_adaptive_sink_dop" => meta(
+            "启用自适应 Sink 并行度，根据数据量动态调整写入并行度",
+            "Enable adaptive Sink parallelism, adjusting write parallelism dynamically based on data volume",
+            "可优化数据写入性能，减少小文件产生",
+            "Improves write performance and reduces small files",
+        ),
+        "enable_runtime_adaptive_dop" => meta(
+            "启用运行时自适应并行度，根据实际数据量动态调整执行并行度",
+            "Enable runtime adaptive parallelism, adjusting execution parallelism based on actual data volume",
+            "可优化资源利用率，避免小数据量查询占用过多资源",
+            "Improves resource utilization and prevents small queries from using too many resources",
+        ),
+        "enable_spill" => meta(
+            "启用中间结果落盘，当内存不足时将数据写入磁盘",
+            "Enable Spill, writing intermediate results to disk when memory is insufficient",
+            "可处理超大数据量查询，但会降低查询性能",
+            "Allows very large queries to complete, at the cost of slower execution",
+        ),
 
         // ========== 扫描优化相关 ==========
-        "enable_connector_adaptive_io_tasks" => ParameterMetadata {
-            description: "启用连接器自适应 IO 任务数，根据数据量动态调整 IO 并行度".to_string(),
-            impact: "可优化外部表扫描性能，平衡 IO 和 CPU 资源".to_string(),
-        },
-        "io_tasks_per_scan_operator" => ParameterMetadata {
-            description: "每个扫描算子的 IO 任务数，控制本地表扫描并行度".to_string(),
-            impact: "增大可提升扫描吞吐，但会增加 IO 压力".to_string(),
-        },
-        "connector_io_tasks_per_scan_operator" => ParameterMetadata {
-            description: "每个连接器扫描算子的 IO 任务数，控制外部表扫描并行度".to_string(),
-            impact: "增大可提升外部表扫描吞吐，但会增加远程存储压力".to_string(),
-        },
+        "enable_connector_adaptive_io_tasks" => meta(
+            "启用连接器自适应 IO 任务数，根据数据量动态调整 IO 并行度",
+            "Enable adaptive connector IO tasks, adjusting IO parallelism dynamically based on data volume",
+            "可优化外部表扫描性能，平衡 IO 和 CPU 资源",
+            "Improves external table Scan performance and balances IO and CPU resources",
+        ),
+        "io_tasks_per_scan_operator" => meta(
+            "每个扫描算子的 IO 任务数，控制本地表扫描并行度",
+            "Number of IO tasks per Scan operator, controlling internal table Scan parallelism",
+            "增大可提升扫描吞吐，但会增加 IO 压力",
+            "Increasing it raises Scan throughput but adds IO pressure",
+        ),
+        "connector_io_tasks_per_scan_operator" => meta(
+            "每个连接器扫描算子的 IO 任务数，控制外部表扫描并行度",
+            "Number of IO tasks per connector Scan operator, controlling external table Scan parallelism",
+            "增大可提升外部表扫描吞吐，但会增加远程存储压力",
+            "Increasing it raises external table Scan throughput but adds load on remote storage",
+        ),
 
         // ========== Join 优化相关 ==========
-        "hash_join_push_down_right_table" => ParameterMetadata {
-            description: "启用 Hash Join 右表下推，将小表广播到各节点".to_string(),
-            impact: "可减少数据 Shuffle，提升 Join 性能".to_string(),
-        },
-        "enable_local_shuffle_agg" => ParameterMetadata {
-            description: "启用本地 Shuffle 聚合，在本地先进行预聚合".to_string(),
-            impact: "可减少网络传输数据量，提升聚合性能".to_string(),
-        },
+        "hash_join_push_down_right_table" => meta(
+            "启用 Hash Join 右表下推，将小表广播到各节点",
+            "Enable Hash Join right-table push-down, broadcasting the small table to all nodes",
+            "可减少数据 Shuffle，提升 Join 性能",
+            "Reduces data Shuffle and improves Join performance",
+        ),
+        "enable_local_shuffle_agg" => meta(
+            "启用本地 Shuffle 聚合，在本地先进行预聚合",
+            "Enable local Shuffle aggregation, pre-aggregating data locally first",
+            "可减少网络传输数据量，提升聚合性能",
+            "Reduces network transfer volume and improves aggregation performance",
+        ),
 
         // ========== Runtime Filter 相关 ==========
-        "runtime_filter_on_exchange_node" => ParameterMetadata {
-            description: "在 Exchange 节点启用 Runtime Filter，跨节点传递过滤条件".to_string(),
-            impact: "可提前过滤数据减少 Shuffle，但会增加 Filter 构建开销".to_string(),
-        },
-        "global_runtime_filter_build_max_size" => ParameterMetadata {
-            description: "全局 Runtime Filter 最大构建大小 (字节)".to_string(),
-            impact: "增大可支持更大的 Filter，但会占用更多内存".to_string(),
-        },
+        "runtime_filter_on_exchange_node" => meta(
+            "在 Exchange 节点启用 Runtime Filter，跨节点传递过滤条件",
+            "Enable Runtime Filter on Exchange nodes, propagating filter conditions across nodes",
+            "可提前过滤数据减少 Shuffle，但会增加 Filter 构建开销",
+            "Filters data earlier to reduce Shuffle, but adds filter build overhead",
+        ),
+        "global_runtime_filter_build_max_size" => meta(
+            "全局 Runtime Filter 最大构建大小 (字节)",
+            "Maximum build size of the global Runtime Filter (bytes)",
+            "增大可支持更大的 Filter，但会占用更多内存",
+            "Increasing it allows larger filters but uses more memory",
+        ),
 
         // ========== 并行执行相关 ==========
-        "parallel_fragment_exec_instance_num" => ParameterMetadata {
-            description: "每个 Fragment 的并行执行实例数".to_string(),
-            impact: "增大可提升并行度，但会占用更多资源".to_string(),
-        },
-        "pipeline_dop" => ParameterMetadata {
-            description: "Pipeline 执行并行度，0 表示自动".to_string(),
-            impact: "手动设置可控制资源使用，自动模式根据 CPU 核数调整".to_string(),
-        },
+        "parallel_fragment_exec_instance_num" => meta(
+            "每个 Fragment 的并行执行实例数",
+            "Number of parallel execution instances per Fragment",
+            "增大可提升并行度，但会占用更多资源",
+            "Increasing it raises parallelism but uses more resources",
+        ),
+        "pipeline_dop" => meta(
+            "Pipeline 执行并行度，0 表示自动",
+            "Pipeline execution parallelism (DOP); 0 means automatic",
+            "手动设置可控制资源使用，自动模式根据 CPU 核数调整",
+            "A manual value controls resource usage; automatic mode adapts to the number of CPU cores",
+        ),
 
         // ========== 内存相关 ==========
-        "query_mem_limit" => ParameterMetadata {
-            description: "单个查询的内存限制 (字节)".to_string(),
-            impact: "增大可处理更大数据量，但可能影响其他查询".to_string(),
-        },
-        "query_timeout" => ParameterMetadata {
-            description: "查询超时时间 (秒)".to_string(),
-            impact: "增大可允许长时间运行的查询，但可能占用资源过久".to_string(),
-        },
+        "query_mem_limit" => meta(
+            "单个查询的内存限制 (字节)",
+            "Memory limit for a single query (bytes)",
+            "增大可处理更大数据量，但可能影响其他查询",
+            "Increasing it allows larger data volumes but may affect other queries",
+        ),
+        "query_timeout" => meta(
+            "查询超时时间 (秒)",
+            "Query timeout (seconds)",
+            "增大可允许长时间运行的查询，但可能占用资源过久",
+            "Increasing it allows long-running queries but may hold resources for too long",
+        ),
 
         // ========== 聚合相关 ==========
-        "streaming_preaggregation_mode" => ParameterMetadata {
-            description: "流式预聚合模式 (auto/force_streaming/force_preaggregation)".to_string(),
-            impact: "auto 模式自动选择最优策略，force 模式强制使用指定策略".to_string(),
-        },
-        "enable_sort_aggregate" => ParameterMetadata {
-            description: "启用排序聚合，适用于高基数 GROUP BY".to_string(),
-            impact: "可减少内存使用，但需要额外排序开销".to_string(),
-        },
+        "streaming_preaggregation_mode" => meta(
+            "流式预聚合模式 (auto/force_streaming/force_preaggregation)",
+            "Streaming pre-aggregation mode (auto/force_streaming/force_preaggregation)",
+            "auto 模式自动选择最优策略，force 模式强制使用指定策略",
+            "auto picks the best strategy automatically; force modes always use the specified strategy",
+        ),
+        "enable_sort_aggregate" => meta(
+            "启用排序聚合，适用于高基数 GROUP BY",
+            "Enable sort-based aggregation, suitable for high-cardinality GROUP BY",
+            "可减少内存使用，但需要额外排序开销",
+            "Reduces memory usage but adds sorting overhead",
+        ),
 
         // ========== Profile 相关 ==========
-        "pipeline_profile_level" => ParameterMetadata {
-            description: "Pipeline Profile 详细级别 (0-2)".to_string(),
-            impact: "级别越高信息越详细，但收集开销也越大".to_string(),
-        },
+        "pipeline_profile_level" => meta(
+            "Pipeline Profile 详细级别 (0-2)",
+            "Pipeline Profile detail level (0-2)",
+            "级别越高信息越详细，但收集开销也越大",
+            "Higher levels give more detail but cost more to collect",
+        ),
 
         // ========== BE 参数 ==========
-        "storage_page_cache_limit" => ParameterMetadata {
-            description: "BE 存储页缓存大小限制".to_string(),
-            impact: "增大可提升热数据读取性能，但会占用更多内存".to_string(),
-        },
+        "storage_page_cache_limit" => meta(
+            "BE 存储页缓存大小限制",
+            "BE storage page cache size limit",
+            "增大可提升热数据读取性能，但会占用更多内存",
+            "Increasing it improves hot data read performance but uses more memory",
+        ),
 
         // ========== 默认 ==========
         _ => ParameterMetadata {
-            description: format!("StarRocks 参数 {}", name),
-            impact: "请参考 StarRocks 官方文档了解详情".to_string(),
+            description: match lang {
+                Lang::Zh => format!("StarRocks 参数 {}", name),
+                Lang::En => format!("StarRocks parameter {}", name),
+            },
+            impact: lang
+                .pick(
+                    "请参考 StarRocks 官方文档了解详情",
+                    "See the StarRocks documentation for details",
+                )
+                .to_string(),
         },
     }
 }
@@ -198,8 +255,9 @@ impl ParameterSuggestion {
         current: Option<String>,
         recommended: &str,
         command: &str,
+        lang: Lang,
     ) -> Self {
-        let metadata = get_parameter_metadata(name);
+        let metadata = get_parameter_metadata(name, lang);
         Self {
             name: name.to_string(),
             param_type,
@@ -237,15 +295,21 @@ pub struct Diagnostic {
 
 impl Diagnostic {
     /// Convert to HotSpot for backward compatibility
-    pub fn to_hotspot(&self) -> HotSpot {
+    pub fn to_hotspot(&self, lang: Lang) -> HotSpot {
         let mut all_suggestions = self.suggestions.clone();
 
         // Add parameter suggestions as formatted strings
         for param in &self.parameter_suggestions {
-            all_suggestions.push(format!(
-                "调整参数: {} → {} (命令: {})",
-                param.name, param.recommended, param.command
-            ));
+            all_suggestions.push(match lang {
+                Lang::Zh => format!(
+                    "调整参数: {} → {} (命令: {})",
+                    param.name, param.recommended, param.command
+                ),
+                Lang::En => format!(
+                    "Adjust parameter: {} → {} (command: {})",
+                    param.name, param.recommended, param.command
+                ),
+            });
         }
 
         HotSpot {
@@ -270,6 +334,8 @@ pub struct RuleContext<'a> {
     pub cluster_variables: Option<&'a std::collections::HashMap<String, String>>,
     /// Default database from profile summary
     pub default_db: Option<&'a str>,
+    /// Language for user-facing diagnostic text
+    pub lang: Lang,
 }
 
 impl<'a> RuleContext<'a> {
@@ -351,7 +417,7 @@ impl<'a> RuleContext<'a> {
         let current = self.get_variable_value(name);
 
         // Get parameter metadata for description and impact
-        let metadata = get_parameter_metadata(name);
+        let metadata = get_parameter_metadata(name, self.lang);
 
         Some(ParameterSuggestion {
             name: name.to_string(),
@@ -402,7 +468,10 @@ impl<'a> RuleContext<'a> {
 
                 (
                     recommended.to_string(),
-                    format!("根据集群 {} 个 BE 节点推荐", be_count),
+                    match self.lang {
+                        Lang::Zh => format!("根据集群 {} 个 BE 节点推荐", be_count),
+                        Lang::En => format!("Recommended for a cluster with {} BE nodes", be_count),
+                    },
                     ParameterType::Session,
                 )
             },
@@ -414,7 +483,7 @@ impl<'a> RuleContext<'a> {
                 }
                 (
                     "0".to_string(),
-                    "推荐使用自动模式，系统会根据 CPU 核数自动调整".to_string(),
+                    self.lang.pick("推荐使用自动模式，系统会根据 CPU 核数自动调整", "Automatic mode is recommended; the system adjusts to the number of CPU cores").to_string(),
                     ParameterType::Session,
                 )
             },
@@ -431,7 +500,12 @@ impl<'a> RuleContext<'a> {
 
                 (
                     recommended.to_string(),
-                    "大数据量扫描，建议增加 IO 并行度".to_string(),
+                    self.lang
+                        .pick(
+                            "大数据量扫描，建议增加 IO 并行度",
+                            "Large Scan volume; increasing IO parallelism is recommended",
+                        )
+                        .to_string(),
                     ParameterType::Session,
                 )
             },
@@ -455,7 +529,13 @@ impl<'a> RuleContext<'a> {
                 let recommended_gb = recommended / (1024 * 1024 * 1024);
                 (
                     recommended.to_string(),
-                    format!("根据数据量推荐 {}GB 内存限制", recommended_gb),
+                    match self.lang {
+                        Lang::Zh => format!("根据数据量推荐 {}GB 内存限制", recommended_gb),
+                        Lang::En => format!(
+                            "{}GB memory limit recommended for this data volume",
+                            recommended_gb
+                        ),
+                    },
                     ParameterType::Session,
                 )
             },
@@ -465,7 +545,13 @@ impl<'a> RuleContext<'a> {
                 if current {
                     return None; // Already enabled
                 }
-                ("true".to_string(), "启用后可避免大查询 OOM".to_string(), ParameterType::Session)
+                (
+                    "true".to_string(),
+                    self.lang
+                        .pick("启用后可避免大查询 OOM", "Prevents OOM for large queries")
+                        .to_string(),
+                    ParameterType::Session,
+                )
             },
 
             // ========== 查询优化 ==========
@@ -477,7 +563,12 @@ impl<'a> RuleContext<'a> {
                 }
                 (
                     "600".to_string(),
-                    "延长超时时间以支持复杂查询".to_string(),
+                    self.lang
+                        .pick(
+                            "延长超时时间以支持复杂查询",
+                            "Longer timeout to support complex queries",
+                        )
+                        .to_string(),
                     ParameterType::Session,
                 )
             },
@@ -489,7 +580,12 @@ impl<'a> RuleContext<'a> {
                 }
                 (
                     "true".to_string(),
-                    "启用查询缓存可加速重复查询".to_string(),
+                    self.lang
+                        .pick(
+                            "启用查询缓存可加速重复查询",
+                            "The query cache speeds up repeated queries",
+                        )
+                        .to_string(),
                     ParameterType::Session,
                 )
             },
@@ -502,7 +598,12 @@ impl<'a> RuleContext<'a> {
                 }
                 (
                     "true".to_string(),
-                    "启用全局 Runtime Filter 提升 Join 性能".to_string(),
+                    self.lang
+                        .pick(
+                            "启用全局 Runtime Filter 提升 Join 性能",
+                            "Global Runtime Filter improves Join performance",
+                        )
+                        .to_string(),
                     ParameterType::Session,
                 )
             },
@@ -514,7 +615,12 @@ impl<'a> RuleContext<'a> {
                 }
                 (
                     "10000000".to_string(),
-                    "增大 RF 下推阈值以支持更大的 Build 端".to_string(),
+                    self.lang
+                        .pick(
+                            "增大 RF 下推阈值以支持更大的 Build 端",
+                            "A higher Runtime Filter push-down limit supports a larger build side",
+                        )
+                        .to_string(),
                     ParameterType::Session,
                 )
             },
@@ -527,7 +633,12 @@ impl<'a> RuleContext<'a> {
                 }
                 (
                     "true".to_string(),
-                    "启用 DataCache 提升存算分离性能".to_string(),
+                    self.lang
+                        .pick(
+                            "启用 DataCache 提升存算分离性能",
+                            "DataCache improves shared-data performance",
+                        )
+                        .to_string(),
                     ParameterType::Session,
                 )
             },
@@ -537,7 +648,13 @@ impl<'a> RuleContext<'a> {
                 if current {
                     return None;
                 }
-                ("true".to_string(), "启用缓存填充以预热缓存".to_string(), ParameterType::Session)
+                (
+                    "true".to_string(),
+                    self.lang
+                        .pick("启用缓存填充以预热缓存", "Cache population warms up the cache")
+                        .to_string(),
+                    ParameterType::Session,
+                )
             },
 
             // ========== Profile ==========
@@ -548,7 +665,12 @@ impl<'a> RuleContext<'a> {
                 }
                 (
                     "1".to_string(),
-                    "降低 Profile 级别减少收集开销".to_string(),
+                    self.lang
+                        .pick(
+                            "降低 Profile 级别减少收集开销",
+                            "A lower Profile level reduces collection overhead",
+                        )
+                        .to_string(),
                     ParameterType::Session,
                 )
             },
@@ -556,7 +678,16 @@ impl<'a> RuleContext<'a> {
             // ========== BE 参数 ==========
             "storage_page_cache_limit" => {
                 // BE parameter, always suggest if IO is bottleneck
-                ("30%".to_string(), "增大页缓存提升热数据读取性能".to_string(), ParameterType::BE)
+                (
+                    "30%".to_string(),
+                    self.lang
+                        .pick(
+                            "增大页缓存提升热数据读取性能",
+                            "A larger page cache improves hot data read performance",
+                        )
+                        .to_string(),
+                    ParameterType::BE,
+                )
             },
 
             _ => return None, // No smart recommendation for this parameter
@@ -567,7 +698,7 @@ impl<'a> RuleContext<'a> {
             .get_variable_value(name)
             .or_else(|| get_parameter_default(name).map(|s| s.to_string()));
 
-        let metadata = get_parameter_metadata(name);
+        let metadata = get_parameter_metadata(name, self.lang);
         let command = match param_type {
             ParameterType::Session => format!("SET {} = {};", name, recommended),
             ParameterType::BE => format!("-- BE config: {} = {}", name, recommended),
@@ -626,8 +757,8 @@ pub trait DiagnosticRule: Send + Sync {
     /// Rule ID (e.g., "S001", "J001")
     fn id(&self) -> &str;
 
-    /// Rule name
-    fn name(&self) -> &str;
+    /// Rule name in the requested language
+    fn name(&self, lang: Lang) -> &str;
 
     /// Check if rule applies to this node
     fn applicable_to(&self, node: &ExecutionTreeNode) -> bool;

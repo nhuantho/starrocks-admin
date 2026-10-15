@@ -4,16 +4,16 @@
       <nb-card-header>
         <div class="d-flex justify-content-between align-items-center">
           <div class="d-flex align-items-center gap-2">
-            <h5 class="mb-0">变量管理</h5>
+            <h5 class="mb-0">{{ 'cluster.variables.title' | translate }}</h5>
             <span class="text-hint">|</span>
             <span class="text-hint" style="font-size: 13px;">
-              集群: <strong>{{ activeCluster?.name || '未选择' }}</strong>
+              {{ 'cluster.shared.clusterLabel' | translate }}: <strong>{{ activeCluster?.name || ('cluster.shared.notSelected' | translate) }}</strong>
             </span>
           </div>
           <div>
             <button nbButton status="primary" size="small" (click)="refresh()" [disabled]="loading || !clusterId">
               <nb-icon icon="refresh-outline"></nb-icon>
-              刷新
+              {{ 'cluster.shared.refresh' | translate }}
             </button>
           </div>
         </div>
@@ -23,13 +23,13 @@
         <div class="row mb-3">
           <div class="col-md-6">
             <div class="form-group">
-              <label for="search" class="label">搜索变量</label>
+              <label for="search" class="label">{{ 'cluster.variables.searchLabel' | translate }}</label>
               <input
                 type="text"
                 nbInput
                 fullWidth
                 id="search"
-                placeholder="输入变量名..."
+                [placeholder]="'cluster.variables.searchPlaceholder' | translate"
                 [(ngModel)]="searchText"
                 (keyup.enter)="onSearch()"
               />
@@ -37,10 +37,10 @@
           </div>
           <div class="col-md-3">
             <div class="form-group">
-              <label class="label">变量类型</label>
+              <label class="label">{{ 'cluster.variables.type' | translate }}</label>
               <nb-select fullWidth [(selected)]="variableType" (selectedChange)="onTypeChange()">
-                <nb-option value="global">全局变量</nb-option>
-                <nb-option value="session">会话变量</nb-option>
+                <nb-option value="global">{{ 'cluster.variables.global' | translate }}</nb-option>
+                <nb-option value="session">{{ 'cluster.variables.session' | translate }}</nb-option>
               </nb-select>
             </div>
           </div>
@@ -49,7 +49,7 @@
               <label class="label">&nbsp;</label>
               <button nbButton status="primary" fullWidth (click)="onSearch()" [disabled]="loading || !clusterId">
                 <nb-icon icon="search-outline"></nb-icon>
-                搜索
+                {{ 'cluster.shared.search' | translate }}
               </button>
             </div>
           </div>
@@ -57,14 +57,14 @@
 
         <div *ngIf="loading" class="text-center py-4">
           <nb-spinner size="large" status="primary"></nb-spinner>
-          <p class="mt-3 text-muted">Loading variables...</p>
+          <p class="mt-3 text-muted">{{ 'cluster.variables.loading' | translate }}</p>
         </div>
 
         <div *ngIf="!loading && variables.length === 0">
           <nb-alert status="info">
             <p class="mb-0">
               <nb-icon icon="info-outline"></nb-icon>
-              No variables found. Try adjusting your search criteria.
+              {{ 'cluster.variables.empty' | translate }}
             </p>
           </nb-alert>
         </div>
@@ -80,8 +80,7 @@
           <nb-alert status="warning">
             <p class="mb-0">
               <nb-icon icon="alert-triangle-outline"></nb-icon>
-              <strong>Warning:</strong> Modifying system variables may affect cluster behavior. 
-              Please consult the StarRocks documentation before making changes.
+              <strong>{{ 'cluster.shared.warning' | translate }}:</strong> {{ 'cluster.variables.modifyWarning' | translate }}
             </p>
           </nb-alert>
         </div>

@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NbToastrService } from '@nebular/theme';
+import { TranslateService } from '@ngx-translate/core';
 import { ClusterService, Cluster } from '../../../../@core/data/cluster.service';
 import { OrganizationService, Organization } from '../../../../@core/data/organization.service';
 import { AuthService } from '../../../../@core/data/auth.service';
@@ -36,6 +37,7 @@ export class ClusterFormComponent implements OnInit {
     private route: ActivatedRoute,
     private toastrService: NbToastrService,
     private tabReuseService: TabReuseService,
+    private translate: TranslateService,
   ) {
     this.clusterForm = this.fb.group({
       organization_id: [null],
@@ -131,7 +133,7 @@ export class ClusterFormComponent implements OnInit {
       error: (error) => {
         this.toastrService.danger(
           ErrorHandler.extractErrorMessage(error),
-          '错误',
+          this.translate.instant('cluster.shared.error'),
         );
         this.loading = false;
       },
@@ -175,14 +177,14 @@ export class ClusterFormComponent implements OnInit {
         if (!this.isEditMode && cluster.id) {
           this.testConnectionAfterCreate(cluster.id);
         } else {
-          this.toastrService.success('集群更新成功', '成功');
+          this.toastrService.success(this.translate.instant('cluster.form.updateSuccess'), this.translate.instant('cluster.shared.success'));
           this.navigateToDashboardWithRefresh();
         }
       },
       error: (error) => {
         this.toastrService.danger(
           ErrorHandler.extractErrorMessage(error),
-          '错误',
+          this.translate.instant('cluster.shared.error'),
         );
         this.loading = false;
       },
@@ -193,16 +195,16 @@ export class ClusterFormComponent implements OnInit {
     this.clusterService.getHealth(clusterId).subscribe({
       next: (health) => {
         if (health.status === 'healthy') {
-          this.toastrService.success('集群创建成功，健康检查通过', '成功');
+          this.toastrService.success(this.translate.instant('cluster.form.createSuccessHealthy'), this.translate.instant('cluster.shared.success'));
         } else if (health.status === 'warning') {
-          this.toastrService.warning('集群已创建，但健康检查发现问题。请检查配置', '警告');
+          this.toastrService.warning(this.translate.instant('cluster.form.createdWithWarning'), this.translate.instant('cluster.shared.warning'));
         } else {
-          this.toastrService.warning('集群已创建，但健康检查失败。请检查配置', '警告');
+          this.toastrService.warning(this.translate.instant('cluster.form.createdHealthFailed'), this.translate.instant('cluster.shared.warning'));
         }
         this.navigateToDashboardWithRefresh();
       },
       error: () => {
-        this.toastrService.warning('集群已创建，但健康检查失败。请检查配置', '警告');
+        this.toastrService.warning(this.translate.instant('cluster.form.createdHealthFailed'), this.translate.instant('cluster.shared.warning'));
         this.navigateToDashboardWithRefresh();
       },
     });
@@ -219,7 +221,7 @@ export class ClusterFormComponent implements OnInit {
       const missingFields = requiredFields.filter(field => !this.clusterForm.get(field)?.value);
       
       if (missingFields.length > 0) {
-        this.toastrService.warning('请先填写完整的连接信息（FE地址、端口、用户名、密码）', '提示');
+        this.toastrService.warning(this.translate.instant('cluster.form.fillConnectionInfo'), this.translate.instant('cluster.shared.notice'));
         return;
       }
     }
@@ -255,13 +257,13 @@ export class ClusterFormComponent implements OnInit {
   private handleHealthCheckResult(health: any): void {
     if (health.status === 'healthy') {
       const details = health.checks.map((c: any) => c.name + ': ' + c.message).join('\n');
-      this.toastrService.success('健康检查通过\n' + details, '连接成功');
+      this.toastrService.success(this.translate.instant('cluster.shared.healthCheckPassed') + '\n' + details, this.translate.instant('cluster.form.connectionSucceeded'));
     } else if (health.status === 'warning') {
       const details = health.checks.map((c: any) => c.name + ': ' + c.message).join('\n');
-      this.toastrService.warning('健康检查发现问题\n' + details, '警告');
+      this.toastrService.warning(this.translate.instant('cluster.form.healthCheckIssues') + '\n' + details, this.translate.instant('cluster.shared.warning'));
     } else {
       const details = health.checks.map((c: any) => c.name + ': ' + c.message).join('\n');
-      this.toastrService.danger('健康检查失败\n' + details, '连接失败');
+      this.toastrService.danger(this.translate.instant('cluster.shared.healthCheckFailed') + '\n' + details, this.translate.instant('cluster.form.connectionFailed'));
     }
     this.loading = false;
   }
@@ -269,7 +271,7 @@ export class ClusterFormComponent implements OnInit {
   private handleHealthCheckError(error: any): void {
     this.toastrService.danger(
       ErrorHandler.extractErrorMessage(error),
-      '错误',
+      this.translate.instant('cluster.shared.error'),
     );
     this.loading = false;
   }

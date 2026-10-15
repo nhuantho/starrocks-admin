@@ -1,4 +1,5 @@
 import { NgModule } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -23,6 +24,7 @@ import { RegisterComponent } from './register/register.component';
   ],
   imports: [
     CommonModule,
+    TranslateModule,
     FormsModule,
     RouterModule,
     NbAlertModule,

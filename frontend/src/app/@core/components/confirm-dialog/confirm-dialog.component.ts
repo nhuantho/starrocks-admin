@@ -1,5 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { NbDialogRef } from '@nebular/theme';
+import { TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'ngx-confirm-dialog',
@@ -10,8 +11,8 @@ import { NbDialogRef } from '@nebular/theme';
         <p style="white-space: pre-line;">{{ message }}</p>
       </nb-card-body>
       <nb-card-footer>
-        <button nbButton status="basic" (click)="cancel()">{{ cancelText }}</button>
-        <button nbButton [status]="confirmStatus" (click)="confirm()">{{ confirmText }}</button>
+        <button nbButton status="basic" (click)="cancel()">{{ cancelLabel }}</button>
+        <button nbButton [status]="confirmStatus" (click)="confirm()">{{ confirmLabel }}</button>
       </nb-card-footer>
     </nb-card>
   `,
@@ -37,11 +38,25 @@ import { NbDialogRef } from '@nebular/theme';
 export class ConfirmDialogComponent {
   @Input() title: string;
   @Input() message: string;
-  @Input() confirmText: string = '确定';
-  @Input() cancelText: string = '取消';
+  /** Defaults to the translated "Confirm" when not provided. */
+  @Input() confirmText: string;
+  /** Defaults to the translated "Cancel" when not provided. */
+  @Input() cancelText: string;
   @Input() confirmStatus: string = 'primary';
 
-  constructor(protected ref: NbDialogRef<ConfirmDialogComponent>) {}
+  constructor(
+    protected ref: NbDialogRef<ConfirmDialogComponent>,
+    private translate: TranslateService,
+  ) {}
+
+  // Resolved at render time so the defaults follow the current language.
+  get confirmLabel(): string {
+    return this.confirmText || this.translate.instant('common.confirm');
+  }
+
+  get cancelLabel(): string {
+    return this.cancelText || this.translate.instant('common.cancel');
+  }
 
   cancel() {
     this.ref.close(false);

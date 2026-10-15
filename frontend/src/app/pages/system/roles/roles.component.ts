@@ -21,6 +21,7 @@ import {
 } from './role-form/role-form-dialog.component';
 import { Organization, OrganizationService } from '../../../@core/data/organization.service';
 import { AuthService } from '../../../@core/data/auth.service';
+import { TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'ngx-roles',
@@ -40,7 +41,7 @@ export class RolesComponent implements OnInit, OnDestroy {
   canUpdateRole = false;
   canDeleteRole = false;
 
-  settings = this.buildTableSettings();
+  settings: any = {};
   organizations: Organization[] = [];
   currentOrganization?: Organization;
   isSuperAdmin = false;
@@ -53,12 +54,17 @@ export class RolesComponent implements OnInit, OnDestroy {
     private toastrService: NbToastrService,
     private organizationService: OrganizationService,
     private authService: AuthService,
+    private translate: TranslateService,
   ) {}
 
   ngOnInit(): void {
     this.permissionService.permissions$
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.applyPermissionState());
+
+    this.translate.onLangChange
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.applyTableSettings());
 
     this.applyPermissionState();
   }
@@ -75,13 +81,19 @@ export class RolesComponent implements OnInit, OnDestroy {
 
     if (this.isSuperAdmin && !this.organizations.length) {
       this.loadOrganizations();
-      this.toastrService.info('正在加载组织列表，请稍后重试', '提示');
+      this.toastrService.info(
+        this.translate.instant('system.roles.orgsLoading'),
+        this.translate.instant('system.shared.notice'),
+      );
       return;
     }
 
     if (!this.isSuperAdmin && !this.currentOrganization) {
       this.loadCurrentOrganization();
-      this.toastrService.info('正在获取所属组织，请稍后重试', '提示');
+      this.toastrService.info(
+        this.translate.instant('system.roles.currentOrgLoading'),
+        this.translate.instant('system.shared.notice'),
+      );
       return;
     }
 
@@ -161,7 +173,10 @@ export class RolesComponent implements OnInit, OnDestroy {
 
       this.roleService.deleteRole(role.id).subscribe({
         next: () => {
-          this.toastrService.success('角色已删除', '成功');
+          this.toastrService.success(
+            this.translate.instant('system.roles.deleted'),
+            this.translate.instant('system.shared.success'),
+          );
           this.rolePermissionCache.delete(role.id);
           this.loadRoles();
         },
@@ -189,7 +204,10 @@ export class RolesComponent implements OnInit, OnDestroy {
       )
       .subscribe({
         next: (role) => {
-          this.toastrService.success('角色创建成功', '成功');
+          this.toastrService.success(
+            this.translate.instant('system.roles.created'),
+            this.translate.instant('system.shared.success'),
+          );
           if (role) {
             this.rolePermissionCache.set(role.id, [...result.permissionIds]);
           }
@@ -211,7 +229,10 @@ export class RolesComponent implements OnInit, OnDestroy {
       )
       .subscribe({
         next: () => {
-          this.toastrService.success('角色更新成功', '成功');
+          this.toastrService.success(
+            this.translate.instant('system.roles.updated'),
+            this.translate.instant('system.shared.success'),
+          );
           this.rolePermissionCache.set(role.id, [...result.permissionIds]);
           this.loadRoles();
         },
@@ -232,17 +253,7 @@ export class RolesComponent implements OnInit, OnDestroy {
       this.loadCurrentOrganization();
     }
 
-    this.settings = this.buildTableSettings();
-    this.settings.columns.actions.onComponentInitFunction = (
-      component: RolesActionsCellComponent,
-    ) => {
-      component.edit
-        .pipe(takeUntil(this.destroy$))
-        .subscribe((role: RoleSummary) => this.openEditRole(role));
-      component.remove
-        .pipe(takeUntil(this.destroy$))
-        .subscribe((role: RoleSummary) => this.onDeleteRole(role));
-    };
+    this.applyTableSettings();
 
     if ((this.canCreateRole || this.canUpdateRole) && !this.basePermissions.length) {
       this.preloadPermissions();
@@ -303,11 +314,29 @@ export class RolesComponent implements OnInit, OnDestroy {
     );
   }
 
+  private applyTableSettings(): void {
+    const settings = this.buildTableSettings();
+    settings.columns.actions.onComponentInitFunction = (
+      component: RolesActionsCellComponent,
+    ) => {
+      component.edit
+        .pipe(takeUntil(this.destroy$))
+        .subscribe((role: RoleSummary) => this.openEditRole(role));
+      component.remove
+        .pipe(takeUntil(this.destroy$))
+        .subscribe((role: RoleSummary) => this.onDeleteRole(role));
+    };
+    this.settings = settings;
+  }
+
   private buildTableSettings(): any {
+    const t = (key: string) => this.translate.instant(key);
     return {
       mode: 'external',
       hideSubHeader: false,
-      noDataMessage: this.hasListPermission ? '暂无角色数据' : '您暂无查看角色的权限',
+      noDataMessage: this.hasListPermission
+        ? t('system.roles.table.noData')
+        : t('system.roles.table.noPermission'),
       actions: {
         add: false,
         edit: false,
@@ -325,35 +354,35 @@ export class RolesComponent implements OnInit, OnDestroy {
           width: '8%',
         },
         code: {
-          title: '角色代码',
+          title: t('system.roles.table.code'),
           type: 'string',
         },
         name: {
-          title: '角色名称',
+          title: t('system.roles.table.name'),
           type: 'string',
         },
         description: {
-          title: '描述',
+          title: t('system.roles.table.description'),
           type: 'string',
         },
         is_system: {
-          title: '系统角色',
+          title: t('system.roles.table.isSystem'),
           type: 'html',
           filter: false,
           sort: false,
           valuePrepareFunction: (cell: boolean) => {
             return cell
-              ? '<span class="badge badge-info">是</span>'
-              : '<span class="badge badge-basic">否</span>';
+              ? `<span class="badge badge-info">${t('system.shared.yes')}</span>`
+              : `<span class="badge badge-basic">${t('system.shared.no')}</span>`;
           },
         },
         created_at: {
-          title: '创建时间',
+          title: t('system.roles.table.createdAt'),
           type: 'string',
-          valuePrepareFunction: (date: string) => new Date(date).toLocaleString('zh-CN'),
+          valuePrepareFunction: (date: string) => new Date(date).toLocaleString(this.translate.currentLang || 'en'),
         },
         actions: {
-          title: '操作',
+          title: t('system.roles.table.actions'),
           type: 'custom',
           renderComponent: RolesActionsCellComponent,
           filter: false,

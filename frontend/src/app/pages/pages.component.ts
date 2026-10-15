@@ -1,7 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
-import { NbMenuService } from '@nebular/theme';
-import { filter, map } from 'rxjs/operators';
+import { NbMenuItem, NbMenuService } from '@nebular/theme';
+import { TranslateService } from '@ngx-translate/core';
+import { combineLatest } from 'rxjs';
+import { filter, map, startWith } from 'rxjs/operators';
 
 import { MENU_ITEMS } from './pages-menu';
 import { AuthService } from '../@core/data/auth.service';
@@ -28,13 +30,17 @@ export class PagesComponent implements OnInit {
     private router: Router,
     private tabService: TabService,
     private menuFilterService: MenuFilterService,
-    private permissionService: PermissionService
+    private permissionService: PermissionService,
+    private translate: TranslateService,
   ) {}
 
   ngOnInit() {
-    // Filter menu items based on permissions
-    this.permissionService.permissions$.subscribe(() => {
-      this.menu = this.menuFilterService.filterMenuItems(MENU_ITEMS);
+    // Filter menu items based on permissions, and re-translate titles on language change
+    combineLatest([
+      this.permissionService.permissions$,
+      this.translate.onLangChange.pipe(startWith(null)),
+    ]).subscribe(() => {
+      this.menu = this.translateMenu(this.menuFilterService.filterMenuItems(MENU_ITEMS));
     });
 
     // Initialize permissions if not already initialized
@@ -49,7 +55,7 @@ export class PagesComponent implements OnInit {
         map(({ item }) => item)
       )
       .subscribe(item => {
-        if (item.title === '退出登录') {
+        if (item.data?.id === 'logout') {
           this.authService.logout();
         }
       });
@@ -85,6 +91,7 @@ export class PagesComponent implements OnInit {
     }
 
     // 对于带查询参数的 system 路由，优先使用 inferTitleFromUrl 获取更具体的标题
+    // title is a translation key when it starts with "menu."; otherwise a literal
     let title: string | null = null;
     if (url.includes('/starrocks/system') && url.includes('?')) {
       title = this.inferTitleFromUrl(url);
@@ -108,9 +115,11 @@ export class PagesComponent implements OnInit {
       const tabId = this.generateTabId(title);
       const icon = this.getIconForUrl(url);
       // 路由变化时不再触发导航（因为已经在目标路由了）
+      const isKey = title.startsWith('menu.');
       this.tabService.addTab({
         id: tabId,
-        title: title,
+        title: isKey ? this.translate.instant(title) : title,
+        titleKey: isKey ? title : undefined,
         url: url,
         closable: true,
         pinned: false,
@@ -189,58 +198,41 @@ export class PagesComponent implements OnInit {
         const params = new URLSearchParams(decodedQueryString);
         const functionName = params.get('function');
         if (functionName) {
-          // 映射功能名称到中文标题（确保与 system-management.component.ts 中的定义一致）
-          const functionTitleMap: { [key: string]: string } = {
-            'backends': 'Backend节点信息',
-            'frontends': 'Frontend节点信息',
-            'brokers': 'Broker节点信息',
-            'statistic': '统计信息',
-            'dbs': '数据库信息',
-            'tables': '表信息',
-            'tablet_schema': 'Tablet Schema',
-            'partitions': '分区信息',
-            'transactions': '事务信息',
-            'routine_loads': 'Routine Load任务',
-            'stream_loads': 'Stream Load任务',
-            'loads': 'Load任务',
-            'load_error_hub': 'Load错误信息',
-            'catalog': 'Catalog信息',
-            'resources': '资源信息',
-            'workload_groups': '工作负载组',
-            'workload_sched_policy': '工作负载调度策略',
-            'compactions': '压缩任务',
-            'colocate_group': 'Colocate Group',
-            'bdbje': 'BDBJE信息',
-            'small_files': '小文件信息',
-            'trash': '回收站',
-            'jobs': '作业信息',
-            'repositories': '仓库信息'
-          };
-          return functionTitleMap[functionName] || `功能卡片: ${functionName}`;
+          // Known system functions map to menu.functionTabs.<name> (see menu.json)
+          const knownFunctions = [
+            'backends', 'frontends', 'brokers', 'statistic', 'dbs', 'tables', 'tablet_schema',
+            'partitions', 'transactions', 'routine_loads', 'stream_loads', 'loads', 'load_error_hub',
+            'catalog', 'resources', 'workload_groups', 'workload_sched_policy', 'compactions',
+            'colocate_group', 'bdbje', 'small_files', 'trash', 'jobs', 'repositories',
+          ];
+          if (knownFunctions.includes(functionName)) {
+            return `menu.functionTabs.${functionName}`;
+          }
+          return `${this.translate.instant('menu.systemFunctions')}: ${functionName}`;
         }
       }
       
       // 当路径为 /pages/starrocks/clusters/:id 时，避免使用数字作为标题
       if (prevSegment === 'clusters' && /^\d+$/.test(lastSegment)) {
-        return '集群详情';
+        return 'menu.clusterDetail';
       }
 
-      // 映射URL段到中文标题
+      // 映射URL段到标题翻译 key
       const titleMap: { [key: string]: string } = {
-        'dashboard': '集群列表',
-        'overview': '集群概览',
-        'frontends': 'Frontend 节点',
-        'backends': 'Backend 节点',
-        'execution': '实时查询',
-        'profiles': 'Profiles',
-        'audit-logs': '审计日志',
-        'materialized-views': '物化视图',
-        'system': '功能卡片',  // 对应 menu:system-functions
-        'sessions': '会话管理',
-        'variables': '变量管理',
-        'clusters': '集群管理',
-        'new': '新建集群',
-        'edit': '编辑集群'
+        'dashboard': 'menu.clusterList',
+        'overview': 'menu.clusterOverview',
+        'frontends': 'menu.frontends',
+        'backends': 'menu.backends',
+        'execution': 'menu.queryExecution',
+        'profiles': 'menu.profiles',
+        'audit-logs': 'menu.auditLogs',
+        'materialized-views': 'menu.materializedViews',
+        'system': 'menu.systemFunctions',  // 对应 menu:system-functions
+        'sessions': 'menu.sessions',
+        'variables': 'menu.variables',
+        'clusters': 'menu.clusterManagement',
+        'new': 'menu.newCluster',
+        'edit': 'menu.editCluster'
       };
       
       return titleMap[lastSegment] || lastSegment;
@@ -304,8 +296,19 @@ export class PagesComponent implements OnInit {
     return 'tab_' + title.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
   }
 
+  /**
+   * Deep-copy menu items with titles translated from their keys.
+   */
+  private translateMenu(items: NbMenuItem[]): NbMenuItem[] {
+    return items.map(item => ({
+      ...item,
+      title: this.translate.instant(item.title),
+      children: item.children ? this.translateMenu(item.children) : undefined,
+    }));
+  }
+
   onMenuClick(event: any) {
-    if (event.item.title === '退出登录') {
+    if (event.item.data?.id === 'logout') {
       event.event.preventDefault();
       this.authService.logout();
     }

@@ -9,8 +9,8 @@ impl DiagnosticRule for P001ProjectExprHigh {
     fn id(&self) -> &str {
         "P001"
     }
-    fn name(&self) -> &str {
-        "Project 表达式计算耗时高"
+    fn name(&self, lang: Lang) -> &str {
+        lang.pick("Project 表达式计算耗时高", "High Project expression compute time")
     }
 
     fn applicable_to(&self, node: &ExecutionTreeNode) -> bool {
@@ -27,7 +27,7 @@ impl DiagnosticRule for P001ProjectExprHigh {
         if ratio > 0.5 && expr_time > 100_000_000.0 {
             Some(Diagnostic {
                 rule_id: self.id().to_string(),
-                rule_name: self.name().to_string(),
+                rule_name: self.name(context.lang).to_string(),
                 severity: RuleSeverity::Warning,
                 node_path: format!(
                     "{} (plan_node_id={})",
@@ -35,12 +35,15 @@ impl DiagnosticRule for P001ProjectExprHigh {
                     context.node.plan_node_id.unwrap_or(-1)
                 ),
                 plan_node_id: context.node.plan_node_id,
-                message: format!("Project 表达式计算占比过高 ({:.1}%)", ratio * 100.0),
-                reason: "Project 算子执行时间过长，可能是表达式计算复杂或数据量大。".to_string(),
+                message: match context.lang {
+                    Lang::Zh => format!("Project 表达式计算占比过高 ({:.1}%)", ratio * 100.0),
+                    Lang::En => format!("Project expression compute time ratio too high ({:.1}%)", ratio * 100.0),
+                },
+                reason: context.lang.pick("Project 算子执行时间过长，可能是表达式计算复杂或数据量大。", "The Project operator takes too long, likely due to complex expressions or a large data volume.").to_string(),
                 suggestions: vec![
-                    "简化 SELECT 中的复杂表达式".to_string(),
-                    "将复杂计算移到物化视图中预计算".to_string(),
-                    "检查是否有不必要的类型转换".to_string(),
+                    context.lang.pick("简化 SELECT 中的复杂表达式", "Simplify complex expressions in SELECT").to_string(),
+                    context.lang.pick("将复杂计算移到物化视图中预计算", "Precompute complex calculations in a materialized view").to_string(),
+                    context.lang.pick("检查是否有不必要的类型转换", "Check for unnecessary type conversions").to_string(),
                 ],
                 parameter_suggestions: vec![],
             })
@@ -57,8 +60,8 @@ impl DiagnosticRule for L001LocalExchangeMemory {
     fn id(&self) -> &str {
         "L001"
     }
-    fn name(&self) -> &str {
-        "LocalExchange 内存使用过高"
+    fn name(&self, lang: Lang) -> &str {
+        lang.pick("LocalExchange 内存使用过高", "LocalExchange memory usage too high")
     }
 
     fn applicable_to(&self, node: &ExecutionTreeNode) -> bool {
@@ -74,7 +77,7 @@ impl DiagnosticRule for L001LocalExchangeMemory {
         if memory > ONE_GB {
             Some(Diagnostic {
                 rule_id: self.id().to_string(),
-                rule_name: self.name().to_string(),
+                rule_name: self.name(context.lang).to_string(),
                 severity: RuleSeverity::Warning,
                 node_path: format!(
                     "{} (plan_node_id={})",
@@ -82,11 +85,14 @@ impl DiagnosticRule for L001LocalExchangeMemory {
                     context.node.plan_node_id.unwrap_or(-1)
                 ),
                 plan_node_id: context.node.plan_node_id,
-                message: format!("LocalExchange 内存使用 {}", format_bytes(memory as u64)),
-                reason: "请参考 StarRocks 官方文档了解更多信息。".to_string(),
+                message: match context.lang {
+                    Lang::Zh => format!("LocalExchange 内存使用 {}", format_bytes(memory as u64)),
+                    Lang::En => format!("LocalExchange memory usage {}", format_bytes(memory as u64)),
+                },
+                reason: context.lang.pick("请参考 StarRocks 官方文档了解更多信息。", "See the StarRocks documentation for more information.").to_string(),
                 suggestions: vec![
-                    "检查上下游算子的数据流是否平衡".to_string(),
-                    "调整 pipeline_dop 参数".to_string(),
+                    context.lang.pick("检查上下游算子的数据流是否平衡", "Check whether data flow between upstream and downstream operators is balanced").to_string(),
+                    context.lang.pick("调整 pipeline_dop 参数", "Tune the pipeline_dop parameter").to_string(),
                 ],
                 parameter_suggestions: {
                     let mut suggestions = Vec::new();

@@ -22,7 +22,7 @@
       </ng-template>
       <div class="tree-node__body" [class.tree-node__body--selected]="node.selected">
         <div class="tree-node__title">
-          <span class="tree-node__name">{{ node.name }}</span>
+          <span class="tree-node__name">{{ node.i18nKey ? (node.i18nKey | translate) : node.name }}</span>
         </div>
       </div>
     </div>

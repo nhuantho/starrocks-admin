@@ -23,6 +23,7 @@ import { renderMetricBadge, MetricThresholds } from '../../../../@core/utils/met
 import { renderLongText } from '../../../../@core/utils/text-truncate';
 import { ConfirmDialogService } from '../../../../@core/services/confirm-dialog.service';
 import { AuthService } from '../../../../@core/data/auth.service';
+import { TranslateService } from '@ngx-translate/core';
 
 type NavNodeType = 'catalog' | 'database' | 'group' | 'table';
 
@@ -109,14 +110,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
   autoRefresh = false; // Default: disabled
   refreshInterval: any;
   selectedRefreshInterval: number | 'off' = 'off'; // Default: off (Grafana style)
-  refreshIntervalOptions = [
-    { value: 'off', label: '关闭' },
-    { value: 3, label: '3秒' },
-    { value: 5, label: '5秒' },
-    { value: 10, label: '10秒' },
-    { value: 30, label: '30秒' },
-    { value: 60, label: '1分钟' },
-  ];
+  refreshIntervalOptions: { value: number | 'off'; label: string }[] = [];
   private destroy$ = new Subject<void>();
 
   // CodeMirror editor
@@ -374,88 +368,86 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
   queryResults: SingleQueryResult[] = [];
   resultSources: LocalDataSource[] = []; // Array of data sources for multiple results
   currentResultIndex: number = 0; // Track current selected tab index
-  limitOptions = [
-    { value: 100, label: '100 行' },
-    { value: 500, label: '500 行' },
-    { value: 1000, label: '1000 行' },
-    { value: 5000, label: '5000 行' },
-    { value: 10000, label: '10000 行' },
-  ];
+  limitOptions: { value: number; label: string }[] = [];
   
   // SQL Editor collapse state (default to expanded)
   sqlEditorCollapsed: boolean = false; // Default: expanded
   editorHeight: number = 400; // Default height
   
   // Running queries settings
-  runningSettings = {
-    mode: 'external',
-    hideSubHeader: false, // Enable search
-    noDataMessage: '当前没有运行中的查询',
-    actions: {
-      add: false,
-      edit: true,
-      delete: true,
-      position: 'right',
-      width: '120px',
-    },
-    edit: {
-      editButtonContent: '<i class="nb-search"></i>',
-    },
-    delete: {
-      deleteButtonContent: '<i class="nb-trash"></i>',
-      confirmDelete: true,
-    },
-    pager: {
-      display: true,
-      perPage: 20,
-    },
-    columns: {
-      QueryId: { 
-        title: 'Query ID', 
-        type: 'string',
-        width: '15%',
+  runningSettings: any = {};
+
+  private buildRunningSettings(): any {
+    return {
+      mode: 'external',
+      hideSubHeader: false, // Enable search
+      noDataMessage: this.t('running.noData'),
+      actions: {
+        add: false,
+        edit: true,
+        delete: true,
+        position: 'right',
+        width: '120px',
       },
-      User: { 
-        title: '用户', 
-        type: 'string', 
-        width: '8%' 
+      edit: {
+        editButtonContent: '<i class="nb-search"></i>',
       },
-      Database: { 
-        title: '数据库', 
-        type: 'string', 
-        width: '10%' 
+      delete: {
+        deleteButtonContent: '<i class="nb-trash"></i>',
+        confirmDelete: true,
       },
-      ExecTime: {
-        title: '执行时间',
-        type: 'html',
-        width: '10%',
-        valuePrepareFunction: (value: string | number, row: any) => this.renderSlowQueryBadge(value),
+      pager: {
+        display: true,
+        perPage: 20,
       },
-      ScanBytes: {
-        title: '扫描数据量',
-        type: 'html',
-        width: '10%',
-        valuePrepareFunction: (value: string | number) => this.formatBytes(value),
+      columns: {
+        QueryId: { 
+          title: 'Query ID', 
+          type: 'string',
+          width: '15%',
+        },
+        User: { 
+          title: this.t('running.columns.user'), 
+          type: 'string', 
+          width: '8%' 
+        },
+        Database: { 
+          title: this.t('running.columns.database'), 
+          type: 'string', 
+          width: '10%' 
+        },
+        ExecTime: {
+          title: this.t('running.columns.execTime'),
+          type: 'html',
+          width: '10%',
+          valuePrepareFunction: (value: string | number, row: any) => this.renderSlowQueryBadge(value),
+        },
+        ScanBytes: {
+          title: this.t('running.columns.scanBytes'),
+          type: 'html',
+          width: '10%',
+          valuePrepareFunction: (value: string | number) => this.formatBytes(value),
+        },
+        ProcessRows: {
+          title: this.t('running.columns.processRows'),
+          type: 'string',
+          width: '10%',
+          valuePrepareFunction: (value: string | number) => this.formatNumber(value),
+        },
+        CPUTime: {
+          title: this.t('running.columns.cpuTime'),
+          type: 'html',
+          width: '10%',
+          valuePrepareFunction: (value: string | number) => this.formatTime(value),
+        },
+        Sql: { 
+          title: 'SQL', 
+          type: 'html',
+          valuePrepareFunction: (value: any) => renderLongText(value, 100),
+        },
       },
-      ProcessRows: {
-        title: '处理行数',
-        type: 'string',
-        width: '10%',
-        valuePrepareFunction: (value: string | number) => this.formatNumber(value),
-      },
-      CPUTime: {
-        title: 'CPU时间',
-        type: 'html',
-        width: '10%',
-        valuePrepareFunction: (value: string | number) => this.formatTime(value),
-      },
-      Sql: { 
-        title: 'SQL', 
-        type: 'html',
-        valuePrepareFunction: (value: any) => renderLongText(value, 100),
-      },
-    },
-  };
+    };
+  }
 
   // Filter state for running queries
   runningQueryFilter: {
@@ -480,10 +472,37 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
     private confirmDialogService: ConfirmDialogService,
     private authService: AuthService,
     private cdr: ChangeDetectorRef,
+    private translate: TranslateService,
   ) {
     // Try to get clusterId from route first (for direct navigation)
     const routeClusterId = parseInt(this.route.snapshot.paramMap.get('clusterId') || '0', 10);
     this.clusterId = routeClusterId;
+    this.buildTranslatedOptions();
+  }
+
+  /** Translate a key in the `sql` namespace. */
+  private t(key: string, params?: Record<string, unknown>): string {
+    return this.translate.instant(`sql.${key}`, params);
+  }
+
+  /** Build option lists and table settings that contain translated text. */
+  private buildTranslatedOptions(): void {
+    this.refreshIntervalOptions = [
+      { value: 'off', label: this.t('refreshInterval.off') },
+      { value: 3, label: this.t('refreshInterval.seconds', { count: 3 }) },
+      { value: 5, label: this.t('refreshInterval.seconds', { count: 5 }) },
+      { value: 10, label: this.t('refreshInterval.seconds', { count: 10 }) },
+      { value: 30, label: this.t('refreshInterval.seconds', { count: 30 }) },
+      { value: 60, label: this.t('refreshInterval.oneMinute') },
+    ];
+    this.limitOptions = [100, 500, 1000, 5000, 10000].map((value) => ({
+      value,
+      label: this.t('editor.limitRows', { count: value }),
+    }));
+    this.runningSettings = this.buildRunningSettings();
+    this.resultSettings = this.resultSettings.map((settings) =>
+      settings ? { ...settings, noDataMessage: this.t('results.noData') } : settings,
+    );
   }
 
   ngAfterViewInit(): void {
@@ -1102,22 +1121,22 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
     if (node.type === 'database') {
       return [
         {
-          label: '查看事务信息',
+          label: this.t('contextMenu.viewTransactions'),
           icon: 'activity-outline',
           action: 'viewTransactions',
         },
         {
-          label: '查看Compaction信息',
+          label: this.t('contextMenu.viewCompactions'),
           icon: 'layers-outline',
           action: 'viewCompactions',
         },
         {
-          label: '查看导入作业',
+          label: this.t('contextMenu.viewLoads'),
           icon: 'upload-outline',
           action: 'viewLoads',
         },
         {
-          label: '查看数据库统计',
+          label: this.t('contextMenu.viewDatabaseStats'),
           icon: 'bar-chart-outline',
           action: 'viewDatabaseStats',
         },
@@ -1131,12 +1150,12 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
       if (tableType === 'VIEW') {
         return [
           {
-            label: '查看视图结构',
+            label: this.t('contextMenu.viewViewSchema'),
             icon: 'file-text-outline',
             action: 'viewSchema',
           },
           {
-            label: '查看查询计划',
+            label: this.t('contextMenu.viewQueryPlan'),
             icon: 'search-outline',
             action: 'viewViewQueryPlan',
           },
@@ -1147,22 +1166,22 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
       if (tableType === 'MATERIALIZED_VIEW') {
         return [
           {
-            label: '查看物化视图结构',
+            label: this.t('contextMenu.viewMvSchema'),
             icon: 'file-text-outline',
             action: 'viewSchema',
           },
           {
-            label: '查看刷新状态',
+            label: this.t('contextMenu.viewRefreshStatus'),
             icon: 'refresh-outline',
             action: 'viewMaterializedViewRefreshStatus',
           },
           {
-            label: '查看表统计',
+            label: this.t('contextMenu.viewTableStats'),
             icon: 'bar-chart-outline',
             action: 'viewTableStats',
           },
           {
-            label: '查看表事务',
+            label: this.t('contextMenu.viewTableTransactions'),
             icon: 'activity-outline',
             action: 'viewTransactions',
           },
@@ -1172,27 +1191,27 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
       // Regular Table (普通表) - 所有功能
       return [
         {
-          label: '查看表结构',
+          label: this.t('contextMenu.viewTableSchema'),
           icon: 'file-text-outline',
           action: 'viewSchema',
         },
         {
-          label: '查看表统计',
+          label: this.t('contextMenu.viewTableStats'),
           icon: 'bar-chart-outline',
           action: 'viewTableStats',
         },
         {
-          label: '查看分桶分析',
+          label: this.t('contextMenu.viewBucketAnalysis'),
           icon: 'grid-outline',
           action: 'viewBucketAnalysis',
         },
         {
-          label: '查看表事务',
+          label: this.t('contextMenu.viewTableTransactions'),
           icon: 'activity-outline',
           action: 'viewTransactions',
         },
         {
-          label: '手动触发Compaction',
+          label: this.t('contextMenu.triggerCompaction'),
           icon: 'flash-outline',
           action: 'triggerCompaction',
         },
@@ -1250,11 +1269,11 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
           // Only regular tables can trigger compaction manually
           const tableType = targetNode.data?.tableType;
           if (tableType === 'VIEW') {
-            this.toastrService.warning('视图不支持手动触发Compaction', '提示');
+            this.toastrService.warning(this.t('messages.viewNoCompaction'), this.t('common.notice'));
             return;
           }
           if (tableType === 'MATERIALIZED_VIEW') {
-            this.toastrService.warning('物化视图的Compaction由系统自动管理，不建议手动触发', '提示');
+            this.toastrService.warning(this.t('messages.mvCompactionManaged'), this.t('common.notice'));
             return;
           }
           this.openCompactionTriggerDialog(targetNode);
@@ -1279,7 +1298,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
           const tableType = targetNode.data?.tableType;
           // Only regular tables and materialized views support bucket analysis
           if (tableType === 'VIEW') {
-            this.toastrService.warning('视图是逻辑表，没有分桶信息', '提示');
+            this.toastrService.warning(this.t('messages.viewNoBuckets'), this.t('common.notice'));
             return;
           }
           // CLOUD_NATIVE tables are supported, but some analysis may show limited data
@@ -1308,15 +1327,15 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
   private viewTableSchema(node: NavTreeNode): void {
     const info = this.extractNodeInfo(node);
     if (!this.validateNodeInfo(info, true, { 
-      database: '无法识别该表所属的数据库',
-      table: '无法识别表名称'
+      database: this.t('messages.unknownTableDatabase'),
+      table: this.t('messages.unknownTableName')
     })) {
       return;
     }
 
     const { catalogName, databaseName, tableName } = info!;
 
-    this.schemaDialogTitle = '表结构';
+    this.schemaDialogTitle = this.t('dialogs.tableSchema');
     this.schemaDialogSubtitle = tableName;
     this.currentSchemaCatalog = catalogName || null;
     this.currentSchemaDatabase = databaseName;
@@ -1352,7 +1371,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
         error: (error) => {
           this.tableSchemaLoading = false;
           this.currentTableSchema = '';
-          this.toastrService.danger(ErrorHandler.extractErrorMessage(error), '获取表结构失败');
+          this.toastrService.danger(ErrorHandler.extractErrorMessage(error), this.t('messages.fetchSchemaFailed'));
         },
       });
   }
@@ -1362,16 +1381,16 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
     if (!result || !Array.isArray(result.results) || result.results.length === 0) {
       this.currentTableSchema = '';
-      this.toastrService.warning('未返回表结构信息', '提示');
+      this.toastrService.warning(this.t('messages.noSchemaReturned'), this.t('common.notice'));
       return;
     }
 
     const primaryResult = result.results[0];
 
     if (!primaryResult.success) {
-      const errorMessage = primaryResult.error || '执行 SHOW CREATE TABLE 失败';
+      const errorMessage = primaryResult.error || this.t('messages.showCreateTableFailed');
       this.currentTableSchema = '';
-      this.toastrService.danger(errorMessage, '获取表结构失败');
+      this.toastrService.danger(errorMessage, this.t('messages.fetchSchemaFailed'));
       return;
     }
 
@@ -1380,7 +1399,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
     if (!rows || rows.length === 0) {
       this.currentTableSchema = '';
-      this.toastrService.warning('未获取到建表语句', '提示');
+      this.toastrService.warning(this.t('messages.noCreateStatement'), this.t('common.notice'));
       return;
     }
 
@@ -1396,7 +1415,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
     if (!matchedRow) {
       this.currentTableSchema = '';
-      this.toastrService.warning('未获取到建表语句', '提示');
+      this.toastrService.warning(this.t('messages.noCreateStatement'), this.t('common.notice'));
       return;
     }
 
@@ -1466,19 +1485,19 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
     customErrorMessage?: { database?: string; table?: string }
   ): boolean {
     if (!info) {
-      this.toastrService.warning('节点信息无效', '提示');
+      this.toastrService.warning(this.t('messages.invalidNode'), this.t('common.notice'));
       return false;
     }
 
     if (!info.databaseName) {
-      const message = customErrorMessage?.database || '无法识别数据库名称';
-      this.toastrService.warning(message, '提示');
+      const message = customErrorMessage?.database || this.t('messages.unknownDatabaseName');
+      this.toastrService.warning(message, this.t('common.notice'));
       return false;
     }
 
     if (requireTable && !info.tableName) {
-      const message = customErrorMessage?.table || '无法识别表名称';
-      this.toastrService.warning(message, '提示');
+      const message = customErrorMessage?.table || this.t('messages.unknownTableName');
+      this.toastrService.warning(message, this.t('common.notice'));
       return false;
     }
 
@@ -1585,7 +1604,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
       .subscribe({
         next: (dbId) => {
           if (!dbId) {
-            this.toastrService.warning(`无法找到数据库 ${databaseName} 的ID`, '提示');
+            this.toastrService.warning(this.t('messages.databaseIdNotFound', { database: databaseName }), this.t('common.notice'));
       return;
           }
           // Open dialog with tab support for running and finished transactions
@@ -1596,7 +1615,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
   private openTransactionsDialogWithTabs(databaseName: string, dbId: string, catalogName?: string, tableName?: string): void {
     // Show loading state immediately
-    this.infoDialogTitle = '事务信息';
+    this.infoDialogTitle = this.t('dialogs.transactions');
     this.infoDialogType = 'transactions';
     this.infoDialogPageLoading = true;
     this.infoDialogError = null;
@@ -1605,21 +1624,21 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
     // Define columns for transaction display
     const transactionColumns = {
-      TransactionId: { title: '事务ID', type: 'string', width: '12%' },
+      TransactionId: { title: this.t('columns.transactionId'), type: 'string', width: '12%' },
       Label: { 
-        title: '标签', 
+        title: this.t('columns.label'), 
         type: 'html', 
         width: '20%',
         valuePrepareFunction: (value: any) => this.renderLongText(value, 30),
       },
       Coordinator: { 
-        title: '协调者', 
+        title: this.t('columns.coordinator'), 
         type: 'html', 
         width: '15%',
         valuePrepareFunction: (value: any) => this.renderLongText(value, 25),
       },
       TransactionStatus: { 
-        title: '状态', 
+        title: this.t('columns.state'), 
         type: 'html', 
         width: '10%',
         valuePrepareFunction: (value: string) => {
@@ -1635,37 +1654,37 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
         },
       },
       LoadJobSourceType: { 
-        title: '来源类型', 
+        title: this.t('columns.sourceType'), 
         type: 'html', 
         width: '12%',
         valuePrepareFunction: (value: any) => this.renderLongText(value, 20),
       },
-      PrepareTime: { title: '准备时间', type: 'string', width: '12%' },
+      PrepareTime: { title: this.t('columns.prepareTime'), type: 'string', width: '12%' },
       CommitTime: { 
-        title: '提交时间', 
+        title: this.t('columns.commitTime'), 
         type: 'html', 
         width: '12%',
         valuePrepareFunction: (value: any) => {
           if (!value || value === 'NULL') {
-            return '<span class="badge badge-warning">未提交</span>';
+            return `<span class="badge badge-warning">${this.t('status.notCommitted')}</span>`;
           }
           return String(value);
         },
       },
-      PublishTime: { title: '发布时间', type: 'string', width: '12%' },
+      PublishTime: { title: this.t('columns.publishTime'), type: 'string', width: '12%' },
       FinishTime: { 
-        title: '完成时间', 
+        title: this.t('columns.finishTime'), 
         type: 'html', 
         width: '12%',
         valuePrepareFunction: (value: any) => {
           if (!value || value === 'NULL') {
-            return '<span class="badge badge-info">进行中</span>';
+            return `<span class="badge badge-info">${this.t('status.inProgress')}</span>`;
           }
           return String(value);
         },
       },
       ErrMsg: { 
-        title: '错误信息', 
+        title: this.t('columns.errorMessage'), 
         type: 'html', 
         width: '15%',
         valuePrepareFunction: (value: any) => this.renderLongText(value, 30),
@@ -1676,7 +1695,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
     this.infoDialogSettings = {
       mode: 'external',
       hideSubHeader: false,
-      noDataMessage: '暂无数据',
+      noDataMessage: this.t('common.noData'),
       actions: {
         add: false,
         edit: false,
@@ -1767,7 +1786,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
           this.infoDialogSettings = {
             mode: 'external',
             hideSubHeader: false,
-            noDataMessage: '暂无数据',
+            noDataMessage: this.t('common.noData'),
             actions: {
               add: false,
               edit: false,
@@ -1802,7 +1821,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
         error: (error) => {
           this.infoDialogPageLoading = false;
           const errorMessage = ErrorHandler.extractErrorMessage(error);
-          this.toastrService.danger(errorMessage, '查询失败');
+          this.toastrService.danger(errorMessage, this.t('messages.queryFailed'));
         },
       });
   }
@@ -1816,13 +1835,13 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
     const { catalogName, databaseName } = info!;
 
     // Show Compaction tasks using SHOW PROC '/compactions'
-    this.openInfoDialog('Compaction任务', 'compactionDetails', () => {
+    this.openInfoDialog(this.t('dialogs.compactionTasks'), 'compactionDetails', () => {
       const sql = `SHOW PROC '/compactions'`;
       return this.nodeService.executeSQL(sql, 1000, catalogName || undefined, databaseName);
     }, {
       columns: {
         Partition: { 
-          title: '分区', 
+          title: this.t('columns.partition'), 
           type: 'html', 
           width: '25%',
           valuePrepareFunction: (value: any) => {
@@ -1834,37 +1853,37 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
               const tableName = parts[1];
               const partitionId = parts[2];
               const dbTable = `${dbName}.${tableName}`;
-              return `${this.renderLongText(dbTable, 20)}<br><small>分区ID: ${this.renderLongText(partitionId, 15)}</small>`;
+              return `${this.renderLongText(dbTable, 20)}<br><small>${this.t('columns.partitionId')}: ${this.renderLongText(partitionId, 15)}</small>`;
             }
             return this.renderLongText(partitionStr, 30);
           },
         },
-        TxnID: { title: '事务ID', type: 'string', width: '10%' },
-        StartTime: { title: '开始时间', type: 'string', width: '12%' },
+        TxnID: { title: this.t('columns.transactionId'), type: 'string', width: '10%' },
+        StartTime: { title: this.t('columns.startTime'), type: 'string', width: '12%' },
         CommitTime: { 
-          title: '提交时间', 
+          title: this.t('columns.commitTime'), 
           type: 'html', 
           width: '12%',
           valuePrepareFunction: (value: any) => {
             if (!value || value === 'NULL') {
-              return '<span class="badge badge-warning">未提交</span>';
+              return `<span class="badge badge-warning">${this.t('status.notCommitted')}</span>`;
             }
             return String(value);
           },
         },
         FinishTime: { 
-          title: '完成时间', 
+          title: this.t('columns.finishTime'), 
           type: 'html', 
           width: '12%',
           valuePrepareFunction: (value: any) => {
             if (!value || value === 'NULL') {
-              return '<span class="badge badge-info">进行中</span>';
+              return `<span class="badge badge-info">${this.t('status.inProgress')}</span>`;
             }
             return String(value);
           },
         },
         Error: { 
-          title: '错误', 
+          title: this.t('columns.error'), 
           type: 'html', 
           width: '15%',
           valuePrepareFunction: (value: any) => this.renderLongText(value, 30),
@@ -1882,7 +1901,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
               const subTaskCount = profile.sub_task_count || 0;
               const readLocalMb = profile.read_local_mb || 0;
               const readRemoteMb = profile.read_remote_mb || 0;
-              return `<small>子任务: ${subTaskCount}<br>读取: ${readLocalMb}MB本地, ${readRemoteMb}MB远程</small>`;
+              return `<small>${this.t('compaction.profileSummary', { subTasks: subTaskCount, localMb: readLocalMb, remoteMb: readRemoteMb })}</small>`;
             } catch {
               return this.renderLongText(value, 20);
             }
@@ -1900,7 +1919,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
     const { catalogName, databaseName } = info!;
 
-    this.openInfoDialog('导入作业', 'loads', () => {
+    this.openInfoDialog(this.t('dialogs.loads'), 'loads', () => {
       const sql = `SELECT 
         JOB_ID,
         LABEL,
@@ -1923,27 +1942,27 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
       return this.nodeService.executeSQL(sql, 100, catalogName || undefined, databaseName);
     }, {
       columns: {
-        JOB_ID: { title: '作业ID', type: 'string', width: '10%' },
+        JOB_ID: { title: this.t('columns.jobId'), type: 'string', width: '10%' },
         LABEL: { 
-          title: '标签', 
+          title: this.t('columns.label'), 
           type: 'html', 
           width: '15%',
           valuePrepareFunction: (value: any) => this.renderLongText(value, 30),
         },
         STATE: { 
-          title: '状态', 
+          title: this.t('columns.state'), 
           type: 'html', 
           width: '10%',
           valuePrepareFunction: (value: string) => this.renderLoadState(value),
         },
-        PROGRESS: { title: '进度', type: 'string', width: '12%' },
-        TYPE: { title: '类型', type: 'string', width: '8%' },
-        PRIORITY: { title: '优先级', type: 'string', width: '8%' },
-        SCAN_ROWS: { title: '扫描行数', type: 'string', width: '10%' },
-        SINK_ROWS: { title: '导入行数', type: 'string', width: '10%' },
-        CREATE_TIME: { title: '创建时间', type: 'string', width: '12%' },
+        PROGRESS: { title: this.t('columns.progress'), type: 'string', width: '12%' },
+        TYPE: { title: this.t('columns.type'), type: 'string', width: '8%' },
+        PRIORITY: { title: this.t('columns.priority'), type: 'string', width: '8%' },
+        SCAN_ROWS: { title: this.t('columns.scanRows'), type: 'string', width: '10%' },
+        SINK_ROWS: { title: this.t('columns.sinkRows'), type: 'string', width: '10%' },
+        CREATE_TIME: { title: this.t('columns.createTime'), type: 'string', width: '12%' },
         ERROR_MSG: { 
-          title: '错误信息', 
+          title: this.t('columns.errorMessage'), 
           type: 'html', 
           width: '5%',
           valuePrepareFunction: (value: any) => this.renderLongText(value, 30),
@@ -1960,7 +1979,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
     const { catalogName, databaseName } = info!;
 
-    this.openInfoDialog('数据库统计', 'databaseStats', () => {
+    this.openInfoDialog(this.t('dialogs.databaseStats'), 'databaseStats', () => {
       const sql = `SELECT 
         TABLE_NAME,
         COUNT(DISTINCT PARTITION_NAME) as PARTITION_COUNT,
@@ -1983,11 +2002,11 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
       return this.nodeService.executeSQL(sql, 100, catalogName || undefined, databaseName);
     }, {
       columns: {
-        TABLE_NAME: { title: '表名', type: 'string', width: '20%' },
-        PARTITION_COUNT: { title: '分区数', type: 'string', width: '12%' },
-        TOTAL_ROWS: { title: '总行数', type: 'string', width: '15%' },
+        TABLE_NAME: { title: this.t('columns.tableName'), type: 'string', width: '20%' },
+        PARTITION_COUNT: { title: this.t('columns.partitionCount'), type: 'string', width: '12%' },
+        TOTAL_ROWS: { title: this.t('columns.totalRows'), type: 'string', width: '15%' },
         TOTAL_SIZE_MB: { 
-          title: '总大小(MB)', 
+          title: this.t('columns.totalSizeMb'), 
           type: 'html', 
           width: '15%',
           valuePrepareFunction: (value: any) => {
@@ -1999,13 +2018,13 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
           },
         },
         AVG_MAX_CS: { 
-          title: '平均最大CS', 
+          title: this.t('columns.avgMaxCs'), 
           type: 'html', 
           width: '15%',
           valuePrepareFunction: (value: number) => this.renderCompactionScore(value),
         },
         MAX_CS_OVERALL: { 
-          title: '最大CS', 
+          title: this.t('columns.maxCs'), 
           type: 'html', 
           width: '15%',
           valuePrepareFunction: (value: number) => this.renderCompactionScore(value),
@@ -2018,8 +2037,8 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
   private viewTablePartitions(node: NavTreeNode): void {
     const info = this.extractNodeInfo(node);
     if (!this.validateNodeInfo(info, true, {
-      database: '无法识别该表所属的数据库',
-      table: '无法识别表名称'
+      database: this.t('messages.unknownTableDatabase'),
+      table: this.t('messages.unknownTableName')
     })) {
       return;
     }
@@ -2028,11 +2047,11 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
     // Views don't have partitions
     if (node.data?.tableType === 'VIEW') {
-      this.toastrService.warning('视图是逻辑表，没有物理分区信息', '提示');
+      this.toastrService.warning(this.t('messages.viewNoPartitions'), this.t('common.notice'));
       return;
     }
 
-    this.openInfoDialog('分区信息', 'partitions', () => {
+    this.openInfoDialog(this.t('dialogs.partitions'), 'partitions', () => {
       const sql = `SELECT 
         PARTITION_NAME,
         PARTITION_ID,
@@ -2053,38 +2072,38 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
       return this.nodeService.executeSQL(sql, 100, catalogName || undefined, databaseName);
     }, {
       columns: {
-        PARTITION_NAME: { title: '分区名', type: 'string', width: '15%' },
-        PARTITION_ID: { title: '分区ID', type: 'string', width: '10%' },
+        PARTITION_NAME: { title: this.t('columns.partitionName'), type: 'string', width: '15%' },
+        PARTITION_ID: { title: this.t('columns.partitionId'), type: 'string', width: '10%' },
         PARTITION_KEY: { 
-          title: '分区键', 
+          title: this.t('columns.partitionKey'), 
           type: 'html', 
           width: '12%',
           valuePrepareFunction: (value: any) => this.renderLongText(value, 40),
         },
         PARTITION_VALUE: { 
-          title: '分区值', 
+          title: this.t('columns.partitionValue'), 
           type: 'html', 
           width: '12%',
           valuePrepareFunction: (value: any) => this.renderLongText(value, 40),
         },
-        DATA_SIZE: { title: '数据大小', type: 'string', width: '10%' },
-        ROW_COUNT: { title: '行数', type: 'string', width: '10%' },
+        DATA_SIZE: { title: this.t('columns.dataSize'), type: 'string', width: '10%' },
+        ROW_COUNT: { title: this.t('columns.rowCount'), type: 'string', width: '10%' },
         AVG_CS: { 
-          title: '平均CS', 
+          title: this.t('columns.avgCs'), 
           type: 'html', 
           width: '8%',
           valuePrepareFunction: (value: number) => this.renderCompactionScore(value),
         },
         MAX_CS: { 
-          title: '最大CS', 
+          title: this.t('columns.maxCs'), 
           type: 'html', 
           width: '8%',
           valuePrepareFunction: (value: number) => this.renderCompactionScore(value),
         },
-        COMPACT_VERSION: { title: 'Compact版本', type: 'string', width: '10%' },
-        VISIBLE_VERSION: { title: '可见版本', type: 'string', width: '10%' },
+        COMPACT_VERSION: { title: this.t('columns.compactVersion'), type: 'string', width: '10%' },
+        VISIBLE_VERSION: { title: this.t('columns.visibleVersion'), type: 'string', width: '10%' },
         STORAGE_PATH: { 
-          title: '存储路径', 
+          title: this.t('columns.storagePath'), 
           type: 'html', 
           width: '7%',
           valuePrepareFunction: (value: any) => this.renderLongText(value, 30),
@@ -2096,8 +2115,8 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
   private viewTableCompactionScore(node: NavTreeNode): void {
     const info = this.extractNodeInfo(node);
     if (!this.validateNodeInfo(info, true, {
-      database: '无法识别该表所属的数据库',
-      table: '无法识别表名称'
+      database: this.t('messages.unknownTableDatabase'),
+      table: this.t('messages.unknownTableName')
     })) {
       return;
     }
@@ -2106,7 +2125,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
     // Views don't have compaction score
     if (node.data?.tableType === 'VIEW') {
-      this.toastrService.warning('视图是逻辑表，没有Compaction Score信息', '提示');
+      this.toastrService.warning(this.t('messages.viewNoCompactionScore'), this.t('common.notice'));
       return;
     }
 
@@ -2127,9 +2146,9 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
       return this.nodeService.executeSQL(sql, 100, catalogName || undefined, databaseName);
     }, {
       columns: {
-        PARTITION_NAME: { title: '分区名', type: 'string', width: '15%' },
+        PARTITION_NAME: { title: this.t('columns.partitionName'), type: 'string', width: '15%' },
         AVG_CS: { 
-          title: '平均CS', 
+          title: this.t('columns.avgCs'), 
           type: 'html', 
           width: '12%',
           valuePrepareFunction: (value: number) => this.renderCompactionScore(value),
@@ -2141,15 +2160,15 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
           valuePrepareFunction: (value: number) => this.renderCompactionScore(value),
         },
         MAX_CS: { 
-          title: '最大CS', 
+          title: this.t('columns.maxCs'), 
           type: 'html', 
           width: '12%',
           valuePrepareFunction: (value: number) => this.renderCompactionScore(value),
         },
-        DATA_SIZE: { title: '数据大小', type: 'string', width: '12%' },
-        ROW_COUNT: { title: '行数', type: 'string', width: '12%' },
-        COMPACT_VERSION: { title: 'Compact版本', type: 'string', width: '12%' },
-        VISIBLE_VERSION: { title: '可见版本', type: 'string', width: '13%' },
+        DATA_SIZE: { title: this.t('columns.dataSize'), type: 'string', width: '12%' },
+        ROW_COUNT: { title: this.t('columns.rowCount'), type: 'string', width: '12%' },
+        COMPACT_VERSION: { title: this.t('columns.compactVersion'), type: 'string', width: '12%' },
+        VISIBLE_VERSION: { title: this.t('columns.visibleVersion'), type: 'string', width: '13%' },
       },
     }, catalogName, databaseName);
   }
@@ -2157,8 +2176,8 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
   private viewTableStats(node: NavTreeNode): void {
     const info = this.extractNodeInfo(node);
     if (!this.validateNodeInfo(info, true, {
-      database: '无法识别该表所属的数据库',
-      table: '无法识别表名称'
+      database: this.t('messages.unknownTableDatabase'),
+      table: this.t('messages.unknownTableName')
     })) {
       return;
     }
@@ -2167,7 +2186,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
     // Views don't have physical partitions
     if (node.data?.tableType === 'VIEW') {
-      this.toastrService.warning('视图是逻辑表，没有物理分区信息', '提示');
+      this.toastrService.warning(this.t('messages.viewNoPartitions'), this.t('common.notice'));
       return;
     }
 
@@ -2177,7 +2196,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
   private openTableStatsDialogWithTabs(databaseName: string, tableName: string, catalogName?: string): void {
     // Show loading state immediately
-    this.infoDialogTitle = '表统计';
+    this.infoDialogTitle = this.t('dialogs.tableStats');
     this.infoDialogType = 'tableStats';
     this.infoDialogPageLoading = true;
     this.infoDialogError = null;
@@ -2186,9 +2205,9 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
     // Define columns for each tab
     const partitionColumns = {
-      PARTITION_NAME: { title: '分区名', type: 'string', width: '20%' },
+      PARTITION_NAME: { title: this.t('columns.partitionName'), type: 'string', width: '20%' },
       PARTITION_ID: { 
-        title: '分区ID', 
+        title: this.t('columns.partitionId'), 
         type: 'html', 
         width: '15%',
         valuePrepareFunction: (value: any) => {
@@ -2199,18 +2218,18 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
         },
       },
       PARTITION_KEY: { 
-        title: '分区键', 
+        title: this.t('columns.partitionKey'), 
         type: 'html', 
         width: '25%',
         valuePrepareFunction: (value: any) => {
           if (value === null || value === undefined || value === '' || value === 'NULL') {
-            return '<span class="text-muted">无分区</span>';
+            return `<span class="text-muted">${this.t('status.noPartition')}</span>`;
           }
           return this.renderLongText(value, 40);
         },
       },
       PARTITION_VALUE: { 
-        title: '分区值', 
+        title: this.t('columns.partitionValue'), 
         type: 'html', 
         width: '25%',
         valuePrepareFunction: (value: any) => {
@@ -2220,10 +2239,10 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
           return this.renderLongText(value, 40);
         },
       },
-      DATA_SIZE: { title: '数据大小', type: 'string', width: '15%' },
-      ROW_COUNT: { title: '行数', type: 'string', width: '15%' },
+      DATA_SIZE: { title: this.t('columns.dataSize'), type: 'string', width: '15%' },
+      ROW_COUNT: { title: this.t('columns.rowCount'), type: 'string', width: '15%' },
       STORAGE_PATH: { 
-        title: '存储路径', 
+        title: this.t('columns.storagePath'), 
         type: 'html', 
         width: '20%',
         valuePrepareFunction: (value: any) => this.renderLongText(value, 30),
@@ -2231,9 +2250,9 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
     };
 
     const compactionColumns = {
-      PARTITION_NAME: { title: '分区名', type: 'string', width: '18%' },
+      PARTITION_NAME: { title: this.t('columns.partitionName'), type: 'string', width: '18%' },
       AVG_CS: { 
-        title: '平均CS', 
+        title: this.t('columns.avgCs'), 
         type: 'html', 
         width: '15%',
         valuePrepareFunction: (value: number) => this.renderCompactionScore(value),
@@ -2245,27 +2264,50 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
         valuePrepareFunction: (value: number) => this.renderCompactionScore(value),
       },
       MAX_CS: { 
-        title: '最大CS', 
+        title: this.t('columns.maxCs'), 
         type: 'html', 
         width: '15%',
         valuePrepareFunction: (value: number) => this.renderCompactionScore(value),
       },
-      DATA_SIZE: { title: '数据大小', type: 'string', width: '12%' },
-      ROW_COUNT: { title: '行数', type: 'string', width: '12%' },
-      COMPACT_VERSION: { title: 'Compact版本', type: 'string', width: '14%' },
-      VISIBLE_VERSION: { title: '可见版本', type: 'string', width: '14%' },
+      DATA_SIZE: { title: this.t('columns.dataSize'), type: 'string', width: '12%' },
+      ROW_COUNT: { title: this.t('columns.rowCount'), type: 'string', width: '12%' },
+      COMPACT_VERSION: { title: this.t('columns.compactVersion'), type: 'string', width: '14%' },
+      VISIBLE_VERSION: { title: this.t('columns.visibleVersion'), type: 'string', width: '14%' },
+    };
+
+    // METRIC labels come from the SQL below (Chinese literals); map them to translation keys for display
+    const storageMetricKeys: Record<string, string> = {
+      '表名': 'tableName',
+      '表类型': 'tableType',
+      '引擎': 'engine',
+      '分区数量': 'partitionCount',
+      '总数据大小(MB)': 'totalDataSizeMb',
+      '总行数': 'totalRows',
+      '平均分桶数': 'avgBuckets',
+      '最小分桶数': 'minBuckets',
+      '最大分桶数': 'maxBuckets',
+      '副本数': 'replicationNum',
+      '存储介质': 'storageMedium',
+      '平均CS': 'avgCs',
+      '最大CS': 'maxCs',
+      '创建时间': 'createTime',
+      '更新时间': 'updateTime',
     };
 
     const storageColumns = {
       METRIC: { 
-        title: '统计项', 
+        title: this.t('columns.metric'), 
         type: 'string', 
         width: '35%',
         filter: false,
         sort: false,
+        valuePrepareFunction: (value: any) => {
+          const key = storageMetricKeys[value];
+          return key ? this.t(`tableStats.storageMetrics.${key}`) : value;
+        },
       },
       VALUE: { 
-        title: '数值', 
+        title: this.t('columns.value'), 
         type: 'html', 
         width: '65%',
         filter: false,
@@ -2555,7 +2597,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
     this.infoDialogSettings = {
       mode: 'external',
       hideSubHeader: false,
-      noDataMessage: '暂无数据',
+      noDataMessage: this.t('common.noData'),
       actions: {
         add: false,
         edit: false,
@@ -2607,15 +2649,15 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
   private viewMaterializedViewRefreshStatus(node: NavTreeNode): void {
     const info = this.extractNodeInfo(node);
     if (!this.validateNodeInfo(info, true, {
-      database: '无法识别该物化视图所属的数据库',
-      table: '无法识别物化视图名称'
+      database: this.t('messages.unknownMvDatabase'),
+      table: this.t('messages.unknownMvName')
     })) {
       return;
     }
 
     const { catalogName, databaseName, tableName } = info!;
 
-    this.openInfoDialog('物化视图刷新状态', 'mvRefreshStatus', () => {
+    this.openInfoDialog(this.t('dialogs.mvRefreshStatus'), 'mvRefreshStatus', () => {
       const sql = `SELECT 
         TABLE_NAME,
         IS_ACTIVE,
@@ -2632,52 +2674,52 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
       return this.nodeService.executeSQL(sql, 100, catalogName || undefined, databaseName);
     }, {
       columns: {
-        TABLE_NAME: { title: '物化视图名', type: 'string', width: '15%' },
+        TABLE_NAME: { title: this.t('columns.mvName'), type: 'string', width: '15%' },
         IS_ACTIVE: { 
-          title: '是否激活', 
+          title: this.t('columns.isActive'), 
           type: 'html', 
           width: '10%',
           valuePrepareFunction: (value: any) => {
             const isActive = String(value).toLowerCase() === 'true';
             return isActive 
-              ? '<span class="badge badge-success">激活</span>'
-              : '<span class="badge badge-danger">未激活</span>';
+              ? `<span class="badge badge-success">${this.t('status.active')}</span>`
+              : `<span class="badge badge-danger">${this.t('status.inactive')}</span>`;
           },
         },
         REFRESH_TYPE: { 
-          title: '刷新类型', 
+          title: this.t('columns.refreshType'), 
           type: 'html', 
           width: '12%',
           valuePrepareFunction: (value: string) => {
             const type = String(value || '').toUpperCase();
             if (type === 'ASYNC') {
-              return '<span class="badge badge-info">异步</span>';
+              return `<span class="badge badge-info">${this.t('status.async')}</span>`;
             } else if (type === 'ROLLUP') {
-              return '<span class="badge badge-primary">同步</span>';
+              return `<span class="badge badge-primary">${this.t('status.sync')}</span>`;
             }
             return `<span class="badge badge-basic">${value || '-'}</span>`;
           },
         },
         LAST_REFRESH_STATE: { 
-          title: '最后刷新状态', 
+          title: this.t('columns.lastRefreshState'), 
           type: 'html', 
           width: '12%',
           valuePrepareFunction: (value: string) => {
             const state = String(value || '').toUpperCase();
             if (state === 'SUCCESS') {
-              return '<span class="badge badge-success">成功</span>';
+              return `<span class="badge badge-success">${this.t('status.success')}</span>`;
             } else if (state === 'FAILED' || state === 'ERROR') {
-              return '<span class="badge badge-danger">失败</span>';
+              return `<span class="badge badge-danger">${this.t('status.failed')}</span>`;
             } else if (state === 'RUNNING' || state === 'PENDING') {
-              return '<span class="badge badge-info">进行中</span>';
+              return `<span class="badge badge-info">${this.t('status.inProgress')}</span>`;
             }
             return `<span class="badge badge-warning">${value || '-'}</span>`;
           },
         },
-        LAST_REFRESH_START_TIME: { title: '最后刷新开始时间', type: 'string', width: '15%' },
-        LAST_REFRESH_FINISHED_TIME: { title: '最后刷新完成时间', type: 'string', width: '15%' },
+        LAST_REFRESH_START_TIME: { title: this.t('columns.lastRefreshStartTime'), type: 'string', width: '15%' },
+        LAST_REFRESH_FINISHED_TIME: { title: this.t('columns.lastRefreshFinishTime'), type: 'string', width: '15%' },
         LAST_REFRESH_DURATION: { 
-          title: '刷新耗时(秒)', 
+          title: this.t('columns.refreshDuration'), 
           type: 'html', 
           width: '10%',
           valuePrepareFunction: (value: any) => {
@@ -2689,18 +2731,18 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
           },
         },
         LAST_REFRESH_ERROR_MESSAGE: { 
-          title: '错误信息', 
+          title: this.t('columns.errorMessage'), 
           type: 'html', 
           width: '15%',
           valuePrepareFunction: (value: any) => {
             if (!value || value === 'NULL' || value === '') {
-              return '<span class="badge badge-success">无错误</span>';
+              return `<span class="badge badge-success">${this.t('status.noError')}</span>`;
             }
             return this.renderLongText(value, 30);
           },
         },
         INACTIVE_REASON: { 
-          title: '未激活原因', 
+          title: this.t('columns.inactiveReason'), 
           type: 'html', 
           width: '15%',
           valuePrepareFunction: (value: any) => {
@@ -2717,8 +2759,8 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
   private viewViewQueryPlan(node: NavTreeNode): void {
     const info = this.extractNodeInfo(node);
     if (!this.validateNodeInfo(info, true, {
-      database: '无法识别该视图所属的数据库',
-      table: '无法识别视图名称'
+      database: this.t('messages.unknownViewDatabase'),
+      table: this.t('messages.unknownViewName')
     })) {
       return;
     }
@@ -2726,7 +2768,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
     const { catalogName, databaseName, tableName } = info!;
 
     // Show query plan in a dialog
-    this.schemaDialogTitle = '视图查询计划';
+    this.schemaDialogTitle = this.t('dialogs.viewQueryPlan');
     this.schemaDialogSubtitle = tableName;
     this.currentSchemaCatalog = catalogName || null;
     this.currentSchemaDatabase = databaseName;
@@ -2758,17 +2800,17 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
             if (firstResult.rows && firstResult.rows.length > 0) {
               this.currentTableSchema = firstResult.rows.map(row => row[0]).join('\n');
             } else {
-              this.currentTableSchema = '查询计划为空';
+              this.currentTableSchema = this.t('messages.emptyQueryPlan');
             }
           } else {
-            const error = result.results?.[0]?.error || '查询失败';
-            this.currentTableSchema = `错误: ${error}`;
+            const error = result.results?.[0]?.error || this.t('messages.queryFailed');
+            this.currentTableSchema = this.t('messages.errorWithDetail', { error });
           }
         },
         error: (error) => {
           this.tableSchemaLoading = false;
           const errorMessage = ErrorHandler.extractErrorMessage(error);
-          this.currentTableSchema = `错误: ${errorMessage}`;
+          this.currentTableSchema = this.t('messages.errorWithDetail', { error: errorMessage });
         },
       });
   }
@@ -2777,8 +2819,8 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
   private viewBucketAnalysis(node: NavTreeNode): void {
     const info = this.extractNodeInfo(node);
     if (!this.validateNodeInfo(info, true, {
-      database: '无法识别该表所属的数据库',
-      table: '无法识别表名称'
+      database: this.t('messages.unknownTableDatabase'),
+      table: this.t('messages.unknownTableName')
     })) {
       return;
     }
@@ -2822,7 +2864,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
   }
 
   private openBucketAnalysisDialog(): void {
-    this.infoDialogTitle = '分桶分析';
+    this.infoDialogTitle = this.t('dialogs.bucketAnalysis');
     this.infoDialogType = 'bucketAnalysis';
     this.infoDialogPageLoading = true;
     this.infoDialogError = null;
@@ -2832,7 +2874,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
       actions: { add: false, edit: false, delete: false, position: 'left' },
       pager: { display: true, perPage: 15 },
       columns: {},
-      noDataMessage: '暂无数据',
+      noDataMessage: this.t('common.noData'),
     };
 
     if (this.infoDialogRef) {
@@ -2851,13 +2893,13 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
     // Validate inputs
     if (!this.bucketAnalysisDatabaseName || this.bucketAnalysisDatabaseName.trim() === '') {
       this.infoDialogPageLoading = false;
-      this.infoDialogError = '数据库名称无效';
+      this.infoDialogError = this.t('messages.invalidDatabaseName');
       return;
     }
 
     if (!this.bucketAnalysisTableName || this.bucketAnalysisTableName.trim() === '') {
       this.infoDialogPageLoading = false;
-      this.infoDialogError = '表名称无效';
+      this.infoDialogError = this.t('messages.invalidTableName');
       return;
     }
 
@@ -2868,7 +2910,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
         next: (dbId) => {
           if (!dbId || dbId.trim() === '') {
             this.infoDialogPageLoading = false;
-            this.infoDialogError = `无法找到数据库 "${this.bucketAnalysisDatabaseName}" 的ID。请确认数据库名称正确。`;
+            this.infoDialogError = this.t('messages.bucketDatabaseIdNotFound', { database: this.bucketAnalysisDatabaseName });
             return;
           }
 
@@ -2880,7 +2922,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
               next: (result) => {
                 if (!result || !result.results || result.results.length === 0) {
                   this.infoDialogPageLoading = false;
-                  this.infoDialogError = '查询表ID失败：返回结果为空';
+                  this.infoDialogError = this.t('messages.tableIdEmptyResult');
                   return;
                 }
 
@@ -2888,26 +2930,26 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
                 
                 if (!queryResult) {
                   this.infoDialogPageLoading = false;
-                  this.infoDialogError = '查询表ID失败：结果格式错误';
+                  this.infoDialogError = this.t('messages.tableIdBadFormat');
                   return;
                 }
 
                 if (!queryResult.success) {
                   this.infoDialogPageLoading = false;
-                  const errorMsg = queryResult.error || '查询失败';
-                  this.infoDialogError = `查询表ID失败: ${errorMsg}`;
+                  const errorMsg = queryResult.error || this.t('messages.queryFailed');
+                  this.infoDialogError = this.t('messages.tableIdQueryFailed', { error: errorMsg });
                   return;
                 }
 
                 if (!queryResult.rows || queryResult.rows.length === 0) {
                   this.infoDialogPageLoading = false;
-                  this.infoDialogError = `数据库 "${this.bucketAnalysisDatabaseName}" 中没有找到任何表`;
+                  this.infoDialogError = this.t('messages.noTablesFoundInDatabase', { database: this.bucketAnalysisDatabaseName });
                   return;
                 }
 
                 if (!queryResult.columns || queryResult.columns.length === 0) {
                   this.infoDialogPageLoading = false;
-                  this.infoDialogError = '查询表ID失败：返回结果缺少列信息';
+                  this.infoDialogError = this.t('messages.tableIdNoColumns');
                   return;
                 }
 
@@ -2921,7 +2963,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
                 
                 if (!tableNameKey || !tableIdKey) {
                   this.infoDialogPageLoading = false;
-                  this.infoDialogError = `无法识别表信息列名。可用列：${queryResult.columns.join(', ')}`;
+                  this.infoDialogError = this.t('messages.unknownTableColumns', { columns: queryResult.columns.join(', ') });
                   return;
                 }
                 
@@ -2971,7 +3013,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
                     this.loadCurrentBuckets();
                   } else {
                     this.infoDialogPageLoading = false;
-                    this.infoDialogError = `找到表 "${this.bucketAnalysisTableName}" 但表ID为空`;
+                    this.infoDialogError = this.t('messages.tableIdEmpty', { table: this.bucketAnalysisTableName });
                   }
                 } else {
                   this.infoDialogPageLoading = false;
@@ -2979,13 +3021,13 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
                     .map((r: any) => String(r[tableNameKey] || '').trim())
                     .filter(name => name !== '')
                     .join(', ');
-                  this.infoDialogError = `无法找到表 "${this.bucketAnalysisTableName}" 的ID。${availableTables ? `可用表：${availableTables}` : '数据库中没有表'}`;
+                  this.infoDialogError = `${this.t('messages.tableIdNotFound', { table: this.bucketAnalysisTableName })}${availableTables ? this.t('messages.availableTables', { tables: availableTables }) : this.t('messages.noTablesInDatabase')}`;
                 }
               },
               error: (error) => {
                 this.infoDialogPageLoading = false;
                 const errorMsg = ErrorHandler.extractErrorMessage(error);
-                this.infoDialogError = `查询表ID失败: ${errorMsg}`;
+                this.infoDialogError = this.t('messages.tableIdQueryFailed', { error: errorMsg });
                 console.error('查询表ID错误:', error);
               },
             });
@@ -2993,7 +3035,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
         error: (error) => {
           this.infoDialogPageLoading = false;
           const errorMsg = ErrorHandler.extractErrorMessage(error);
-          this.infoDialogError = `获取数据库ID失败: ${errorMsg}`;
+          this.infoDialogError = this.t('messages.databaseIdFailed', { error: errorMsg });
           console.error('获取数据库ID错误:', error);
         },
       });
@@ -3108,7 +3150,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
           const queryResult = result.results?.[0];
           
           if (!queryResult?.success) {
-            const errorMsg = queryResult?.error || '查询失败';
+            const errorMsg = queryResult?.error || this.t('messages.queryFailed');
             this.bucketAnalysisLoadingState.skew = false;
             this.infoDialogPageLoading = false;
             this.bucketAnalysisSkewData = [];
@@ -3135,11 +3177,11 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
             if (isCloudNative || this.bucketAnalysisTableId) {
               // Add a message row to inform user
               const message = isCloudNative 
-                ? '该表为CLOUD_NATIVE类型，数据存储在对象存储中，be_tablets表无数据，不支持分桶倾斜分析'
-                : '该表在be_tablets中无数据，可能是CLOUD_NATIVE表或外部表，不支持分桶倾斜分析';
+                ? this.t('bucket.skewCloudNative')
+                : this.t('bucket.skewNoData');
               
               this.bucketAnalysisSkewData = [{
-                BUCKET_ID: '提示',
+                BUCKET_ID: this.t('common.notice'),
                 TABLET_COUNT: '-',
                 TOTAL_SIZE: '-',
                 TOTAL_ROWS: '-',
@@ -3168,7 +3210,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
             // Add summary row
             data.unshift({
-              BUCKET_ID: '汇总',
+              BUCKET_ID: this.t('bucket.summary'),
               TABLET_COUNT: data.reduce((sum: number, d: any) => sum + (Number(d.TABLET_COUNT) || 0), 0),
               TOTAL_SIZE: totalSizes.reduce((a, b) => a + b, 0),
               TOTAL_ROWS: data.reduce((sum: number, d: any) => sum + (Number(d.TOTAL_ROWS) || 0), 0),
@@ -3236,7 +3278,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
           const queryResult = result.results?.[0];
           
           if (!queryResult?.success) {
-            const errorMsg = queryResult?.error || '查询失败';
+            const errorMsg = queryResult?.error || this.t('messages.queryFailed');
             this.bucketAnalysisLoadingState.distribution = false;
             this.infoDialogPageLoading = false;
             this.bucketAnalysisDistributionData = [];
@@ -3263,11 +3305,11 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
             if (isCloudNative || this.bucketAnalysisTableId) {
               // Add a message row to inform user
               const message = isCloudNative 
-                ? '该表为CLOUD_NATIVE类型，数据存储在对象存储中，be_tablets表无数据，不支持BE级别分布分析'
-                : '该表在be_tablets中无数据，可能是CLOUD_NATIVE表或外部表，不支持BE级别分布分析';
+                ? this.t('bucket.distributionCloudNative')
+                : this.t('bucket.distributionNoData');
               
               this.bucketAnalysisDistributionData = [{
-                BE_ID: '提示',
+                BE_ID: this.t('common.notice'),
                 BE_IP: '-',
                 BE_HOST: '-',
                 TABLET_COUNT: '-',
@@ -3318,7 +3360,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
                     // Add summary
                     data.unshift({
-                      BE_ID: '汇总',
+                      BE_ID: this.t('bucket.summary'),
                       BE_IP: '-',
                       BE_HOST: '-',
                       TABLET_COUNT: data.reduce((sum: number, d: any) => sum + (Number(d.TABLET_COUNT) || 0), 0),
@@ -3374,7 +3416,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
           if (!queryResult?.success || !queryResult.rows || queryResult.rows.length === 0) {
             this.bucketAnalysisLoadingState.sortkey = false;
             this.infoDialogPageLoading = false;
-            this.infoDialogError = '无法获取表结构';
+            this.infoDialogError = this.t('messages.cannotGetSchema');
             return;
           }
 
@@ -3510,12 +3552,12 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
             return {
               FIELD_NAME: field.name,
               FIELD_TYPE: field.type,
-              IS_DISTRIBUTED_KEY: field.isDistributedKey ? '是' : '否',
-              IS_DUPLICATE_KEY: field.isDuplicateKey ? '是' : '否',
-              CARDINALITY: cardinality >= 0 ? cardinality : (error || '查询失败'),
+              IS_DISTRIBUTED_KEY: field.isDistributedKey ? this.t('common.yes') : this.t('common.no'),
+              IS_DUPLICATE_KEY: field.isDuplicateKey ? this.t('common.yes') : this.t('common.no'),
+              CARDINALITY: cardinality >= 0 ? cardinality : (error || this.t('messages.queryFailed')),
               CARDINALITY_LEVEL: level,
               SUGGESTION: suggestion,
-              FROM_CACHE: fromCache ? '是' : '否',
+              FROM_CACHE: fromCache ? this.t('common.yes') : this.t('common.no'),
             };
           });
 
@@ -3539,17 +3581,17 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
   }
 
   private getCardinalitySuggestion(field: { name: string; isDistributedKey: boolean; isDuplicateKey: boolean }, cardinality: number, level: 'low' | 'medium' | 'high'): string {
-    if (cardinality < 0) return '查询失败，无法评估';
+    if (cardinality < 0) return this.t('bucket.cardinalityQueryFailed');
     if (field.isDistributedKey && level === 'low') {
-      return '分桶键基数过低，可能导致分桶倾斜，建议使用高基数字段作为分桶键';
+      return this.t('bucket.cardinalityLow');
     }
     if (field.isDistributedKey && level === 'medium') {
-      return '分桶键基数中等，建议监控分桶倾斜情况';
+      return this.t('bucket.cardinalityMedium');
     }
     if (field.isDistributedKey && level === 'high') {
-      return '分桶键基数较高，分布应该较为均匀';
+      return this.t('bucket.cardinalityHigh');
     }
-    return '正常';
+    return this.t('bucket.normal');
   }
 
   private getSkewLevel(skewRatio: number): 'normal' | 'warning' | 'danger' {
@@ -3566,38 +3608,38 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
       case 'skew':
         data = this.bucketAnalysisSkewData;
         columns = {
-          BUCKET_ID: { title: '分桶ID', type: 'string', width: '12%' },
-          TABLET_COUNT: { title: 'Tablet数量', type: 'string', width: '12%' },
+          BUCKET_ID: { title: this.t('columns.bucketId'), type: 'string', width: '12%' },
+          TABLET_COUNT: { title: this.t('columns.tabletCount'), type: 'string', width: '12%' },
           TOTAL_SIZE: {
-            title: '总大小',
+            title: this.t('columns.totalSize'),
             type: 'html',
             width: '15%',
             valuePrepareFunction: (value: any) => this.formatBytes(Number(value) || 0).toString(),
           },
           TOTAL_ROWS: {
-            title: '总行数',
+            title: this.t('columns.totalRows'),
             type: 'string',
             width: '12%',
             valuePrepareFunction: (value: any) => this.formatNumber(value).toString(),
           },
           AVG_TABLET_SIZE: {
-            title: '平均Tablet大小',
+            title: this.t('columns.avgTabletSize'),
             type: 'html',
             width: '15%',
             valuePrepareFunction: (value: any) => this.formatBytes(Number(value) || 0).toString(),
           },
           MAX_TABLET_SIZE: {
-            title: '最大Tablet大小',
+            title: this.t('columns.maxTabletSize'),
             type: 'html',
             width: '15%',
             valuePrepareFunction: (value: any) => this.formatBytes(Number(value) || 0).toString(),
           },
           SKEW_RATIO: {
-            title: '倾斜度(%)',
+            title: this.t('columns.skew'),
             type: 'html',
             width: '12%',
             valuePrepareFunction: (value: any, row: any) => {
-              if (row.BUCKET_ID === '汇总') return '-';
+              if (row.BUCKET_ID === this.t('bucket.summary')) return '-';
               const ratio = Number(value) || 0;
               const level = row.SKEW_LEVEL || this.getSkewLevel(ratio);
               const badgeClass = level === 'danger' ? 'badge-danger' : level === 'warning' ? 'badge-warning' : 'badge-success';
@@ -3605,13 +3647,13 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
             },
           },
           SKEW_LEVEL: {
-            title: '倾斜等级',
+            title: this.t('columns.skewLevel'),
             type: 'html',
             width: '7%',
             valuePrepareFunction: (value: any, row: any) => {
-              if (row.BUCKET_ID === '汇总') return '-';
+              if (row.BUCKET_ID === this.t('bucket.summary')) return '-';
               const level = value || 'normal';
-              const label = level === 'danger' ? '严重' : level === 'warning' ? '轻微' : '正常';
+              const label = level === 'danger' ? this.t('bucket.levels.severe') : level === 'warning' ? this.t('bucket.levels.mild') : this.t('bucket.normal');
               const badgeClass = level === 'danger' ? 'badge-danger' : level === 'warning' ? 'badge-warning' : 'badge-success';
               return `<span class="badge ${badgeClass}">${label}</span>`;
             },
@@ -3623,32 +3665,32 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
         columns = {
           BE_ID: { title: 'BE ID', type: 'string', width: '10%' },
           BE_IP: { title: 'BE IP', type: 'string', width: '15%' },
-          TABLET_COUNT: { title: 'Tablet数量', type: 'string', width: '12%' },
+          TABLET_COUNT: { title: this.t('columns.tabletCount'), type: 'string', width: '12%' },
           TOTAL_SIZE: {
-            title: '总大小',
+            title: this.t('columns.totalSize'),
             type: 'html',
             width: '15%',
             valuePrepareFunction: (value: any) => this.formatBytes(Number(value) || 0).toString(),
           },
           AVG_TABLET_SIZE: {
-            title: '平均Tablet大小',
+            title: this.t('columns.avgTabletSize'),
             type: 'html',
             width: '15%',
             valuePrepareFunction: (value: any) => this.formatBytes(Number(value) || 0).toString(),
           },
           MAX_TABLET_SIZE: {
-            title: '最大Tablet大小',
+            title: this.t('columns.maxTabletSize'),
             type: 'html',
             width: '15%',
             valuePrepareFunction: (value: any) => this.formatBytes(Number(value) || 0).toString(),
           },
-          BUCKET_COUNT: { title: '分桶数', type: 'string', width: '10%' },
+          BUCKET_COUNT: { title: this.t('columns.bucketCount'), type: 'string', width: '10%' },
           BE_SKEW_RATIO: {
-            title: 'BE倾斜度(%)',
+            title: this.t('columns.beSkew'),
             type: 'html',
             width: '8%',
             valuePrepareFunction: (value: any, row: any) => {
-              if (row.BE_ID === '汇总') return '-';
+              if (row.BE_ID === this.t('bucket.summary')) return '-';
               const ratio = Number(value) || 0;
               const level = row.BE_SKEW_LEVEL || this.getSkewLevel(ratio);
               const badgeClass = level === 'danger' ? 'badge-danger' : level === 'warning' ? 'badge-warning' : 'badge-success';
@@ -3660,39 +3702,39 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
       case 'sortkey':
         data = this.bucketAnalysisSortKeyData;
         columns = {
-          FIELD_NAME: { title: '字段名', type: 'string', width: '15%' },
-          FIELD_TYPE: { title: '字段类型', type: 'string', width: '12%' },
-          IS_DISTRIBUTED_KEY: { title: '分桶键', type: 'string', width: '10%' },
-          IS_DUPLICATE_KEY: { title: '排序键', type: 'string', width: '10%' },
+          FIELD_NAME: { title: this.t('columns.fieldName'), type: 'string', width: '15%' },
+          FIELD_TYPE: { title: this.t('columns.fieldType'), type: 'string', width: '12%' },
+          IS_DISTRIBUTED_KEY: { title: this.t('columns.distributionKey'), type: 'string', width: '10%' },
+          IS_DUPLICATE_KEY: { title: this.t('columns.sortKey'), type: 'string', width: '10%' },
           CARDINALITY: {
-            title: '基数',
+            title: this.t('columns.cardinality'),
             type: 'html',
             width: '15%',
             valuePrepareFunction: (value: any, row: any) => {
-              if (typeof value === 'string' && value.includes('失败')) {
+              if (typeof value === 'string' && (value.includes('失败') || /fail/i.test(value))) {
                 return `<span class="text-danger">${value}</span>`;
               }
               return this.formatNumber(value).toString();
             },
           },
           CARDINALITY_LEVEL: {
-            title: '基数等级',
+            title: this.t('columns.cardinalityLevel'),
             type: 'html',
             width: '12%',
             valuePrepareFunction: (value: any) => {
               const level = value || 'low';
-              const label = level === 'high' ? '高' : level === 'medium' ? '中' : '低';
+              const label = level === 'high' ? this.t('bucket.levels.high') : level === 'medium' ? this.t('bucket.levels.medium') : this.t('bucket.levels.low');
               const badgeClass = level === 'high' ? 'badge-success' : level === 'medium' ? 'badge-warning' : 'badge-danger';
               return `<span class="badge ${badgeClass}">${label}</span>`;
             },
           },
           SUGGESTION: {
-            title: '建议',
+            title: this.t('columns.suggestion'),
             type: 'html',
             width: '20%',
             valuePrepareFunction: (value: any) => this.renderLongText(value, 50),
           },
-          FROM_CACHE: { title: '缓存', type: 'string', width: '6%' },
+          FROM_CACHE: { title: this.t('columns.cache'), type: 'string', width: '6%' },
         };
         break;
       case 'adjust':
@@ -3720,7 +3762,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
     // Simple recommendation: based on data size
     // This is a placeholder - can be enhanced with more sophisticated logic
     if (this.bucketAnalysisSkewData.length > 0) {
-      const summary = this.bucketAnalysisSkewData.find((d: any) => d.BUCKET_ID === '汇总');
+      const summary = this.bucketAnalysisSkewData.find((d: any) => d.BUCKET_ID === this.t('bucket.summary'));
       if (summary) {
         const totalSize = Number(summary.TOTAL_SIZE) || 0;
         // Recommend 1 bucket per 10GB (rough estimate)
@@ -3748,12 +3790,12 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
   previewBucketAdjustment(): void {
     if (!this.bucketAdjustmentNewBuckets || this.bucketAdjustmentNewBuckets <= 0) {
-      this.toastrService.warning('请输入有效的分桶数', '提示');
+      this.toastrService.warning(this.t('messages.invalidBucketCount'), this.t('common.notice'));
       return;
     }
 
     if (this.bucketAdjustmentNewBuckets === this.bucketAnalysisCurrentBuckets) {
-      this.toastrService.info('新分桶数与当前分桶数相同，无需调整', '提示');
+      this.toastrService.info(this.t('messages.sameBucketCount'), this.t('common.notice'));
       return;
     }
 
@@ -3766,20 +3808,13 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
     // Note: StarRocks doesn't support direct ALTER TABLE to change buckets
     // This requires table rebuild. Show warning and SQL preview
-    const previewMessage = `分桶调整需要重建表，这将执行以下操作：
-1. 创建新表（分桶数为 ${this.bucketAdjustmentNewBuckets}）
-2. 迁移数据
-3. 重命名表
-
-此操作需要 ALTER TABLE 权限，且会锁定表一段时间。
-
-是否继续？`;
+    const previewMessage = this.t('bucket.adjust.previewMessage', { buckets: this.bucketAdjustmentNewBuckets });
 
     this.confirmDialogService.confirm(
-      '预览分桶调整',
+      this.t('bucket.adjust.previewTitle'),
       previewMessage,
-      '继续',
-      '取消',
+      this.t('common.continue'),
+      this.t('common.cancel'),
       'warning'
     ).subscribe(confirmed => {
       if (confirmed) {
@@ -3790,12 +3825,12 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
   executeBucketAdjustment(): void {
     if (!this.bucketAdjustmentNewBuckets || this.bucketAdjustmentNewBuckets <= 0) {
-      this.toastrService.warning('请输入有效的分桶数', '提示');
+      this.toastrService.warning(this.t('messages.invalidBucketCount'), this.t('common.notice'));
       return;
     }
 
     if (this.bucketAdjustmentNewBuckets === this.bucketAnalysisCurrentBuckets) {
-      this.toastrService.info('新分桶数与当前分桶数相同，无需调整', '提示');
+      this.toastrService.info(this.t('messages.sameBucketCount'), this.t('common.notice'));
       return;
     }
 
@@ -3810,12 +3845,11 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
     // For now, we'll show a message that this feature requires manual SQL execution
 
     this.toastrService.warning(
-      '分桶调整功能需要重建表，这是一个复杂操作。请使用以下SQL手动执行：\n' +
-      `-- 1. 创建新表（分桶数为 ${this.bucketAdjustmentNewBuckets}）\n` +
-      `-- 2. 迁移数据：INSERT INTO new_table SELECT * FROM ${this.bucketAnalysisTableName}\n` +
-      `-- 3. 重命名表：ALTER TABLE ${this.bucketAnalysisTableName} RENAME old_table; ALTER TABLE new_table RENAME ${this.bucketAnalysisTableName}\n` +
-      `-- 4. 删除旧表：DROP TABLE old_table`,
-      '提示',
+      this.t('bucket.adjust.manualSql', {
+        buckets: this.bucketAdjustmentNewBuckets,
+        table: this.bucketAnalysisTableName,
+      }),
+      this.t('common.notice'),
       { duration: 10000 }
     );
 
@@ -3826,8 +3860,8 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
   private viewTableTransactions(node: NavTreeNode): void {
     const info = this.extractNodeInfo(node);
     if (!this.validateNodeInfo(info, true, {
-      database: '无法识别该表所属的数据库',
-      table: '无法识别表名称'
+      database: this.t('messages.unknownTableDatabase'),
+      table: this.t('messages.unknownTableName')
     })) {
       return;
     }
@@ -3836,7 +3870,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
     // Views don't have transactions (they are logical, not physical)
     if (node.data?.tableType === 'VIEW') {
-      this.toastrService.warning('视图是逻辑表，不涉及物理事务', '提示');
+      this.toastrService.warning(this.t('messages.viewNoTransactions'), this.t('common.notice'));
       return;
     }
 
@@ -3845,7 +3879,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
       .subscribe({
         next: (dbId) => {
           if (!dbId) {
-            this.toastrService.warning(`无法找到数据库 ${databaseName} 的ID`, '提示');
+            this.toastrService.warning(this.t('messages.databaseIdNotFound', { database: databaseName }), this.t('common.notice'));
             return;
           }
           // Open dialog with tab support, filtering by table name
@@ -3892,7 +3926,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
     this.infoDialogSettings = {
       mode: 'external',
       hideSubHeader: false,
-      noDataMessage: '暂无数据',
+      noDataMessage: this.t('common.noData'),
       actions: {
         add: false,
         edit: false,
@@ -3971,13 +4005,13 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
                 }, 300);
               });
           } else {
-            const error = result.results?.[0]?.error || '查询失败';
+            const error = result.results?.[0]?.error || this.t('messages.queryFailed');
             this.infoDialogError = error;
             this.infoDialogData = [];
             this.infoDialogSource.load([]);
             
             // Show error (dialog already open)
-            this.toastrService.danger(error, '查询失败');
+            this.toastrService.danger(error, this.t('messages.queryFailed'));
           }
         },
         error: (error) => {
@@ -3988,7 +4022,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
           this.infoDialogSource.load([]);
           
           // Show error (dialog already open)
-          this.toastrService.danger(errorMessage, '查询失败');
+          this.toastrService.danger(errorMessage, this.t('messages.queryFailed'));
         },
       });
   }
@@ -4037,7 +4071,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
         // Add visual indicator
         span.setAttribute('data-copyable', 'true');
         const originalTitle = span.getAttribute('title') || title;
-        span.setAttribute('title', originalTitle + ' (双击或右键复制)');
+        span.setAttribute('title', originalTitle + ' ' + this.t('results.copyHint'));
       }
     });
   }
@@ -4047,7 +4081,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(() => {
-        this.toastrService.success('已复制到剪贴板', '成功', { duration: 2000 });
+        this.toastrService.success(this.t('messages.copied'), this.t('common.success'), { duration: 2000 });
       }).catch((err) => {
         console.error('Failed to copy text:', err);
         this.fallbackCopyText(text);
@@ -4087,10 +4121,10 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
     
     try {
       document.execCommand('copy');
-      this.toastrService.success('已复制到剪贴板', '成功', { duration: 2000 });
+      this.toastrService.success(this.t('messages.copied'), this.t('common.success'), { duration: 2000 });
     } catch (err) {
       console.error('Fallback copy failed:', err);
-      this.toastrService.danger('复制失败', '错误');
+      this.toastrService.danger(this.t('messages.copyFailed'), this.t('common.error'));
     }
     
     document.body.removeChild(textArea);
@@ -4121,11 +4155,11 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
   private renderLoadState(value: string): string {
     if (!value) return '-';
     const badges: { [key: string]: string } = {
-      FINISHED: '<span class="badge badge-success">完成</span>',
-      LOADING: '<span class="badge badge-info">加载中</span>',
-      PENDING: '<span class="badge badge-warning">等待中</span>',
-      CANCELLED: '<span class="badge badge-danger">已取消</span>',
-      QUEUEING: '<span class="badge badge-info">队列中</span>',
+      FINISHED: `<span class="badge badge-success">${this.t('status.finished')}</span>`,
+      LOADING: `<span class="badge badge-info">${this.t('status.loading')}</span>`,
+      PENDING: `<span class="badge badge-warning">${this.t('status.pending')}</span>`,
+      CANCELLED: `<span class="badge badge-danger">${this.t('status.cancelled')}</span>`,
+      QUEUEING: `<span class="badge badge-info">${this.t('status.queueing')}</span>`,
     };
     return badges[value] || `<span class="badge badge-basic">${value}</span>`;
   }
@@ -4134,8 +4168,8 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
   private openCompactionTriggerDialog(node: NavTreeNode): void {
     const info = this.extractNodeInfo(node);
     if (!this.validateNodeInfo(info, true, {
-      database: '无法识别该表所属的数据库',
-      table: '无法识别表名称'
+      database: this.t('messages.unknownTableDatabase'),
+      table: this.t('messages.unknownTableName')
     })) {
       return;
     }
@@ -4145,11 +4179,11 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
     // Only regular tables can trigger compaction manually
     const tableType = node.data?.tableType;
     if (tableType === 'VIEW') {
-      this.toastrService.warning('视图不支持手动触发Compaction', '提示');
+      this.toastrService.warning(this.t('messages.viewNoCompaction'), this.t('common.notice'));
       return;
     }
     if (tableType === 'MATERIALIZED_VIEW') {
-      this.toastrService.warning('物化视图的Compaction由系统自动管理，不建议手动触发', '提示');
+      this.toastrService.warning(this.t('messages.mvCompactionManaged'), this.t('common.notice'));
       return;
     }
     
@@ -4157,7 +4191,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
     const storageType = node.data?.storageType;
     if (storageType === 'CLOUD_NATIVE') {
       // CLOUD_NATIVE tables support compaction, but show a note
-      this.toastrService.info('CLOUD_NATIVE表（存算分离）的Compaction行为可能与普通表不同', '提示', { duration: 3000 });
+      this.toastrService.info(this.t('messages.cloudNativeCompaction'), this.t('common.notice'), { duration: 3000 });
     }
 
     this.compactionTriggerTable = tableName;
@@ -4229,7 +4263,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
     }
 
     if (this.compactionTriggerMode === 'partition' && this.compactionSelectedPartitions.length === 0) {
-      this.toastrService.warning('请至少选择一个分区', '提示');
+      this.toastrService.warning(this.t('messages.selectPartition'), this.t('common.notice'));
       return;
     }
 
@@ -4241,21 +4275,21 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
     let actionDesc = '';
     if (this.compactionTriggerMode === 'table') {
-      actionDesc = `对整个表 "${this.compactionTriggerTable}" 执行Compaction`;
+      actionDesc = this.t('compaction.actionTable', { table: this.compactionTriggerTable });
     } else {
       if (this.compactionSelectedPartitions.length === 1) {
-        actionDesc = `对分区 "${this.compactionSelectedPartitions[0]}" 执行Compaction`;
+        actionDesc = this.t('compaction.actionPartition', { partition: this.compactionSelectedPartitions[0] });
       } else {
-        actionDesc = `对 ${this.compactionSelectedPartitions.length} 个分区执行Compaction`;
+        actionDesc = this.t('compaction.actionPartitions', { count: this.compactionSelectedPartitions.length });
       }
     }
 
     this.confirmDialogService
       .confirm(
-        '确认触发Compaction',
-        `确定要${actionDesc}吗？\n\nCompaction任务会在后台执行，不会阻塞当前操作。`,
-        '确认触发',
-        '取消',
+        this.t('compaction.confirmTitle'),
+        this.t('compaction.confirmMessage', { action: actionDesc }),
+        this.t('compaction.confirmButton'),
+        this.t('common.cancel'),
         'primary'
       )
       .subscribe((confirmed) => {
@@ -4283,16 +4317,16 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
             next: (result) => {
               this.compactionTriggering = false;
               if (result.results && result.results.length > 0 && result.results[0].success) {
-                this.toastrService.success('Compaction任务已触发', '成功');
+                this.toastrService.success(this.t('messages.compactionTriggered'), this.t('common.success'));
                 this.closeCompactionTriggerDialog();
               } else {
-                const error = result.results?.[0]?.error || '触发失败';
-                this.toastrService.danger(error, '触发Compaction失败');
+                const error = result.results?.[0]?.error || this.t('messages.triggerFailed');
+                this.toastrService.danger(error, this.t('messages.triggerCompactionFailed'));
               }
             },
             error: (error) => {
               this.compactionTriggering = false;
-              this.toastrService.danger(ErrorHandler.extractErrorMessage(error), '触发Compaction失败');
+              this.toastrService.danger(ErrorHandler.extractErrorMessage(error), this.t('messages.triggerCompactionFailed'));
             },
           });
       });
@@ -4406,7 +4440,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
         this.loadingDatabases = false;
         console.error('Failed to load databases:', error);
         node.children = [];
-        this.toastrService.danger('加载数据库列表失败', '错误');
+        this.toastrService.danger(this.t('messages.loadDatabasesFailed'), this.t('common.error'));
         this.refreshSqlSchema();
       },
     });
@@ -4461,7 +4495,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
           node.data.tablesLoaded = false;
           node.data.tableCount = 0;
         }
-        this.toastrService.danger(`加载表列表失败: ${error.message || error.statusText || '未知错误'}`, '错误');
+        this.toastrService.danger(this.t('messages.loadTablesFailed', { error: error.message || error.statusText || this.t('messages.unknownError') }), this.t('common.error'));
         this.refreshSqlSchema();
       },
     });
@@ -4621,6 +4655,14 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
   }
 
   ngOnInit(): void {
+    // Rebuild translated options/settings when the language changes
+    this.translate.onLangChange
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.buildTranslatedOptions();
+        this.cdr.markForCheck();
+      });
+
     // Subscribe to active cluster changes
     this.clusterContext.activeCluster$
       .pipe(takeUntil(this.destroy$))
@@ -4802,7 +4844,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
         this.runningSource.load(filteredQueries);
       },
       error: (error) => {
-        this.toastrService.danger(ErrorHandler.extractErrorMessage(error), '加载失败');
+        this.toastrService.danger(ErrorHandler.extractErrorMessage(error), this.t('messages.loadFailed'));
       },
     });
   }
@@ -4914,10 +4956,10 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
     const query = event.data as Query;
     
     this.confirmDialogService.confirm(
-      '确认查杀查询',
-      `确定要查杀查询 ${query.QueryId} 吗？`,
-      '查杀',
-      '取消',
+      this.t('running.kill.confirmTitle'),
+      this.t('running.kill.confirmMessage', { queryId: query.QueryId }),
+      this.t('running.kill.button'),
+      this.t('common.cancel'),
       'danger'
     ).pipe(
       takeUntil(this.destroy$)
@@ -4933,14 +4975,14 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
         takeUntil(this.destroy$)
       ).subscribe({
         next: () => {
-          this.toastrService.success(`查询 ${query.QueryId} 已成功查杀`, '成功');
+          this.toastrService.success(this.t('running.kill.success', { queryId: query.QueryId }), this.t('common.success'));
           this.loadRunningQueries();
           event.confirm.resolve();
         },
         error: (error) => {
           this.toastrService.danger(
             ErrorHandler.extractErrorMessage(error),
-            '查杀失败'
+            this.t('running.kill.failed')
           );
           event.confirm.reject();
           this.loading = false;
@@ -4953,15 +4995,15 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
   // Batch kill queries
   batchKillQueries(queryIds: string[]): void {
     if (queryIds.length === 0) {
-      this.toastrService.warning('请选择要查杀的查询', '提示');
+      this.toastrService.warning(this.t('running.kill.selectQueries'), this.t('common.notice'));
       return;
     }
 
     this.confirmDialogService.confirm(
-      '确认批量查杀',
-      `确定要查杀 ${queryIds.length} 个查询吗？`,
-      '查杀',
-      '取消',
+      this.t('running.kill.batchConfirmTitle'),
+      this.t('running.kill.batchConfirmMessage', { count: queryIds.length }),
+      this.t('running.kill.button'),
+      this.t('common.cancel'),
       'danger'
     ).pipe(
       takeUntil(this.destroy$)
@@ -4987,9 +5029,9 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
             if (completed === queryIds.length) {
               this.loading = false;
               if (failCount === 0) {
-                this.toastrService.success(`成功查杀 ${successCount} 个查询`, '成功');
+                this.toastrService.success(this.t('running.kill.batchSuccess', { count: successCount }), this.t('common.success'));
               } else {
-                this.toastrService.warning(`成功查杀 ${successCount} 个，失败 ${failCount} 个`, '部分成功');
+                this.toastrService.warning(this.t('running.kill.batchPartial', { success: successCount, failed: failCount }), this.t('common.partialSuccess'));
               }
               this.cdr.markForCheck();
               this.loadRunningQueries();
@@ -5001,9 +5043,9 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
             if (completed === queryIds.length) {
               this.loading = false;
               if (successCount > 0) {
-                this.toastrService.warning(`成功查杀 ${successCount} 个，失败 ${failCount} 个`, '部分成功');
+                this.toastrService.warning(this.t('running.kill.batchPartial', { success: successCount, failed: failCount }), this.t('common.partialSuccess'));
               } else {
-                this.toastrService.danger('批量查杀失败', '错误');
+                this.toastrService.danger(this.t('running.kill.batchFailed'), this.t('common.error'));
               }
               this.cdr.markForCheck();
               this.loadRunningQueries();
@@ -5032,15 +5074,15 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
       const queryIds = allQueries.map((q: Query) => q.QueryId);
       
       if (queryIds.length === 0) {
-        this.toastrService.warning('当前没有可查杀的查询', '提示');
+        this.toastrService.warning(this.t('running.kill.noQueries'), this.t('common.notice'));
         return;
       }
 
       this.confirmDialogService.confirm(
-        '确认批量查杀',
-        `确定要查杀当前显示的 ${queryIds.length} 个查询吗？`,
-        '查杀',
-        '取消',
+        this.t('running.kill.batchConfirmTitle'),
+        this.t('running.kill.batchConfirmVisibleMessage', { count: queryIds.length }),
+        this.t('running.kill.button'),
+        this.t('common.cancel'),
         'danger'
       ).subscribe(confirmed => {
         if (!confirmed) {
@@ -5075,10 +5117,10 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
     }
 
     this.confirmDialogService.confirm(
-      '确认查杀查询',
-      `确定要查杀查询 ${this.currentQueryDetail.QueryId} 吗？`,
-      '查杀',
-      '取消',
+      this.t('running.kill.confirmTitle'),
+      this.t('running.kill.confirmMessage', { queryId: this.currentQueryDetail.QueryId }),
+      this.t('running.kill.button'),
+      this.t('common.cancel'),
       'danger'
     ).subscribe(confirmed => {
       if (!confirmed) {
@@ -5088,7 +5130,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
       this.loading = true;
       this.nodeService.killQuery(this.currentQueryDetail!.QueryId).subscribe({
         next: () => {
-          this.toastrService.success(`查询 ${this.currentQueryDetail!.QueryId} 已成功查杀`, '成功');
+          this.toastrService.success(this.t('running.kill.success', { queryId: this.currentQueryDetail!.QueryId }), this.t('common.success'));
           // Reset loading state immediately, then refresh after delay
           this.loading = false;
           this.cdr.markForCheck();
@@ -5100,7 +5142,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
         error: (error) => {
           this.toastrService.danger(
             ErrorHandler.extractErrorMessage(error),
-            '查杀失败'
+            this.t('running.kill.failed')
           );
           this.loading = false;
         },
@@ -5131,34 +5173,34 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
   // Real-time query methods
   executeSQL(): void {
     if (!this.sqlInput || this.sqlInput.trim() === '') {
-      this.toastrService.warning('请输入SQL语句', '提示');
+      this.toastrService.warning(this.t('messages.enterSql'), this.t('common.notice'));
       return;
     }
 
     // Check if catalog is selected
     if (!this.selectedCatalog) {
-      this.toastrService.warning('请先选择 Catalog', '提示');
+      this.toastrService.warning(this.t('messages.selectCatalog'), this.t('common.notice'));
       return;
     }
 
     // Check if databases are still loading
     if (this.loadingDatabases) {
-      this.toastrService.warning('数据库列表加载中，请稍候...', '提示');
+      this.toastrService.warning(this.t('messages.databasesLoading'), this.t('common.notice'));
       return;
     }
 
     if (!this.selectedDatabase) {
-        this.toastrService.warning('请选择数据库', '提示');
+        this.toastrService.warning(this.t('messages.selectDatabase'), this.t('common.notice'));
         return;
     }
 
     const trimmedSql = this.sqlInput.trim();
     if (this.containsDangerousStatement(trimmedSql)) {
       this.confirmDialogService.confirm(
-        '危险操作确认',
-        '检测到 SQL 包含删除或破坏性语句，是否继续执行？',
-        '继续执行',
-        '取消',
+        this.t('editor.dangerConfirm.title'),
+        this.t('editor.dangerConfirm.message'),
+        this.t('editor.dangerConfirm.button'),
+        this.t('common.cancel'),
         'danger',
       ).subscribe((confirmed) => {
         if (!confirmed) {
@@ -5233,15 +5275,15 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
         if (result.results.length > 1) {
           this.toastrService.success(
-            `执行 ${result.results.length} 个SQL，成功 ${successCount} 个，共返回 ${totalRowCount} 行`,
-            '成功',
+            this.t('results.multiSuccess', { total: result.results.length, success: successCount, rows: totalRowCount }),
+            this.t('common.success'),
           );
         } else {
           const singleResult = result.results[0];
           if (singleResult.success) {
-            this.toastrService.success(`查询成功，返回 ${singleResult.row_count} 行`, '成功');
+            this.toastrService.success(this.t('results.singleSuccess', { rows: singleResult.row_count }), this.t('common.success'));
           } else {
-            this.toastrService.danger(singleResult.error || '执行失败', '执行失败');
+            this.toastrService.danger(singleResult.error || this.t('results.executionFailed'), this.t('results.executionFailed'));
           }
         }
 
@@ -5257,7 +5299,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
       },
       error: (error) => {
         this.executing = false;
-        this.toastrService.danger(ErrorHandler.extractErrorMessage(error), '执行失败');
+        this.toastrService.danger(ErrorHandler.extractErrorMessage(error), this.t('results.executionFailed'));
       },
     });
   }
@@ -5291,7 +5333,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
     return {
       mode: 'external',
       hideSubHeader: false, // Enable search
-      noDataMessage: '无数据',
+      noDataMessage: this.t('results.noData'),
       actions: false,
       pager: {
         display: true,
@@ -5303,7 +5345,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
   // Generate tab title
   getResultTabTitle(result: SingleQueryResult, index: number): string {
-    return `结果${index + 1}`;
+    return this.t('results.tabTitle', { index: index + 1 });
   }
 
   clearSQL(): void {
@@ -5353,7 +5395,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
         this.editorView.dispatch(transaction);
       }
     } catch (error) {
-      this.toastrService.warning('格式化失败，使用原始SQL', '提示');
+      this.toastrService.warning(this.t('messages.formatFailed'), this.t('common.notice'));
     }
   }
 
@@ -5368,12 +5410,12 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
       // Export single result
       resultToExport = this.queryResults[0];
     } else {
-      this.toastrService.warning('请选择要导出的结果', '提示');
+      this.toastrService.warning(this.t('export.selectResult'), this.t('common.notice'));
       return;
     }
     
     if (!resultToExport || !resultToExport.success || !resultToExport.rows || resultToExport.rows.length === 0) {
-      this.toastrService.warning('没有数据可导出', '提示');
+      this.toastrService.warning(this.t('export.noData'), this.t('common.notice'));
       return;
     }
 
@@ -5407,10 +5449,10 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
       link.click();
       document.body.removeChild(link);
 
-      this.toastrService.success('导出成功', '成功');
+      this.toastrService.success(this.t('export.success'), this.t('common.success'));
     } catch (error) {
       console.error('Export error:', error);
-      this.toastrService.danger(ErrorHandler.extractErrorMessage(error), '导出失败');
+      this.toastrService.danger(ErrorHandler.extractErrorMessage(error), this.t('export.failed'));
     }
   }
 
