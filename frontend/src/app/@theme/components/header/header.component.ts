@@ -6,6 +6,9 @@ import { LayoutService } from '../../../@core/utils';
 import { AuthService } from '../../../@core/data/auth.service';
 import { map, takeUntil, filter } from 'rxjs/operators';
 import { Subject } from 'rxjs';
+import { TranslateService } from '@ngx-translate/core';
+import { LanguageService } from '../../../@core/services/language.service';
+import { AppLanguage } from '../../../@core/i18n/i18n.config';
 
 @Component({
   selector: 'ngx-header',
@@ -19,30 +22,18 @@ export class HeaderComponent implements OnInit, OnDestroy {
   user: any;
 
   themes = [
-    {
-      value: 'default',
-      name: '浅色',
-    },
-    {
-      value: 'dark',
-      name: '深色',
-    },
-    {
-      value: 'cosmic',
-      name: '星空',
-    },
-    {
-      value: 'corporate',
-      name: '企业',
-    },
+    { value: 'default', name: 'common.theme.default' },
+    { value: 'dark', name: 'common.theme.dark' },
+    { value: 'cosmic', name: 'common.theme.cosmic' },
+    { value: 'corporate', name: 'common.theme.corporate' },
   ];
+
+  languages = this.languageService.languages;
+  currentLanguage: AppLanguage = this.languageService.current;
 
   currentTheme = 'default';
 
-  userMenu = [
-    { title: '用户设置', icon: 'settings-outline', data: { id: 'settings' } },
-    { title: '退出登录', icon: 'log-out-outline', data: { id: 'logout' } },
-  ];
+  userMenu = this.buildUserMenu();
 
   constructor(
     private sidebarService: NbSidebarService,
@@ -53,11 +44,20 @@ export class HeaderComponent implements OnInit, OnDestroy {
     private breakpointService: NbMediaBreakpointsService,
     private router: Router,
     private toastr: NbToastrService,
+    private translate: TranslateService,
+    private languageService: LanguageService,
   ) {
   }
 
   ngOnInit() {
     this.currentTheme = this.themeService.currentTheme;
+
+    this.languageService.current$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(lang => {
+        this.currentLanguage = lang;
+        this.userMenu = this.buildUserMenu();
+      });
 
     // Get current user info
     this.authService.currentUser
@@ -118,6 +118,17 @@ export class HeaderComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  changeLanguage(lang: AppLanguage) {
+    this.languageService.use(lang).subscribe();
+  }
+
+  private buildUserMenu() {
+    return [
+      { title: this.translate.instant('common.header.userSettings'), icon: 'settings-outline', data: { id: 'settings' } },
+      { title: this.translate.instant('common.header.logout'), icon: 'log-out-outline', data: { id: 'logout' } },
+    ];
+  }
+
   changeTheme(themeName: string) {
     this.themeService.changeTheme(themeName);
   }
@@ -135,7 +146,10 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   logout() {
-    this.toastr.success('退出登录成功', '提示');
+    this.toastr.success(
+      this.translate.instant('common.header.logoutSuccess'),
+      this.translate.instant('common.notice'),
+    );
     setTimeout(() => {
       this.authService.logout();
     }, 500);

@@ -16,7 +16,7 @@ export interface RoleActionPermissions {
         ghost
         size="tiny"
         status="primary"
-        nbTooltip="编辑角色"
+        [nbTooltip]="'system.roles.edit' | translate"
         nbTooltipPlacement="top"
         [disabled]="!value?.canEdit"
         (click)="onEditClick($event)"
@@ -28,7 +28,7 @@ export interface RoleActionPermissions {
         ghost
         size="tiny"
         status="danger"
-        nbTooltip="删除角色"
+        [nbTooltip]="'system.roles.delete' | translate"
         nbTooltipPlacement="top"
         [disabled]="!value?.canDelete"
         (click)="onDeleteClick($event)"

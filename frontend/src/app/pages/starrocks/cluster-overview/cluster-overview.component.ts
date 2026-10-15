@@ -4,6 +4,7 @@ import { Subject, interval } from 'rxjs';
 import { takeUntil, switchMap, skip } from 'rxjs/operators';
 import { NbToastrService, NbThemeService } from '@nebular/theme';
 import { CountUp } from 'countup.js';
+import { TranslateService } from '@ngx-translate/core';
 import {
   OverviewService,
   ExtendedClusterOverview,
@@ -47,9 +48,10 @@ export class ClusterOverviewComponent implements OnInit, OnDestroy, AfterViewIni
   // Latency percentile selection
   selectedLatencyPercentile: 'P50' | 'P95' | 'P99' = 'P99';
   latencyPercentileOptions = [
-    { label: 'P50 (中位数)', value: 'P50' },
-    { label: 'P95', value: 'P95' },
-    { label: 'P99 (长尾)', value: 'P99' }
+    // label is a translation key
+    { label: 'cluster.overview.percentiles.p50Median', value: 'P50' },
+    { label: 'cluster.overview.percentiles.p95', value: 'P95' },
+    { label: 'cluster.overview.percentiles.p99Tail', value: 'P99' }
   ];
   
   // Disk/Cache metric selection
@@ -62,21 +64,24 @@ export class ClusterOverviewComponent implements OnInit, OnDestroy, AfterViewIni
   chartColors: any = {};
   
   private destroy$ = new Subject<void>();
+  // Separate from destroy$, which setupAutoRefresh() emits to cancel the refresh timer
+  private langDestroy$ = new Subject<void>();
 
-  // Time range options
+  // Time range options (label is a translation key)
   timeRangeOptions = [
-    { label: '1 Hour', value: '1h' },
-    { label: '6 Hours', value: '6h' },
-    { label: '24 Hours', value: '24h' },
-    { label: '3 Days', value: '3d' },
+    { label: 'cluster.overview.timeRanges.h1', value: '1h' },
+    { label: 'cluster.overview.timeRanges.h6', value: '6h' },
+    { label: 'cluster.overview.timeRanges.h24', value: '24h' },
+    { label: 'cluster.overview.timeRanges.d3', value: '3d' },
   ];
 
   // Refresh interval options (Grafana style)
+  // (label is a translation key)
   refreshIntervalOptions = [
-    { label: '关闭', value: 'off' },
-    { label: '15秒', value: 15 },
-    { label: '30秒', value: 30 },
-    { label: '1分钟', value: 60 },
+    { label: 'cluster.shared.refreshIntervals.off', value: 'off' },
+    { label: 'cluster.shared.refreshIntervals.s15', value: 15 },
+    { label: 'cluster.shared.refreshIntervals.s30', value: 30 },
+    { label: 'cluster.shared.refreshIntervals.m1', value: 60 },
   ];
 
   /**
@@ -97,9 +102,20 @@ export class ClusterOverviewComponent implements OnInit, OnDestroy, AfterViewIni
     private themeService: NbThemeService,
     private authService: AuthService,
     private cdr: ChangeDetectorRef,
+    private translate: TranslateService,
   ) {}
 
   ngOnInit() {
+    // Rebuild translated card titles/descriptions on language change
+    this.translate.onLangChange
+      .pipe(takeUntil(this.langDestroy$))
+      .subscribe(() => {
+        if (this.overview) {
+          this.healthCards = this.overviewService.transformToHealthCards(this.overview);
+        }
+        this.cdr.markForCheck();
+      });
+
     // Load Nebular theme colors
     this.themeService.getJsTheme()
       .pipe(takeUntil(this.destroy$))
@@ -143,6 +159,8 @@ export class ClusterOverviewComponent implements OnInit, OnDestroy, AfterViewIni
   }
 
   ngOnDestroy() {
+    this.langDestroy$.next();
+    this.langDestroy$.complete();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -213,20 +231,20 @@ export class ClusterOverviewComponent implements OnInit, OnDestroy, AfterViewIni
             error: err.error
           });
           
-          let errorMsg = '加载集群概览失败';
+          let errorMsg = this.translate.instant('cluster.overview.loadFailed');
           
           // Show backend error message directly
           if (err.error?.message) {
             errorMsg = err.error.message;
           } else if (err.status === 0) {
-            errorMsg = '无法连接到服务器';
+            errorMsg = this.translate.instant('cluster.overview.cannotConnect');
           } else if (err.status === 404) {
-            errorMsg = '未找到数据或未激活集群';
+            errorMsg = this.translate.instant('cluster.overview.notFound');
           } else if (err.status === 401) {
-            errorMsg = '没有权限执行此操作';
+            errorMsg = this.translate.instant('cluster.overview.noPermission');
           }
           
-          this.toastr.danger(errorMsg, '错误');
+          this.toastr.danger(errorMsg, this.translate.instant('cluster.shared.error'));
           this.loading = false;
           this.cdr.markForCheck();
         }
@@ -366,10 +384,10 @@ export class ClusterOverviewComponent implements OnInit, OnDestroy, AfterViewIni
     const units = [
       { name: 'ms', threshold: 1000 },
       { name: 's', threshold: 60 },
-      { name: '分', threshold: 60 },
-      { name: '时', threshold: 24 },
-      { name: '天', threshold: 7 },
-      { name: '周', threshold: Number.MAX_VALUE }
+      { name: this.translate.instant('cluster.overview.durationUnits.minute'), threshold: 60 },
+      { name: this.translate.instant('cluster.overview.durationUnits.hour'), threshold: 24 },
+      { name: this.translate.instant('cluster.overview.durationUnits.day'), threshold: 7 },
+      { name: this.translate.instant('cluster.overview.durationUnits.week'), threshold: Number.MAX_VALUE }
     ];
     
     let value = ms;
@@ -482,7 +500,7 @@ export class ClusterOverviewComponent implements OnInit, OnDestroy, AfterViewIni
   }
 
   getLatencyCardTitle(): string {
-    return `${this.selectedLatencyPercentile} 延迟`;
+    return this.translate.instant('cluster.overview.latencyTitle', { percentile: this.selectedLatencyPercentile });
   }
   
   // Cycle through disk/cache metrics on click
@@ -513,13 +531,13 @@ export class ClusterOverviewComponent implements OnInit, OnDestroy, AfterViewIni
   }
   
   getDiskCardTitle(): string {
-    return this.selectedDiskMetric === 'percentage' ? '本地磁盘' : '缓存使用';
+    return this.selectedDiskMetric === 'percentage' ? this.translate.instant('cluster.overview.localDisk') : this.translate.instant('cluster.overview.cacheUsage');
   }
   
   getDiskCardDescription(): string {
     return this.selectedDiskMetric === 'percentage' 
-      ? '计算节点本地磁盘最大使用率（点击切换）'
-      : '使用率最高节点的本地缓存数据量（点击切换）';
+      ? this.translate.instant('cluster.overview.localDiskTooltip')
+      : this.translate.instant('cluster.overview.cacheUsageTooltip');
   }
   
   getDiskCardStatus(): string {
@@ -687,10 +705,13 @@ export class ClusterOverviewComponent implements OnInit, OnDestroy, AfterViewIni
     const qpsColor = this.chartColors.primary || '#3366ff';
     const rpsColor = this.chartColors.success || '#00d68f';
 
+    const qpsName = this.translate.instant('cluster.overview.charts.qps');
+    const rpsName = this.translate.instant('cluster.overview.charts.rps');
+
     return {
       ...this.getBaseChartOptions(qpsColor),
       legend: {
-        data: ['QPS (查询/秒)', 'RPS (请求/秒)'],
+        data: [qpsName, rpsName],
         textStyle: { color: this.chartColors.textBasic },
         top: 0,
       },
@@ -706,12 +727,12 @@ export class ClusterOverviewComponent implements OnInit, OnDestroy, AfterViewIni
       },
       yAxis: {
         ...this.getBaseChartOptions(qpsColor).yAxis,
-        name: '次数/秒',
+        name: this.translate.instant('cluster.overview.charts.perSecond'),
         nameTextStyle: { color: this.chartColors.textHint },
       },
       series: [
-        this.getLineSeries('QPS (查询/秒)', qpsValues, qpsColor),
-        this.getLineSeries('RPS (请求/秒)', rpsValues, rpsColor),
+        this.getLineSeries(qpsName, qpsValues, qpsColor),
+        this.getLineSeries(rpsName, rpsValues, rpsColor),
       ],
     };
   }
@@ -733,10 +754,13 @@ export class ClusterOverviewComponent implements OnInit, OnDestroy, AfterViewIni
     const p95Color = this.chartColors.warning || '#ffaa00';
     const p99Color = this.chartColors.danger || '#ff3d71';
 
+    const p50Name = this.translate.instant('cluster.overview.charts.p50Median');
+    const p99Name = this.translate.instant('cluster.overview.charts.p99Worst');
+
     return {
       ...this.getBaseChartOptions(p99Color),
       legend: {
-        data: ['P50 (中位数)', 'P95', 'P99 (最差)'],
+        data: [p50Name, 'P95', p99Name],
         textStyle: { color: this.chartColors.textBasic },
         top: 0,
       },
@@ -759,7 +783,7 @@ export class ClusterOverviewComponent implements OnInit, OnDestroy, AfterViewIni
       },
       yAxis: {
         ...this.getBaseChartOptions(p99Color).yAxis,
-        name: '延迟 (ms)',
+        name: this.translate.instant('cluster.overview.charts.latencyMs'),
         nameTextStyle: { color: this.chartColors.textHint },
         axisLabel: { 
           ...this.getBaseChartOptions(p99Color).yAxis.axisLabel,
@@ -767,9 +791,9 @@ export class ClusterOverviewComponent implements OnInit, OnDestroy, AfterViewIni
         },
       },
       series: [
-        this.getLineSeries('P50 (中位数)', p50Values, p50Color, false),  // No area fill
+        this.getLineSeries(p50Name, p50Values, p50Color, false),  // No area fill
         this.getLineSeries('P95', p95Values, p95Color, false),  // No area fill
-        this.getLineSeries('P99 (最差)', p99Values, p99Color, true),  // With area fill
+        this.getLineSeries(p99Name, p99Values, p99Color, true),  // With area fill
       ],
     };
   }
@@ -890,7 +914,7 @@ export class ClusterOverviewComponent implements OnInit, OnDestroy, AfterViewIni
         textStyle: { color: this.chartColors.textBasic },
         formatter: (params: any) => {
           const value = params[0].value;
-          return `${params[0].axisValue}<br/>${params[0].marker} JVM 堆内存: ${value.toFixed(1)}%`;
+          return `${params[0].axisValue}<br/>${params[0].marker} ${this.translate.instant('cluster.overview.charts.jvmHeap')}: ${value.toFixed(1)}%`;
         },
       },
       xAxis: {
@@ -900,7 +924,7 @@ export class ClusterOverviewComponent implements OnInit, OnDestroy, AfterViewIni
       yAxis: {
         ...this.getBaseChartOptions(color).yAxis,
         max: 100,
-        name: '使用率 (%)',
+        name: this.translate.instant('cluster.overview.charts.usagePct'),
         nameTextStyle: { color: this.chartColors.textHint },
         axisLabel: { 
           ...this.getBaseChartOptions(color).yAxis.axisLabel,
@@ -938,7 +962,7 @@ export class ClusterOverviewComponent implements OnInit, OnDestroy, AfterViewIni
           markLine: {
             silent: true,
             lineStyle: { color: this.chartColors.danger, type: 'dashed', width: 2 },
-            data: [{ yAxis: 80, label: { formatter: '警戒线 80%', color: this.chartColors.danger } }],
+            data: [{ yAxis: 80, label: { formatter: this.translate.instant('cluster.overview.charts.thresholdLine'), color: this.chartColors.danger } }],
           },
         },
       ],
@@ -1266,9 +1290,9 @@ export class ClusterOverviewComponent implements OnInit, OnDestroy, AfterViewIni
 
   getTrendLabel(trend: string): string {
     const labels: { [key: string]: string } = {
-      'increasing': '增长中',
-      'decreasing': '下降中',
-      'stable': '稳定'
+      'increasing': this.translate.instant('cluster.overview.trend.increasing'),
+      'decreasing': this.translate.instant('cluster.overview.trend.decreasing'),
+      'stable': this.translate.instant('cluster.overview.trend.stable')
     };
     return labels[trend] || trend;
   }

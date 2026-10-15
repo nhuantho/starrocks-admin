@@ -4,8 +4,8 @@
       <div class="overview-toolbar">
         <div class="overview-toolbar__info">
           <div class="overview-toolbar__title">
-            <span>{{ overview?.cluster_name || 'StarRocks 集群概览' }}</span>
-            <nb-badge *ngIf="overview" text="当前激活" status="success"></nb-badge>
+            <span>{{ overview?.cluster_name || ('cluster.dashboard.title' | translate) }}</span>
+            <nb-badge *ngIf="overview" [text]="'cluster.overview.currentlyActive' | translate" status="success"></nb-badge>
           </div>
           <div *ngIf="overview?.timestamp" class="overview-toolbar__timestamp">
             <nb-icon icon="clock-outline"></nb-icon>
@@ -14,19 +14,19 @@
         </div>
         <nb-actions size="small" class="overview-toolbar__actions">
           <nb-action>
-            <nb-select [(selected)]="timeRange" (selectedChange)="onTimeRangeChange($event)" placeholder="时间范围" size="small">
-              <nb-option *ngFor="let opt of timeRangeOptions" [value]="opt.value">{{ opt.label }}</nb-option>
+            <nb-select [(selected)]="timeRange" (selectedChange)="onTimeRangeChange($event)" [placeholder]="'cluster.overview.timeRange' | translate" size="small">
+              <nb-option *ngFor="let opt of timeRangeOptions" [value]="opt.value">{{ opt.label | translate }}</nb-option>
             </nb-select>
           </nb-action>
           <nb-action>
             <button nbButton size="small" status="info" (click)="onManualRefresh()">
               <nb-icon icon="refresh-outline"></nb-icon>
-              刷新
+              {{ 'cluster.shared.refresh' | translate }}
             </button>
           </nb-action>
           <nb-action>
-            <nb-select [(selected)]="refreshInterval" (selectedChange)="onRefreshIntervalChange($event)" placeholder="自动刷新" size="small">
-              <nb-option *ngFor="let opt of refreshIntervalOptions" [value]="opt.value">{{ opt.label }}</nb-option>
+            <nb-select [(selected)]="refreshInterval" (selectedChange)="onRefreshIntervalChange($event)" [placeholder]="'cluster.shared.autoRefresh' | translate" size="small">
+              <nb-option *ngFor="let opt of refreshIntervalOptions" [value]="opt.value">{{ opt.label | translate }}</nb-option>
             </nb-select>
           </nb-action>
         </nb-actions>
@@ -50,7 +50,7 @@
         class="metric-card"
         [status]="card.cardId === 'latency_percentile' ? getSelectedLatencyStatus() : (card.cardId === 'disk_cache_metric' ? getDiskCardStatus() : card.status)"
         (click)="handleCardClick(card)"
-        [nbTooltip]="card.cardId === 'latency_percentile' ? '点击切换 P50/P95/P99' : (card.cardId === 'disk_cache_metric' ? getDiskCardDescription() : (card.description || card.title))"
+        [nbTooltip]="card.cardId === 'latency_percentile' ? ('cluster.overview.latencyToggleHint' | translate) : (card.cardId === 'disk_cache_metric' ? getDiskCardDescription() : (card.description || card.title))"
         nbTooltipPlacement="top">
         <nb-card-body>
           <div class="metric-card__icon">
@@ -85,39 +85,39 @@
     <div class="row chart-row">
       <div class="col-lg-6">
         <ngx-metric-card-group 
-          title="查询性能趋势" 
+          [title]="'cluster.overview.groups.queryPerformance' | translate" 
           icon="activity-outline"
           [collapsed]="false">
           <div *ngIf="performanceTrends">
             <div class="chart-container">
-              <h6 class="chart-subtitle">查询吞吐量 (QPS/RPS)</h6>
+              <h6 class="chart-subtitle">{{ 'cluster.overview.charts.throughput' | translate }}</h6>
               <div echarts [options]="getQpsChartOptions()" class="echart"></div>
             </div>
             <div class="chart-container">
-              <h6 class="chart-subtitle">查询延迟趋势 (P50/P95/P99)</h6>
+              <h6 class="chart-subtitle">{{ 'cluster.overview.charts.latencyTrend' | translate }}</h6>
               <div echarts [options]="getLatencyChartOptions()" class="echart"></div>
             </div>
           </div>
-          <nb-alert *ngIf="!performanceTrends" status="info" class="no-data">暂无性能数据</nb-alert>
+          <nb-alert *ngIf="!performanceTrends" status="info" class="no-data">{{ 'cluster.overview.noPerformanceData' | translate }}</nb-alert>
         </ngx-metric-card-group>
       </div>
       
       <div class="col-lg-6">
         <ngx-metric-card-group 
-          title="资源使用趋势" 
+          [title]="'cluster.overview.groups.resourceUsage' | translate" 
           icon="bar-chart-outline"
           [collapsed]="false">
           <div *ngIf="resourceTrends">
             <div class="chart-container">
-              <h6 class="chart-subtitle">计算节点 CPU / 内存 / 磁盘</h6>
+              <h6 class="chart-subtitle">{{ 'cluster.overview.charts.computeResources' | translate }}</h6>
               <div echarts [options]="getResourceChartOptions()" class="echart"></div>
             </div>
             <div class="chart-container">
-              <h6 class="chart-subtitle">FE JVM 堆内存使用率</h6>
+              <h6 class="chart-subtitle">{{ 'cluster.overview.charts.feJvmHeap' | translate }}</h6>
               <div echarts [options]="getJvmHeapChartOptions()" class="echart"></div>
             </div>
           </div>
-          <nb-alert *ngIf="!resourceTrends" status="info" class="no-data">暂无资源数据</nb-alert>
+          <nb-alert *ngIf="!resourceTrends" status="info" class="no-data">{{ 'cluster.overview.noResourceData' | translate }}</nb-alert>
         </ngx-metric-card-group>
       </div>
     </div>
@@ -126,22 +126,22 @@
     <div class="row chart-row">
       <div class="col-12">
         <ngx-metric-card-group 
-          title="数据统计" 
+          [title]="'cluster.overview.groups.dataStatistics' | translate" 
           icon="pie-chart-outline"
           [collapsed]="false">
           <div *ngIf="dataStatistics">
             <!-- Data Statistics Summary -->
             <div class="stats-summary">
               <div class="stat-item">
-                <span class="label">数据库:</span>
+                <span class="label">{{ 'cluster.overview.labels.databases' | translate }}:</span>
                 <span class="value">{{ dataStatistics.databaseCount }}</span>
               </div>
               <div class="stat-item">
-                <span class="label">表数量:</span>
+                <span class="label">{{ 'cluster.overview.labels.tables' | translate }}:</span>
                 <span class="value">{{ dataStatistics.tableCount }}</span>
               </div>
               <div class="stat-item">
-                <span class="label">总数据量:</span>
+                <span class="label">{{ 'cluster.overview.labels.totalDataSize' | translate }}:</span>
                 <span class="value">{{ formatBytes(dataStatistics.totalDataSizeBytes) }}</span>
               </div>
             </div>
@@ -149,13 +149,13 @@
             <div class="row stats-columns">
               <div class="col-md-6 stats-column">
                 <!-- Top Tables by Size -->
-                <h6 class="section-title">表大小 Top 10</h6>
+                <h6 class="section-title">{{ 'cluster.overview.topTablesBySize' | translate }}</h6>
                 <table class="top-tables-table">
               <thead>
                 <tr>
-                      <th class="cell-name">库.表</th>
-                      <th class="cell-metric text-right">大小</th>
-                      <th class="cell-metric text-right">行数</th>
+                      <th class="cell-name">{{ 'cluster.overview.columns.dbTable' | translate }}</th>
+                      <th class="cell-metric text-right">{{ 'cluster.overview.columns.size' | translate }}</th>
+                      <th class="cell-metric text-right">{{ 'cluster.overview.columns.rows' | translate }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -166,17 +166,17 @@
                     </tr>
                   </tbody>
                 </table>
-                <nb-alert *ngIf="topTablesBySize.length === 0" status="info" class="no-data">暂无数据</nb-alert>
+                <nb-alert *ngIf="topTablesBySize.length === 0" status="info" class="no-data">{{ 'cluster.shared.noData' | translate }}</nb-alert>
               </div>
 
               <div class="col-md-6 stats-column">
                 <!-- Top Tables by Access -->
-                <h6 class="section-title">访问频繁 Top 10</h6>
+                <h6 class="section-title">{{ 'cluster.overview.topTablesByAccess' | translate }}</h6>
                 <table class="top-tables-table">
                   <thead>
                     <tr>
-                      <th class="cell-name-wide">库.表</th>
-                      <th class="cell-metric text-right">访问次数</th>
+                      <th class="cell-name-wide">{{ 'cluster.overview.columns.dbTable' | translate }}</th>
+                      <th class="cell-metric text-right">{{ 'cluster.overview.columns.accessCount' | translate }}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -186,11 +186,11 @@
                 </tr>
               </tbody>
             </table>
-                <nb-alert *ngIf="topTablesByAccess.length === 0" status="info" class="no-data">暂无数据</nb-alert>
+                <nb-alert *ngIf="topTablesByAccess.length === 0" status="info" class="no-data">{{ 'cluster.shared.noData' | translate }}</nb-alert>
               </div>
             </div>
           </div>
-          <nb-alert *ngIf="!dataStatistics" status="info" class="no-data">暂无数据</nb-alert>
+          <nb-alert *ngIf="!dataStatistics" status="info" class="no-data">{{ 'cluster.shared.noData' | translate }}</nb-alert>
         </ngx-metric-card-group>
       </div>
       </div>
@@ -199,21 +199,21 @@
     <div class="row chart-row">
       <div class="col-12">
         <ngx-metric-card-group 
-          title="存算分离 Compaction 监控" 
+          [title]="'cluster.overview.groups.compaction' | translate" 
           icon="activity-outline"
           [collapsed]="false">
           <div *ngIf="compactionDetails">
             <div class="row stats-columns">
               <div class="col-md-8 stats-column">
-                <h6 class="section-title">Top 10 Compaction Score 最高分区</h6>
+                <h6 class="section-title">{{ 'cluster.overview.topCompactionPartitions' | translate }}</h6>
                 <table class="top-tables-table">
                   <thead>
                     <tr>
-                      <th class="compaction-col-name">数据库</th>
-                      <th class="compaction-col-name">表名</th>
-                      <th class="compaction-col-name">分区名</th>
-                      <th class="compaction-col-metric text-right">最大分数</th>
-                      <th class="compaction-col-metric text-right">平均分数</th>
+                      <th class="compaction-col-name">{{ 'cluster.overview.columns.database' | translate }}</th>
+                      <th class="compaction-col-name">{{ 'cluster.overview.columns.table' | translate }}</th>
+                      <th class="compaction-col-name">{{ 'cluster.overview.columns.partition' | translate }}</th>
+                      <th class="compaction-col-metric text-right">{{ 'cluster.overview.columns.maxScore' | translate }}</th>
+                      <th class="compaction-col-metric text-right">{{ 'cluster.overview.columns.avgScore' | translate }}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -229,7 +229,7 @@
                       <td class="text-right cell-nowrap">{{ p.avgScore.toFixed(1) }}</td>
                     </tr>
                     <tr *ngIf="(compactionDetails?.topPartitions || []).length === 0">
-                      <td colspan="5" class="text-center text-muted">暂无数据</td>
+                      <td colspan="5" class="text-center text-muted">{{ 'cluster.shared.noData' | translate }}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -238,42 +238,42 @@
               <!-- 右侧：任务统计 -->
               <div class="col-md-4 stats-column">
                 <!-- 任务统计 -->
-                <h6 class="section-title">任务统计</h6>
+                <h6 class="section-title">{{ 'cluster.overview.taskStats' | translate }}</h6>
                 <div class="task-stats-grid">
                   <div class="task-stat-item clickable" (click)="navigateToCompactions()">
-                    <span class="label">总数:</span>
+                    <span class="label">{{ 'cluster.overview.labels.total' | translate }}:</span>
                     <span class="value">{{ compactionDetails?.taskStats?.totalCount || 0 }}</span>
                   </div>
                   <div class="task-stat-item clickable" (click)="navigateToCompactions()">
-                    <span class="label">正在进行:</span>
+                    <span class="label">{{ 'cluster.overview.labels.inProgress' | translate }}:</span>
                     <span class="value text-warning">{{ compactionDetails?.taskStats?.runningCount || 0 }}</span>
                   </div>
                   <div class="task-stat-item clickable" (click)="navigateToCompactions()">
-                    <span class="label">已完成:</span>
+                    <span class="label">{{ 'cluster.overview.labels.finished' | translate }}:</span>
                     <span class="value text-success">{{ compactionDetails?.taskStats?.finishedCount || 0 }}</span>
                   </div>
                 </div>
                 
                 <!-- 耗时统计 -->
-                <h6 class="section-title">耗时统计</h6>
+                <h6 class="section-title">{{ 'cluster.overview.durationStats' | translate }}</h6>
                 <div class="task-stats-grid">
                   <div class="task-stat-item">
-                    <span class="label">最小:</span>
+                    <span class="label">{{ 'cluster.overview.labels.min' | translate }}:</span>
                     <span class="value">{{ formatDurationString(compactionDetails?.durationStats?.minDurationMs || 0) }}</span>
                   </div>
                   <div class="task-stat-item">
-                    <span class="label">最大:</span>
+                    <span class="label">{{ 'cluster.overview.labels.max' | translate }}:</span>
                     <span class="value">{{ formatDurationString(compactionDetails?.durationStats?.maxDurationMs || 0) }}</span>
                   </div>
                   <div class="task-stat-item">
-                    <span class="label">平均:</span>
+                    <span class="label">{{ 'cluster.overview.labels.avg' | translate }}:</span>
                     <span class="value">{{ formatDurationString(compactionDetails?.durationStats?.avgDurationMs || 0) }}</span>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-          <nb-alert *ngIf="!compactionDetails" status="info" class="no-data">暂无数据</nb-alert>
+          <nb-alert *ngIf="!compactionDetails" status="info" class="no-data">{{ 'cluster.shared.noData' | translate }}</nb-alert>
         </ngx-metric-card-group>
       </div>
     </div>
@@ -282,29 +282,29 @@
     <div class="row chart-row">
       <div class="col-12">
         <ngx-metric-card-group 
-          title="任务监控详情" 
+          [title]="'cluster.overview.groups.taskMonitoring' | translate" 
           icon="layers-outline"
           [collapsed]="false">
           <div *ngIf="dataStatistics">
             <div class="row">
               <div class="col-md-6">
             <!-- Materialized Views -->
-            <h6 class="section-title">物化视图</h6>
+            <h6 class="section-title">{{ 'cluster.overview.cards.mvs' | translate }}</h6>
             <div class="task-stats-grid">
               <div class="task-stat-item">
-                <span class="label">总计:</span>
+                <span class="label">{{ 'cluster.overview.labels.sum' | translate }}:</span>
                 <span class="value">{{ dataStatistics.mvTotal }}</span>
               </div>
               <div class="task-stat-item">
-                <span class="label">运行中:</span>
+                <span class="label">{{ 'cluster.overview.labels.running' | translate }}:</span>
                 <span class="value text-warning">{{ dataStatistics.mvRunning }}</span>
               </div>
               <div class="task-stat-item">
-                <span class="label">成功:</span>
+                <span class="label">{{ 'cluster.overview.labels.success' | translate }}:</span>
                 <span class="value text-success">{{ dataStatistics.mvSuccess }}</span>
               </div>
               <div class="task-stat-item">
-                <span class="label">失败:</span>
+                <span class="label">{{ 'cluster.overview.labels.failed' | translate }}:</span>
                 <span class="value text-danger">{{ dataStatistics.mvFailed }}</span>
                   </div>
               </div>
@@ -312,29 +312,29 @@
 
               <div class="col-md-6">
             <!-- Schema Changes -->
-            <h6 class="section-title">Schema 变更</h6>
+            <h6 class="section-title">{{ 'cluster.overview.schemaChanges' | translate }}</h6>
             <div class="task-stats-grid">
               <div class="task-stat-item">
-                <span class="label">运行中:</span>
+                <span class="label">{{ 'cluster.overview.labels.running' | translate }}:</span>
                 <span class="value text-warning">{{ dataStatistics.schemaChangeRunning }}</span>
               </div>
               <div class="task-stat-item">
-                <span class="label">等待中:</span>
+                <span class="label">{{ 'cluster.overview.labels.pending' | translate }}:</span>
                 <span class="value text-info">{{ dataStatistics.schemaChangePending }}</span>
               </div>
               <div class="task-stat-item">
-                <span class="label">已完成:</span>
+                <span class="label">{{ 'cluster.overview.labels.finished' | translate }}:</span>
                 <span class="value text-success">{{ dataStatistics.schemaChangeFinished }}</span>
               </div>
               <div class="task-stat-item">
-                <span class="label">失败:</span>
+                <span class="label">{{ 'cluster.overview.labels.failed' | translate }}:</span>
                 <span class="value text-danger">{{ dataStatistics.schemaChangeFailed }}</span>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-          <nb-alert *ngIf="!dataStatistics" status="info" class="no-data">暂无数据</nb-alert>
+          <nb-alert *ngIf="!dataStatistics" status="info" class="no-data">{{ 'cluster.shared.noData' | translate }}</nb-alert>
         </ngx-metric-card-group>
       </div>
     </div>
@@ -343,24 +343,24 @@
     <div class="row chart-row">
       <div class="col-12">
         <ngx-metric-card-group 
-          title="活跃查询与会话" 
+          [title]="'cluster.overview.groups.activeQueriesSessions' | translate" 
           icon="people-outline"
           [collapsed]="false">
           <div class="session-stats-grid">
             <div class="session-stat-item clickable" (click)="navigateToSessions()">
-              <span class="label">活跃连接:</span>
+              <span class="label">{{ 'cluster.overview.labels.activeConnections' | translate }}:</span>
               <span class="value text-info">{{ activeSessions }}</span>
             </div>
             <div class="session-stat-item clickable" (click)="navigateToSessions()">
-              <span class="label">运行中查询:</span>
+              <span class="label">{{ 'cluster.overview.labels.runningQueries' | translate }}:</span>
               <span class="value text-warning">{{ runningQueries }}</span>
             </div>
             <div class="session-stat-item clickable" (click)="navigateToSessions()">
-              <span class="label">1小时活跃用户:</span>
+              <span class="label">{{ 'cluster.overview.labels.activeUsers1h' | translate }}:</span>
               <span class="value text-success">{{ activeUsers1h }}</span>
             </div>
             <div class="session-stat-item clickable" (click)="navigateToSessions()">
-              <span class="label">24小时活跃用户:</span>
+              <span class="label">{{ 'cluster.overview.labels.activeUsers24h' | translate }}:</span>
               <span class="value text-success">{{ activeUsers24h }}</span>
             </div>
           </div>
@@ -372,7 +372,7 @@
     <div class="row chart-row">
       <div class="col-lg-6">
         <ngx-metric-card-group 
-          title="容量预测" 
+          [title]="'cluster.overview.groups.capacityPrediction' | translate" 
           icon="hard-drive-outline"
           [collapsed]="true">
           <div *ngIf="capacityPrediction">
@@ -382,42 +382,42 @@
                   [value]="capacityPrediction.disk_usage_pct || 0" 
                   [status]="(capacityPrediction.disk_usage_pct || 0) > 90 ? 'danger' : (capacityPrediction.disk_usage_pct || 0) > 70 ? 'warning' : 'success'">
                 </nb-progress-bar>
-                <span class="progress-label">{{ (capacityPrediction.disk_usage_pct || 0).toFixed(1) }}% 已使用</span>
+                <span class="progress-label">{{ 'cluster.overview.percentUsed' | translate: { pct: (capacityPrediction.disk_usage_pct || 0).toFixed(1) } }}</span>
               </div>
               <div class="stats-summary">
                 <div class="stat-item">
-                  <span class="label">已使用:</span>
+                  <span class="label">{{ 'cluster.overview.labels.used' | translate }}:</span>
                   <span class="value">{{ formatBytes(capacityPrediction.disk_used_bytes) }}</span>
                 </div>
                 <div class="stat-item">
-                  <span class="label">总容量:</span>
+                  <span class="label">{{ 'cluster.overview.labels.totalCapacity' | translate }}:</span>
                   <span class="value">{{ formatBytes(capacityPrediction.disk_total_bytes) }}</span>
                 </div>
                 <div class="stat-item">
-                  <span class="label">日增长:</span>
-                  <span class="value">{{ formatBytes(capacityPrediction.daily_growth_bytes) }}/天</span>
+                  <span class="label">{{ 'cluster.overview.labels.dailyGrowth' | translate }}:</span>
+                  <span class="value">{{ 'cluster.overview.perDay' | translate: { unit: formatBytes(capacityPrediction.daily_growth_bytes) } }}</span>
                 </div>
                 <div class="stat-item" *ngIf="capacityPrediction.days_until_full">
-                  <span class="label">预计存满:</span>
+                  <span class="label">{{ 'cluster.overview.labels.estimatedFull' | translate }}:</span>
                   <span class="value" [class.text-danger]="capacityPrediction.days_until_full < 30">
-                    {{ capacityPrediction.days_until_full }} 天后
+                    {{ 'cluster.overview.inDays' | translate: { days: capacityPrediction.days_until_full } }}
                   </span>
                 </div>
               </div>
             </div>
           </div>
-          <nb-alert *ngIf="!capacityPrediction" status="info" class="no-data">暂无容量预测数据</nb-alert>
+          <nb-alert *ngIf="!capacityPrediction" status="info" class="no-data">{{ 'cluster.overview.noCapacityData' | translate }}</nb-alert>
         </ngx-metric-card-group>
       </div>
 
       <div class="col-lg-6">
         <ngx-metric-card-group 
-          title="智能告警与建议" 
+          [title]="'cluster.overview.groups.smartAlerts' | translate" 
           icon="alert-triangle-outline"
           [collapsed]="true"
           [badgeCount]="0"
           badgeStatus="warning">
-          <nb-alert status="warning" class="no-data">智能告警功能（P2阶段实现）</nb-alert>
+          <nb-alert status="warning" class="no-data">{{ 'cluster.overview.smartAlertsComingSoon' | translate }}</nb-alert>
         </ngx-metric-card-group>
       </div>
     </div>

@@ -10,7 +10,7 @@ import { CreateFunctionRequest } from '../../../../@core/data/system-function';
       <nb-card-header>
         <div class="d-flex align-items-center">
           <nb-icon icon="plus-circle-outline" class="mr-2"></nb-icon>
-          <h5 class="mb-0">添加自定义功能</h5>
+          <h5 class="mb-0">{{ 'sysfn.dialog.addTitle' | translate }}</h5>
         </div>
       </nb-card-header>
       <nb-card-body>
@@ -18,76 +18,76 @@ import { CreateFunctionRequest } from '../../../../@core/data/system-function';
           <div class="row">
             <div class="col-md-6">
               <div class="form-group">
-                <label for="category_name" class="label">分类名称 *</label>
+                <label for="category_name" class="label">{{ 'sysfn.dialog.categoryName' | translate }} *</label>
                 <input
                   type="text"
                   id="category_name"
                   formControlName="category_name"
                   nbInput
                   fullWidth
-                  placeholder="请输入分类名称"
+                  [placeholder]="'sysfn.dialog.categoryNamePlaceholder' | translate"
                   [readonly]="isCategoryNameReadonly"
                   status="basic"
                 />
                 <div *ngIf="addFunctionForm.get('category_name')?.invalid && addFunctionForm.get('category_name')?.touched" class="text-danger small mt-1">
-                  分类名称是必填项
+                  {{ 'sysfn.dialog.categoryNameRequired' | translate }}
                 </div>
                 <small *ngIf="isCategoryNameReadonly" class="text-hint">
-                  从分类卡片添加时，分类名称不可修改
+                  {{ 'sysfn.dialog.categoryReadonlyFromCard' | translate }}
                 </small>
               </div>
             </div>
             <div class="col-md-6">
               <div class="form-group">
-                <label for="function_name" class="label">功能名称 *</label>
+                <label for="function_name" class="label">{{ 'sysfn.dialog.functionName' | translate }} *</label>
                 <input
                   type="text"
                   id="function_name"
                   formControlName="function_name"
                   nbInput
                   fullWidth
-                  placeholder="请输入功能名称"
+                  [placeholder]="'sysfn.dialog.functionNamePlaceholder' | translate"
                   status="basic"
                 />
                 <div *ngIf="addFunctionForm.get('function_name')?.invalid && addFunctionForm.get('function_name')?.touched" class="text-danger small mt-1">
-                  功能名称是必填项
+                  {{ 'sysfn.dialog.functionNameRequired' | translate }}
                 </div>
               </div>
             </div>
           </div>
 
           <div class="form-group">
-            <label for="description" class="label">功能说明 *</label>
+            <label for="description" class="label">{{ 'sysfn.dialog.description' | translate }} *</label>
             <textarea
               id="description"
               formControlName="description"
               nbInput
               fullWidth
               rows="3"
-              placeholder="请输入功能说明"
+              [placeholder]="'sysfn.dialog.descriptionPlaceholder' | translate"
               status="basic"
             ></textarea>
             <div *ngIf="addFunctionForm.get('description')?.invalid && addFunctionForm.get('description')?.touched" class="text-danger small mt-1">
-              功能说明是必填项
+              {{ 'sysfn.dialog.descriptionRequired' | translate }}
             </div>
           </div>
 
           <div class="form-group">
-            <label for="sql_query" class="label">SQL查询 *</label>
+            <label for="sql_query" class="label">{{ 'sysfn.dialog.sqlQuery' | translate }} *</label>
             <textarea
               id="sql_query"
               formControlName="sql_query"
               nbInput
               fullWidth
               rows="6"
-              placeholder="请输入SQL查询语句（只支持SELECT和SHOW语句）"
+              [placeholder]="'sysfn.dialog.sqlQueryPlaceholder' | translate"
               status="basic"
             ></textarea>
             <div *ngIf="addFunctionForm.get('sql_query')?.invalid && addFunctionForm.get('sql_query')?.touched" class="text-danger small mt-1">
-              SQL查询是必填项
+              {{ 'sysfn.dialog.sqlQueryRequired' | translate }}
             </div>
             <small class="text-hint">
-              只支持SELECT和SHOW类型的SQL查询语句
+              {{ 'sysfn.dialog.sqlHint' | translate }}
             </small>
           </div>
         </form>
@@ -101,7 +101,7 @@ import { CreateFunctionRequest } from '../../../../@core/data/system-function';
             (click)="onCancel()"
           >
             <nb-icon icon="close-outline"></nb-icon>
-            取消
+            {{ 'sysfn.dialog.cancel' | translate }}
           </button>
           <button
             type="button"
@@ -111,7 +111,7 @@ import { CreateFunctionRequest } from '../../../../@core/data/system-function';
             (click)="onSubmit()"
           >
             <nb-icon icon="checkmark-outline"></nb-icon>
-            添加
+            {{ 'sysfn.dialog.add' | translate }}
           </button>
         </div>
       </nb-card-footer>

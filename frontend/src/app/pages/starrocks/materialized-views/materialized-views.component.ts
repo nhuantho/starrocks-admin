@@ -12,6 +12,7 @@ import { ClusterContextService } from '../../../@core/data/cluster-context.servi
 import { ErrorHandler } from '../../../@core/utils/error-handler';
 import { ConfirmDialogService } from '../../../@core/services/confirm-dialog.service';
 import { ActiveToggleRenderComponent } from './active-toggle-render.component';
+import { TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'ngx-materialized-views',
@@ -50,31 +51,10 @@ export class MaterializedViewsComponent implements OnInit, OnDestroy {
 
   // Options for filters
   databases: string[] = [];
-  refreshTypeOptions = [
-    { value: 'all', label: '全部类型' },
-    { value: 'ASYNC', label: '自动刷新' },
-    { value: 'MANUAL', label: '手动刷新' },
-    { value: 'ROLLUP', label: '同步' },
-    { value: 'INCREMENTAL', label: '增量' },
-  ];
-  activeStateOptions = [
-    { value: 'all', label: '全部' },
-    { value: 'active', label: 'Active' },
-    { value: 'inactive', label: 'Inactive' },
-  ];
-  refreshStateOptions = [
-    { value: 'all', label: '全部' },
-    { value: 'SUCCESS', label: '成功' },
-    { value: 'RUNNING', label: '运行中' },
-    { value: 'FAILED', label: '失败' },
-    { value: 'PENDING', label: '等待中' },
-  ];
-  partitionTypeOptions = [
-    { value: 'all', label: '全部分区类型' },
-    { value: 'RANGE', label: 'RANGE' },
-    { value: 'LIST', label: 'LIST' },
-    { value: 'UNPARTITIONED', label: 'UNPARTITIONED' },
-  ];
+  refreshTypeOptions: { value: string; label: string }[] = [];
+  activeStateOptions: { value: string; label: string }[] = [];
+  refreshStateOptions: { value: string; label: string }[] = [];
+  partitionTypeOptions: { value: string; label: string }[] = [];
 
   // Statistics
   totalCount = 0;
@@ -112,121 +92,9 @@ export class MaterializedViewsComponent implements OnInit, OnDestroy {
   editAdvancedClause = '';
   editing = false;
 
-  refreshModeOptions = [
-    { value: 'ASYNC', label: '异步模式' },
-    { value: 'SYNC', label: '同步模式' },
-  ];
+  refreshModeOptions: { value: string; label: string }[] = [];
 
-  settings = {
-    mode: 'external',
-    hideSubHeader: false,
-    noDataMessage: '暂无物化视图数据',
-    actions: {
-      columnTitle: '操作',
-      add: false,
-      edit: true,
-      delete: true,
-      position: 'right',
-    },
-    edit: {
-      editButtonContent: '<i class="nb-search"></i>',
-      confirmEdit: false,
-    },
-    delete: {
-      deleteButtonContent: '<i class="nb-trash"></i>',
-      confirmDelete: false,
-    },
-    pager: {
-      display: true,
-      perPage: 15,
-    },
-    columns: {
-      name: {
-        title: '名称',
-        type: 'string',
-        width: '12%',
-      },
-      database_name: {
-        title: '数据库',
-        type: 'string',
-        width: '10%',
-      },
-      mv_type: {
-        title: '类型',
-        type: 'html',
-        width: '7%',
-        valuePrepareFunction: (value: any, row: MaterializedView) => {
-          if (row.refresh_type === 'ROLLUP') {
-            return '<span class="badge badge-primary">同步</span>';
-          } else {
-            return '<span class="badge badge-info">异步</span>';
-          }
-        },
-      },
-      refresh_type: {
-        title: '刷新策略',
-        type: 'html',
-        width: '9%',
-        valuePrepareFunction: (value: string) => {
-          return this.getRefreshTypeBadge(value);
-        },
-      },
-      is_active: {
-        title: '状态',
-        type: 'custom',
-        width: '12%',
-        renderComponent: ActiveToggleRenderComponent,
-        onComponentInitFunction: (instance: any) => {
-          instance.toggle.subscribe((rowData: any) => {
-            this.toggleActiveState(rowData);
-          });
-        },
-      },
-      last_refresh_state: {
-        title: '刷新状态',
-        type: 'html',
-        width: '9%',
-        valuePrepareFunction: (value: string, row: MaterializedView) => {
-          if (row.refresh_type === 'ROLLUP') return '-';
-          return this.getRefreshStateBadge(value);
-        },
-      },
-      last_refresh_finished_time: {
-        title: '最后刷新时间',
-        type: 'string',
-        width: '15%',
-        valuePrepareFunction: (value: string) => value || '-',
-      },
-      rows: {
-        title: '行数',
-        type: 'string',
-        width: '8%',
-        valuePrepareFunction: (value: number) => {
-          if (value === null || value === undefined) return '-';
-          return this.formatNumber(value);
-        },
-      },
-      partition_type: {
-        title: '分区类型',
-        type: 'string',
-        width: '8%',
-        valuePrepareFunction: (value: string) => value || '-',
-      },
-      error_info: {
-        title: '错误信息',
-        type: 'html',
-        width: '8%',
-        valuePrepareFunction: (value: any, row: MaterializedView) => {
-          if (row.last_refresh_error_message) {
-            return `<span class="text-danger" title="${row.last_refresh_error_message}">
-              <i class="nb-alert-circle"></i> 错误
-            </span>`;
-          }
-          return '-';
-        },
-      },
-    },
-  };
+  settings: any = {};
 
   constructor(
     private mvService: MaterializedViewService,
@@ -235,9 +103,167 @@ export class MaterializedViewsComponent implements OnInit, OnDestroy {
     private toastrService: NbToastrService,
     private confirmDialogService: ConfirmDialogService,
     private dialogService: NbDialogService,
-  ) {}
+    private translate: TranslateService,
+  ) {
+    this.buildTranslatedOptions();
+    this.settings = this.buildSettings();
+  }
+
+  private buildTranslatedOptions(): void {
+    const t = (key: string) => this.translate.instant(key);
+    this.refreshTypeOptions = [
+      { value: 'all', label: t('mv.options.allTypes') },
+      { value: 'ASYNC', label: t('mv.options.refreshType.ASYNC') },
+      { value: 'MANUAL', label: t('mv.options.refreshType.MANUAL') },
+      { value: 'ROLLUP', label: t('mv.options.refreshType.ROLLUP') },
+      { value: 'INCREMENTAL', label: t('mv.options.refreshType.INCREMENTAL') },
+    ];
+    this.activeStateOptions = [
+      { value: 'all', label: t('mv.options.all') },
+      { value: 'active', label: 'Active' },
+      { value: 'inactive', label: 'Inactive' },
+    ];
+    this.refreshStateOptions = [
+      { value: 'all', label: t('mv.options.all') },
+      { value: 'SUCCESS', label: t('mv.options.refreshState.SUCCESS') },
+      { value: 'RUNNING', label: t('mv.options.refreshState.RUNNING') },
+      { value: 'FAILED', label: t('mv.options.refreshState.FAILED') },
+      { value: 'PENDING', label: t('mv.options.refreshState.PENDING') },
+    ];
+    this.partitionTypeOptions = [
+      { value: 'all', label: t('mv.options.allPartitionTypes') },
+      { value: 'RANGE', label: 'RANGE' },
+      { value: 'LIST', label: 'LIST' },
+      { value: 'UNPARTITIONED', label: 'UNPARTITIONED' },
+    ];
+    this.refreshModeOptions = [
+      { value: 'ASYNC', label: t('mv.options.refreshMode.ASYNC') },
+      { value: 'SYNC', label: t('mv.options.refreshMode.SYNC') },
+    ];
+  }
+
+  private buildSettings(): any {
+    const t = (key: string) => this.translate.instant(key);
+    return {
+      mode: 'external',
+      hideSubHeader: false,
+      noDataMessage: t('mv.table.noData'),
+      actions: {
+        columnTitle: t('mv.table.actions'),
+        add: false,
+        edit: true,
+        delete: true,
+        position: 'right',
+      },
+      edit: {
+        editButtonContent: '<i class="nb-search"></i>',
+        confirmEdit: false,
+      },
+      delete: {
+        deleteButtonContent: '<i class="nb-trash"></i>',
+        confirmDelete: false,
+      },
+      pager: {
+        display: true,
+        perPage: 15,
+      },
+      columns: {
+        name: {
+          title: t('mv.table.name'),
+          type: 'string',
+          width: '12%',
+        },
+        database_name: {
+          title: t('mv.table.database'),
+          type: 'string',
+          width: '10%',
+        },
+        mv_type: {
+          title: t('mv.table.type'),
+          type: 'html',
+          width: '7%',
+          valuePrepareFunction: (value: any, row: MaterializedView) => {
+            if (row.refresh_type === 'ROLLUP') {
+              return `<span class="badge badge-primary">${t('mv.badge.sync')}</span>`;
+            } else {
+              return `<span class="badge badge-info">${t('mv.badge.async')}</span>`;
+            }
+          },
+        },
+        refresh_type: {
+          title: t('mv.table.refreshStrategy'),
+          type: 'html',
+          width: '9%',
+          valuePrepareFunction: (value: string) => {
+            return this.getRefreshTypeBadge(value);
+          },
+        },
+        is_active: {
+          title: t('mv.table.status'),
+          type: 'custom',
+          width: '12%',
+          renderComponent: ActiveToggleRenderComponent,
+          onComponentInitFunction: (instance: any) => {
+            instance.toggle.subscribe((rowData: any) => {
+              this.toggleActiveState(rowData);
+            });
+          },
+        },
+        last_refresh_state: {
+          title: t('mv.table.refreshState'),
+          type: 'html',
+          width: '9%',
+          valuePrepareFunction: (value: string, row: MaterializedView) => {
+            if (row.refresh_type === 'ROLLUP') return '-';
+            return this.getRefreshStateBadge(value);
+          },
+        },
+        last_refresh_finished_time: {
+          title: t('mv.table.lastRefreshTime'),
+          type: 'string',
+          width: '15%',
+          valuePrepareFunction: (value: string) => value || '-',
+        },
+        rows: {
+          title: t('mv.table.rows'),
+          type: 'string',
+          width: '8%',
+          valuePrepareFunction: (value: number) => {
+            if (value === null || value === undefined) return '-';
+            return this.formatNumber(value);
+          },
+        },
+        partition_type: {
+          title: t('mv.table.partitionType'),
+          type: 'string',
+          width: '8%',
+          valuePrepareFunction: (value: string) => value || '-',
+        },
+        error_info: {
+          title: t('mv.table.errorInfo'),
+          type: 'html',
+          width: '8%',
+          valuePrepareFunction: (value: any, row: MaterializedView) => {
+            if (row.last_refresh_error_message) {
+              return `<span class="text-danger" title="${row.last_refresh_error_message}">
+                <i class="nb-alert-circle"></i> ${t('mv.table.error')}
+              </span>`;
+            }
+            return '-';
+          },
+        },
+      },
+    };
+  }
 
   ngOnInit() {
+    this.translate.onLangChange
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.buildTranslatedOptions();
+        this.settings = this.buildSettings();
+      });
+
     // Get clusterId from ClusterContextService
     this.clusterId = this.clusterContextService.getActiveClusterId() || 0;
 
@@ -278,7 +304,7 @@ export class MaterializedViewsComponent implements OnInit, OnDestroy {
         error: (error) => {
           this.toastrService.danger(
             ErrorHandler.extractErrorMessage(error),
-            '加载集群信息失败',
+            this.translate.instant('mv.toast.loadClusterFailed'),
           );
         },
       });
@@ -300,7 +326,7 @@ export class MaterializedViewsComponent implements OnInit, OnDestroy {
         error: (error) => {
           this.toastrService.danger(
             ErrorHandler.handleClusterError(error),
-            '加载物化视图失败',
+            this.translate.instant('mv.toast.loadFailed'),
           );
           this.loading = false;
         },
@@ -479,7 +505,10 @@ export class MaterializedViewsComponent implements OnInit, OnDestroy {
 
   createMV() {
     if (!this.createSQL.trim()) {
-      this.toastrService.warning('请输入CREATE MATERIALIZED VIEW SQL语句', '输入错误');
+      this.toastrService.warning(
+        this.translate.instant('mv.toast.sqlRequired'),
+        this.translate.instant('mv.toast.inputError'),
+      );
       return;
     }
 
@@ -489,14 +518,17 @@ export class MaterializedViewsComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
-          this.toastrService.success('物化视图创建成功', '成功');
+          this.toastrService.success(
+            this.translate.instant('mv.toast.createSuccess'),
+            this.translate.instant('mv.toast.success'),
+          );
           this.closeCreateDialog();
           this.loadMaterializedViews();
         },
         error: (error) => {
           this.toastrService.danger(
             ErrorHandler.extractErrorMessage(error),
-            '创建物化视图失败',
+            this.translate.instant('mv.toast.createFailed'),
           );
           this.creating = false;
         },
@@ -518,7 +550,7 @@ export class MaterializedViewsComponent implements OnInit, OnDestroy {
         error: (error) => {
           this.toastrService.danger(
             ErrorHandler.extractErrorMessage(error),
-            '加载DDL失败',
+            this.translate.instant('mv.toast.loadDdlFailed'),
           );
         },
       });
@@ -567,14 +599,17 @@ export class MaterializedViewsComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
-          this.toastrService.success('刷新任务已启动', '成功');
+          this.toastrService.success(
+            this.translate.instant('mv.toast.refreshStarted'),
+            this.translate.instant('mv.toast.success'),
+          );
           this.closeRefreshDialog();
           setTimeout(() => this.loadMaterializedViews(), 1000);
         },
         error: (error) => {
           this.toastrService.danger(
             ErrorHandler.extractErrorMessage(error),
-            '刷新失败',
+            this.translate.instant('mv.toast.refreshFailed'),
           );
           this.refreshing = false;
         },
@@ -584,10 +619,10 @@ export class MaterializedViewsComponent implements OnInit, OnDestroy {
   cancelRefresh(mv: MaterializedView) {
     this.confirmDialogService
       .confirm(
-        '取消刷新',
-        `确定要取消物化视图 "${mv.name}" 的刷新任务吗？`,
-        '取消刷新',
-        '不取消',
+        this.translate.instant('mv.confirm.cancelRefreshTitle'),
+        this.translate.instant('mv.confirm.cancelRefreshMessage', { name: mv.name }),
+        this.translate.instant('mv.confirm.cancelRefreshConfirm'),
+        this.translate.instant('mv.confirm.cancelRefreshDismiss'),
       )
       .subscribe((confirmed) => {
         if (confirmed) {
@@ -596,13 +631,16 @@ export class MaterializedViewsComponent implements OnInit, OnDestroy {
             .pipe(takeUntil(this.destroy$))
             .subscribe({
               next: () => {
-                this.toastrService.success('刷新任务已取消', '成功');
+                this.toastrService.success(
+                  this.translate.instant('mv.toast.refreshCancelled'),
+                  this.translate.instant('mv.toast.success'),
+                );
                 this.loadMaterializedViews();
               },
               error: (error) => {
                 this.toastrService.danger(
                   ErrorHandler.extractErrorMessage(error),
-                  '取消刷新失败',
+                  this.translate.instant('mv.toast.cancelRefreshFailed'),
                 );
               },
             });
@@ -616,14 +654,17 @@ export class MaterializedViewsComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
-          this.toastrService.success('物化视图删除成功', '成功');
+          this.toastrService.success(
+            this.translate.instant('mv.toast.deleteSuccess'),
+            this.translate.instant('mv.toast.success'),
+          );
           tableEvent?.confirm.resolve();
           this.loadMaterializedViews();
         },
         error: (error) => {
           this.toastrService.danger(
             ErrorHandler.extractErrorMessage(error),
-            '删除失败',
+            this.translate.instant('mv.toast.deleteFailed'),
           );
           tableEvent?.confirm.reject();
         },
@@ -633,14 +674,15 @@ export class MaterializedViewsComponent implements OnInit, OnDestroy {
   // Toggle Active/Inactive state
   toggleActiveState(mv: MaterializedView) {
     const newState = mv.is_active ? 'INACTIVE' : 'ACTIVE';
-    const action = mv.is_active ? '停用' : '激活';
-    
+    const actionKey = mv.is_active ? 'deactivate' : 'activate';
+    const t = (key: string, params?: any) => this.translate.instant(key, params);
+
     this.confirmDialogService
       .confirm(
-        `${action}物化视图`,
-        `确定要${action}物化视图 "${mv.name}" 吗？`,
-        action,
-        '取消',
+        t(`mv.confirm.${actionKey}Title`),
+        t(`mv.confirm.${actionKey}Message`, { name: mv.name }),
+        t(`mv.actions.${actionKey}`),
+        t('mv.actions.cancel'),
       )
       .subscribe((confirmed) => {
         if (confirmed) {
@@ -649,13 +691,13 @@ export class MaterializedViewsComponent implements OnInit, OnDestroy {
             .pipe(takeUntil(this.destroy$))
             .subscribe({
               next: () => {
-                this.toastrService.success(`物化视图已${action}`, '成功');
+                this.toastrService.success(t(`mv.toast.${actionKey}Success`), t('mv.toast.success'));
                 this.loadMaterializedViews();
               },
               error: (error) => {
                 this.toastrService.danger(
                   ErrorHandler.extractErrorMessage(error),
-                  `${action}失败`,
+                  t(`mv.toast.${actionKey}Failed`),
                 );
               },
             });
@@ -696,11 +738,11 @@ export class MaterializedViewsComponent implements OnInit, OnDestroy {
     switch (this.editAction) {
       case 'rename':
         if (!this.editNewName.trim()) {
-          this.toastrService.warning('请输入新名称', '输入错误');
+          this.toastrService.warning(this.translate.instant('mv.toast.newNameRequired'), this.translate.instant('mv.toast.inputError'));
           return;
         }
         if (this.editNewName === this.selectedMV.name) {
-          this.toastrService.warning('新名称与当前名称相同', '输入错误');
+          this.toastrService.warning(this.translate.instant('mv.toast.sameName'), this.translate.instant('mv.toast.inputError'));
           return;
         }
         alterClause = `RENAME ${this.editNewName}`;
@@ -712,7 +754,7 @@ export class MaterializedViewsComponent implements OnInit, OnDestroy {
         } else {
           const interval = parseInt(this.editRefreshInterval);
           if (!interval || interval <= 0) {
-            this.toastrService.warning('请输入有效的刷新间隔', '输入错误');
+            this.toastrService.warning(this.translate.instant('mv.toast.invalidInterval'), this.translate.instant('mv.toast.inputError'));
             return;
           }
           alterClause = `REFRESH ASYNC EVERY(INTERVAL ${interval} ${this.editRefreshUnit})`;
@@ -721,7 +763,7 @@ export class MaterializedViewsComponent implements OnInit, OnDestroy {
         
       case 'properties':
         if (!this.editPropertyKey.trim() || !this.editPropertyValue.trim()) {
-          this.toastrService.warning('请输入属性名称和值', '输入错误');
+          this.toastrService.warning(this.translate.instant('mv.toast.propertyRequired'), this.translate.instant('mv.toast.inputError'));
           return;
         }
         // Add session. prefix if it's a session variable
@@ -733,7 +775,7 @@ export class MaterializedViewsComponent implements OnInit, OnDestroy {
         
       case 'advanced':
         if (!this.editAdvancedClause.trim()) {
-          this.toastrService.warning('请输入ALTER子句', '输入错误');
+          this.toastrService.warning(this.translate.instant('mv.toast.alterClauseRequired'), this.translate.instant('mv.toast.inputError'));
           return;
         }
         alterClause = this.editAdvancedClause;
@@ -746,14 +788,17 @@ export class MaterializedViewsComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
-          this.toastrService.success('物化视图修改成功', '成功');
+          this.toastrService.success(
+            this.translate.instant('mv.toast.alterSuccess'),
+            this.translate.instant('mv.toast.success'),
+          );
           this.closeEditDialog();
           this.loadMaterializedViews();
         },
         error: (error) => {
           this.toastrService.danger(
             ErrorHandler.extractErrorMessage(error),
-            '修改失败',
+            this.translate.instant('mv.toast.alterFailed'),
           );
           this.editing = false;
         },
@@ -761,22 +806,24 @@ export class MaterializedViewsComponent implements OnInit, OnDestroy {
   }
 
   getRefreshTypeBadge(type: string): string {
+    const t = (key: string) => this.translate.instant(key);
     const badges = {
-      ASYNC: '<span class="badge badge-success">自动</span>',
-      MANUAL: '<span class="badge badge-info">手动</span>',
-      ROLLUP: '<span class="badge badge-primary">同步</span>',
-      INCREMENTAL: '<span class="badge badge-warning">增量</span>',
+      ASYNC: `<span class="badge badge-success">${t('mv.badge.refreshType.ASYNC')}</span>`,
+      MANUAL: `<span class="badge badge-info">${t('mv.badge.refreshType.MANUAL')}</span>`,
+      ROLLUP: `<span class="badge badge-primary">${t('mv.badge.refreshType.ROLLUP')}</span>`,
+      INCREMENTAL: `<span class="badge badge-warning">${t('mv.badge.refreshType.INCREMENTAL')}</span>`,
     };
     return badges[type] || `<span class="badge badge-basic">${type}</span>`;
   }
 
   getRefreshStateBadge(state: string): string {
     if (!state) return '-';
+    const t = (key: string) => this.translate.instant(key);
     const badges = {
-      SUCCESS: '<span class="badge badge-success">成功</span>',
-      RUNNING: '<span class="badge badge-info">运行中</span>',
-      FAILED: '<span class="badge badge-danger">失败</span>',
-      PENDING: '<span class="badge badge-warning">等待中</span>',
+      SUCCESS: `<span class="badge badge-success">${t('mv.options.refreshState.SUCCESS')}</span>`,
+      RUNNING: `<span class="badge badge-info">${t('mv.options.refreshState.RUNNING')}</span>`,
+      FAILED: `<span class="badge badge-danger">${t('mv.options.refreshState.FAILED')}</span>`,
+      PENDING: `<span class="badge badge-warning">${t('mv.options.refreshState.PENDING')}</span>`,
     };
     return badges[state] || `<span class="badge badge-basic">${state}</span>`;
   }

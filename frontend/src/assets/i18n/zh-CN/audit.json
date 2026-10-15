@@ -1,0 +1,41 @@
+{
+  "title": "审计日志",
+  "cluster": "集群",
+  "noClusterSelected": "未选择集群",
+  "loadFailed": "加载失败",
+  "refresh": {
+    "button": "刷新",
+    "auto": "自动刷新",
+    "off": "关闭",
+    "seconds": "{{n}}秒",
+    "minutes": "{{n}}分钟"
+  },
+  "filters": {
+    "searchPlaceholder": "搜索 Query ID / SQL / 用户",
+    "startTime": "开始时间",
+    "endTime": "结束时间",
+    "search": "搜索",
+    "active": "当前筛选条件：",
+    "keyword": "关键词",
+    "clear": "清除筛选"
+  },
+  "table": {
+    "noData": "暂无审计日志记录",
+    "user": "用户",
+    "database": "数据库",
+    "type": "类型",
+    "state": "状态",
+    "startTime": "开始时间",
+    "durationMs": "耗时(ms)"
+  },
+  "pagination": {
+    "showing": "显示第 {{from}} - {{to}} 条，共 {{total}} 条",
+    "perPage": "{{n}} 条/页",
+    "page": "第 {{current}} / {{total}} 页"
+  },
+  "profile": {
+    "executionTime": "执行时间",
+    "status": "状态",
+    "content": "Profile 内容"
+  }
+}

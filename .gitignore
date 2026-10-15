@@ -73,3 +73,5 @@ config.toml
 !config.toml.example
 target
 .kilocode
+# Local docker cargo cache
+.cargo-docker/

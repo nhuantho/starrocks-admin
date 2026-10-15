@@ -4,7 +4,7 @@
 //! conclusion and performance score calculation.
 
 use super::rules::{
-    Diagnostic, DiagnosticRule, RuleContext, RuleSeverity, get_all_rules, get_query_rules,
+    Diagnostic, DiagnosticRule, Lang, RuleContext, RuleSeverity, get_all_rules, get_query_rules,
 };
 use crate::services::profile_analyzer::models::*;
 use std::collections::HashSet;
@@ -51,7 +51,7 @@ impl RuleEngine {
     /// Analyze a profile and return diagnostics (for backward compatibility and tests)
     #[allow(dead_code)]
     pub fn analyze(&self, profile: &Profile) -> Vec<Diagnostic> {
-        self.analyze_with_cluster_variables(profile, None)
+        self.analyze_with_cluster_variables(profile, None, Lang::default())
     }
 
     /// Analyze a profile with optional live cluster variables
@@ -60,6 +60,7 @@ impl RuleEngine {
         &self,
         profile: &Profile,
         cluster_variables: Option<&std::collections::HashMap<String, String>>,
+        lang: Lang,
     ) -> Vec<Diagnostic> {
         let mut diagnostics = Vec::new();
 
@@ -67,6 +68,7 @@ impl RuleEngine {
         let query_ctx = super::rules::query::QueryRuleContext::with_cluster_variables(
             profile,
             cluster_variables,
+            lang,
         );
         for rule in get_query_rules() {
             if let Some(diag) = rule.evaluate(&query_ctx)
@@ -106,6 +108,7 @@ impl RuleEngine {
                     cluster_info: cluster_info.clone(),
                     cluster_variables,
                     default_db,
+                    lang,
                 };
 
                 for rule in &self.rules {
@@ -164,9 +167,18 @@ impl Default for RuleEngine {
 
 impl RuleEngine {
     /// Generate a conclusion based on diagnostics and profile
-    pub fn generate_conclusion(diagnostics: &[Diagnostic], profile: &Profile) -> String {
+    pub fn generate_conclusion(
+        diagnostics: &[Diagnostic],
+        profile: &Profile,
+        lang: Lang,
+    ) -> String {
         if diagnostics.is_empty() {
-            return "查询执行良好，未发现明显性能问题。".to_string();
+            return lang
+                .pick(
+                    "查询执行良好，未发现明显性能问题。",
+                    "The query executed well; no significant performance issues were found.",
+                )
+                .to_string();
         }
 
         let error_count = diagnostics
@@ -180,26 +192,50 @@ impl RuleEngine {
 
         let total_time = Self::parse_total_time(&profile.summary.total_time).unwrap_or(0.0);
 
+        let duration = Self::format_duration(total_time, lang);
+
         if error_count > 0 {
-            format!(
-                "查询存在{}个严重性能问题，执行时间较长（{}）。主要问题是{}。建议优先解决严重问题。",
-                error_count,
-                Self::format_duration(total_time),
-                diagnostics
-                    .first()
-                    .map(|d| d.rule_name.as_str())
-                    .unwrap_or("未知")
-            )
+            let main_issue = diagnostics
+                .first()
+                .map(|d| d.rule_name.as_str())
+                .unwrap_or(lang.pick("未知", "unknown"));
+            match lang {
+                Lang::Zh => format!(
+                    "查询存在{}个严重性能问题，执行时间较长（{}）。主要问题是{}。建议优先解决严重问题。",
+                    error_count, duration, main_issue
+                ),
+                Lang::En => format!(
+                    "The query has {} severe performance issue(s) and a long execution time ({}). The main issue is: {}. Address the severe issues first.",
+                    error_count, duration, main_issue
+                ),
+            }
         } else if warning_count > 2 {
-            format!(
-                "查询存在{}个中等程度性能问题，整体性能需优化。执行时间{}。",
-                warning_count,
-                Self::format_duration(total_time)
-            )
+            match lang {
+                Lang::Zh => format!(
+                    "查询存在{}个中等程度性能问题，整体性能需优化。执行时间{}。",
+                    warning_count, duration
+                ),
+                Lang::En => format!(
+                    "The query has {} moderate performance issues; overall performance needs optimization. Execution time: {}.",
+                    warning_count, duration
+                ),
+            }
         } else if total_time > 300.0 {
-            format!("查询执行时间较长（{}），建议关注性能热点。", Self::format_duration(total_time))
+            match lang {
+                Lang::Zh => format!("查询执行时间较长（{}），建议关注性能热点。", duration),
+                Lang::En => format!(
+                    "The query took a long time ({}); review the performance hotspots.",
+                    duration
+                ),
+            }
         } else {
-            format!("查询发现{}个小问题，整体性能可接受。", diagnostics.len())
+            match lang {
+                Lang::Zh => format!("查询发现{}个小问题，整体性能可接受。", diagnostics.len()),
+                Lang::En => format!(
+                    "The query has {} minor issue(s); overall performance is acceptable.",
+                    diagnostics.len()
+                ),
+            }
         }
     }
 
@@ -297,13 +333,17 @@ impl RuleEngine {
     }
 
     /// Format duration to human-readable string
-    fn format_duration(seconds: f64) -> String {
-        if seconds >= 3600.0 {
-            format!("{:.1}小时", seconds / 3600.0)
+    fn format_duration(seconds: f64, lang: Lang) -> String {
+        let (value, zh_unit, en_unit) = if seconds >= 3600.0 {
+            (format!("{:.1}", seconds / 3600.0), "小时", "h")
         } else if seconds >= 60.0 {
-            format!("{:.0}分钟", seconds / 60.0)
+            (format!("{:.0}", seconds / 60.0), "分钟", "min")
         } else {
-            format!("{:.1}秒", seconds)
+            (format!("{:.1}", seconds), "秒", "s")
+        };
+        match lang {
+            Lang::Zh => format!("{}{}", value, zh_unit),
+            Lang::En => format!("{} {}", value, en_unit),
         }
     }
 }

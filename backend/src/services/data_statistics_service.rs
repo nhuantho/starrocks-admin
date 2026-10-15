@@ -5,7 +5,7 @@
 use crate::config::AuditLogConfig;
 use crate::models::Cluster;
 use crate::services::{ClusterService, MaterializedViewService, MySQLClient, MySQLPoolManager};
-use crate::utils::ApiResult;
+use crate::utils::{ApiResult, Lang};
 use chrono::{NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
@@ -62,6 +62,24 @@ pub struct DataStatistics {
     pub active_users_1h: i32,
     pub active_users_24h: i32,
     pub unique_users: Vec<String>,
+}
+
+/// Placeholder table name stored for database-level access statistics.
+/// It is persisted (as JSON) in the data_statistics table, so it is localized when read.
+const ALL_TABLES_PLACEHOLDER: &str = "(所有表)";
+
+impl DataStatistics {
+    /// Localize user-facing placeholder text for the requested language
+    pub fn localized(mut self, lang: Lang) -> Self {
+        if lang == Lang::En {
+            for t in &mut self.top_tables_by_access {
+                if t.table == ALL_TABLES_PLACEHOLDER {
+                    t.table = "(all tables)".to_string();
+                }
+            }
+        }
+        self
+    }
 }
 
 #[derive(Clone)]
@@ -544,7 +562,7 @@ impl DataStatisticsService {
 
                                 Some(TopTableByAccess {
                                     database: database.to_string(),
-                                    table: "(所有表)".to_string(), // Database-level fallback
+                                    table: ALL_TABLES_PLACEHOLDER.to_string(), // Database-level fallback
                                     access_count,
                                     last_access: None,
                                 })

@@ -2,9 +2,9 @@
   <nb-card-header>
     <div class="dialog-header">
       <div>
-        <h5>{{ mode === 'create' ? '创建角色' : '编辑角色' }}</h5>
+        <h5>{{ (mode === 'create' ? 'system.roles.form.createTitle' : 'system.roles.form.editTitle') | translate }}</h5>
         <p class="dialog-subtitle">
-          {{ mode === 'create' ? '配置角色基础信息与权限范围' : '调整角色信息与权限映射' }}
+          {{ (mode === 'create' ? 'system.roles.form.createSubtitle' : 'system.roles.form.editSubtitle') | translate }}
         </p>
       </div>
       <button nbButton ghost status="basic" (click)="cancel()">
@@ -20,12 +20,12 @@
         <div class="basic-info-section">
           <!-- Organization Selection (Super Admin Only) -->
           <div class="form-group" *ngIf="isSuperAdmin">
-            <label class="label" for="input-organization">所属组织</label>
+            <label class="label" for="input-organization">{{ 'system.roles.form.organization' | translate }}</label>
             <nb-form-field>
               <nb-select
                 formControlName="organizationId"
                 id="input-organization"
-                placeholder="请选择组织"
+                [placeholder]="'system.roles.form.organizationPlaceholder' | translate"
                 fullWidth
               >
                 <nb-option *ngFor="let org of organizations" [value]="org.id">
@@ -38,7 +38,7 @@
 
           <!-- Organization Display (Org Admin) -->
           <div class="form-group" *ngIf="!isSuperAdmin && currentOrganization">
-            <label class="label">所属组织</label>
+            <label class="label">{{ 'system.roles.form.organization' | translate }}</label>
             <nb-form-field>
               <input
                 nbInput
@@ -48,11 +48,11 @@
                 disabled
               />
             </nb-form-field>
-            <p class="caption status-hint">组织管理员只能在本组织内创建角色</p>
+            <p class="caption status-hint">{{ 'system.roles.form.orgAdminHint' | translate }}</p>
           </div>
 
           <div class="form-group">
-            <label class="label" for="input-code">角色代码</label>
+            <label class="label" for="input-code">{{ 'system.roles.form.code' | translate }}</label>
             <nb-form-field>
               <input
                 nbInput
@@ -66,7 +66,7 @@
           </div>
 
           <div class="form-group">
-            <label class="label" for="input-name">角色名称</label>
+            <label class="label" for="input-name">{{ 'system.roles.form.name' | translate }}</label>
             <nb-form-field>
               <input
                 nbInput
@@ -79,7 +79,7 @@
           </div>
 
           <div class="form-group">
-            <label class="label" for="input-description">角色描述</label>
+            <label class="label" for="input-description">{{ 'system.roles.form.description' | translate }}</label>
             <nb-form-field>
               <textarea
                 nbInput
@@ -95,7 +95,7 @@
 
         <!-- Right: Permission Tree Selection -->
         <div class="permission-section">
-          <label class="section-label">菜单权限</label>
+          <label class="section-label">{{ 'system.roles.form.menuPermissions' | translate }}</label>
           <div class="permission-tree-container">
             <!-- Simple tree structure (inspired by query-execution) -->
             <div class="tree-scroll">
@@ -108,7 +108,7 @@
               <ng-template #emptyTree>
                 <div class="empty-tree">
                   <nb-icon icon="inbox-outline"></nb-icon>
-                  <span>暂无可用权限</span>
+                  <span>{{ 'system.roles.form.noPermissions' | translate }}</span>
                 </div>
               </ng-template>
             </div>
@@ -164,9 +164,9 @@
 
   <nb-card-footer>
     <div class="footer-actions">
-      <button nbButton ghost status="basic" (click)="cancel()">取消</button>
+      <button nbButton ghost status="basic" (click)="cancel()">{{ 'system.shared.cancel' | translate }}</button>
       <button nbButton status="primary" (click)="submit()" [disabled]="form.invalid">
-        {{ mode === 'create' ? '创建角色' : '保存修改' }}
+        {{ (mode === 'create' ? 'system.roles.form.submitCreate' : 'system.shared.saveChanges') | translate }}
       </button>
     </div>
   </nb-card-footer>

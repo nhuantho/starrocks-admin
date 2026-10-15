@@ -19,6 +19,8 @@ export interface PermissionTreeSelection {
 interface PermissionTreeNode {
   key: string;
   name: string;
+  /** Translation key used instead of `name` for frontend-generated nodes */
+  i18nKey?: string;
   selectable: boolean;
   permission?: Permission;
   selected: boolean;
@@ -82,7 +84,7 @@ export class PermissionTreeComponent implements OnChanges {
     this.buildApiAssociations(menus, apis);
 
     if (!roots.length) {
-      this.treeData = [this.createPlaceholderNode('暂无菜单权限', null)];
+      this.treeData = [this.createPlaceholderNode('system.roles.permissionTree.noMenuPermissions', null)];
     } else {
       this.treeData = roots;
     }
@@ -141,10 +143,11 @@ export class PermissionTreeComponent implements OnChanges {
     return roots;
   }
 
-  private createPlaceholderNode(label: string, parentKey: string | null): PermissionTreeNode {
+  private createPlaceholderNode(labelKey: string, parentKey: string | null): PermissionTreeNode {
     return {
-      key: `placeholder-${parentKey}-${label}`,
-      name: label,
+      key: `placeholder-${parentKey}-${labelKey}`,
+      name: labelKey,
+      i18nKey: labelKey,
       selectable: false,
       selected: false,
       parentKey,

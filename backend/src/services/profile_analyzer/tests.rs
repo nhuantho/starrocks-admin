@@ -1392,6 +1392,7 @@ Query:
                 cluster_info: None,
                 cluster_variables: None,
                 default_db: None,
+                lang: crate::utils::Lang::default(),
             };
 
             // enable_scan_datacache default is "true", so suggesting "true" should return None
@@ -1443,6 +1444,111 @@ Query:
             }
 
             println!("Profile completeness detection test passed!");
+        }
+
+        fn contains_cjk(s: &str) -> bool {
+            s.chars().any(|c| ('\u{4e00}'..='\u{9fff}').contains(&c))
+        }
+
+        /// Collect every user-facing text produced by the analyzer
+        fn user_facing_texts(
+            result: &crate::services::profile_analyzer::ProfileAnalysisResponse,
+        ) -> Vec<String> {
+            let mut texts = vec![result.conclusion.clone()];
+            texts.extend(result.suggestions.iter().cloned());
+            for d in &result.diagnostics {
+                texts.push(d.rule_name.clone());
+                texts.push(d.message.clone());
+                texts.push(d.reason.clone());
+                texts.extend(d.suggestions.iter().cloned());
+                for p in &d.parameter_suggestions {
+                    texts.push(p.description.clone());
+                    texts.push(p.impact.clone());
+                }
+            }
+            for a in &result.aggregated_diagnostics {
+                texts.push(a.message.clone());
+            }
+            for h in &result.hotspots {
+                texts.push(h.description.clone());
+                texts.extend(h.suggestions.iter().cloned());
+            }
+            if let Some(w) = result
+                .summary
+                .as_ref()
+                .and_then(|s| s.profile_completeness_warning.clone())
+            {
+                texts.push(w);
+            }
+            texts
+        }
+
+        #[test]
+        fn test_analysis_output_is_english_by_default() {
+            use crate::services::profile_analyzer::{
+                AnalysisContext, analyze_profile_with_context,
+            };
+            use crate::utils::Lang;
+
+            let mut checked_diagnostics = 0;
+            for file in
+                ["profile1.txt", "profile2.txt", "profile3.txt", "profile4.txt", "profile5.txt"]
+            {
+                let profile_text = load_profile(file);
+                let context = AnalysisContext { cluster_variables: None, lang: Lang::En };
+                let result = analyze_profile_with_context(&profile_text, &context)
+                    .expect("Failed to analyze profile");
+                checked_diagnostics += result.diagnostics.len();
+                for text in user_facing_texts(&result) {
+                    assert!(
+                        !contains_cjk(&text),
+                        "{}: unexpected Chinese text in English output: {}",
+                        file,
+                        text
+                    );
+                }
+            }
+            assert!(checked_diagnostics > 0, "Expected at least one diagnostic to be checked");
+        }
+
+        #[test]
+        fn test_analysis_output_is_chinese_for_zh() {
+            use crate::services::profile_analyzer::{
+                AnalysisContext, analyze_profile_with_context,
+            };
+            use crate::utils::Lang;
+
+            let profile_text = load_profile("profile1.txt");
+            let context = AnalysisContext { cluster_variables: None, lang: Lang::Zh };
+            let result = analyze_profile_with_context(&profile_text, &context)
+                .expect("Failed to analyze profile");
+            assert!(
+                contains_cjk(&result.conclusion),
+                "Conclusion should be Chinese: {}",
+                result.conclusion
+            );
+            assert!(
+                result
+                    .diagnostics
+                    .iter()
+                    .all(|d| contains_cjk(&d.rule_name)),
+                "All rule names should be Chinese"
+            );
+
+            let en = analyze_profile_with_context(
+                &profile_text,
+                &AnalysisContext { cluster_variables: None, lang: Lang::En },
+            )
+            .expect("Failed to analyze profile");
+            // Same diagnostics regardless of language
+            let zh_ids: Vec<_> = result
+                .diagnostics
+                .iter()
+                .map(|d| d.rule_id.clone())
+                .collect();
+            let en_ids: Vec<_> = en.diagnostics.iter().map(|d| d.rule_id.clone()).collect();
+            assert_eq!(zh_ids, en_ids);
+            assert_eq!(result.performance_score, en.performance_score);
         }
     }
 }

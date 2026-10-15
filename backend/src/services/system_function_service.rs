@@ -8,7 +8,7 @@ use crate::models::{
     UpdateOrderRequest,
 };
 use crate::services::{ClusterService, MySQLClient, MySQLPoolManager};
-use crate::utils::{ApiError, ApiResult};
+use crate::utils::{ApiError, ApiResult, Lang};
 
 #[derive(Clone)]
 pub struct SystemFunctionService {
@@ -85,6 +85,7 @@ impl SystemFunctionService {
         cluster_id: i64,
         req: CreateFunctionRequest,
         user_id: i64,
+        lang: Lang,
     ) -> ApiResult<SystemFunction> {
         tracing::info!(
             "Creating system function: {} for cluster_id: {} by user_id: {}",
@@ -114,7 +115,7 @@ impl SystemFunctionService {
         }
 
         // Validate SQL safety
-        self.validate_sql_safety(&sql_query)?;
+        self.validate_sql_safety(&sql_query, lang)?;
 
         // Check function count limit per category (4 functions)
         let count: i64 = sqlx::query_scalar(
@@ -334,6 +335,7 @@ impl SystemFunctionService {
         cluster_id: i64,
         function_id: i64,
         req: UpdateFunctionRequest,
+        lang: Lang,
     ) -> ApiResult<SystemFunction> {
         // Trim input fields
         let category_name = req.category_name.trim().to_string();
@@ -356,7 +358,7 @@ impl SystemFunctionService {
         }
 
         // Validate SQL safety
-        self.validate_sql_safety(&sql_query)?;
+        self.validate_sql_safety(&sql_query, lang)?;
 
         // 更新功能
         sqlx::query(
@@ -397,7 +399,7 @@ impl SystemFunctionService {
     }
 
     // Validate SQL safety (only allow SELECT/SHOW)
-    fn validate_sql_safety(&self, sql: &str) -> ApiResult<()> {
+    fn validate_sql_safety(&self, sql: &str, lang: Lang) -> ApiResult<()> {
         let trimmed_sql = sql.trim().to_uppercase();
 
         // Check if starts with SELECT or SHOW
@@ -415,10 +417,10 @@ impl SystemFunctionService {
             if trimmed_sql.contains(&format!(" {}", keyword))
                 || trimmed_sql.contains(&format!("{} ", keyword))
             {
-                return Err(ApiError::sql_safety_violation(format!(
-                    "SQL查询包含不允许的关键字：{}",
-                    keyword
-                )));
+                return Err(ApiError::sql_safety_violation(match lang {
+                    Lang::Zh => format!("SQL查询包含不允许的关键字：{}", keyword),
+                    Lang::En => format!("SQL query contains a disallowed keyword: {}", keyword),
+                }));
             }
         }
 
@@ -426,7 +428,7 @@ impl SystemFunctionService {
     }
 
     // Delete category
-    pub async fn delete_category(&self, category_name: &str) -> ApiResult<()> {
+    pub async fn delete_category(&self, category_name: &str, lang: Lang) -> ApiResult<()> {
         // Check if it's a system category
         let system_categories = [
             "集群信息",
@@ -439,7 +441,9 @@ impl SystemFunctionService {
         ];
 
         if system_categories.contains(&category_name) {
-            return Err(ApiError::invalid_data("不能删除系统默认分类"));
+            return Err(ApiError::invalid_data(
+                lang.pick("不能删除系统默认分类", "System default categories cannot be deleted"),
+            ));
         }
 
         // Delete all custom functions in this category

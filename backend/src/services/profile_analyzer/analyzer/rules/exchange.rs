@@ -12,8 +12,8 @@ impl DiagnosticRule for E001NetworkTransferLarge {
     fn id(&self) -> &str {
         "E001"
     }
-    fn name(&self) -> &str {
-        "网络传输数据量大"
+    fn name(&self, lang: Lang) -> &str {
+        lang.pick("网络传输数据量大", "Large network transfer")
     }
 
     fn applicable_to(&self, node: &ExecutionTreeNode) -> bool {
@@ -30,21 +30,21 @@ impl DiagnosticRule for E001NetworkTransferLarge {
         if bytes_sent > ONE_GB {
             Some(Diagnostic {
                 rule_id: self.id().to_string(),
-                rule_name: self.name().to_string(),
+                rule_name: self.name(context.lang).to_string(),
                 severity: RuleSeverity::Warning,
                 node_path: format!("{} (plan_node_id={})", 
                     context.node.operator_name,
                     context.node.plan_node_id.unwrap_or(-1)),
                 plan_node_id: context.node.plan_node_id,
-                message: format!(
-                    "网络传输数据量 {}，可能存在网络瓶颈",
-                    format_bytes(bytes_sent as u64)
-                ),
-                reason: "网络传输数据量过大，占用大量网络带宽和时间。可能是 Shuffle 数据量大或缺少有效的数据裁剪。".to_string(),
+                message: match context.lang {
+                    Lang::Zh => format!("网络传输数据量 {}，可能存在网络瓶颈", format_bytes(bytes_sent as u64)),
+                    Lang::En => format!("Network transfer volume is {}; there may be a network bottleneck", format_bytes(bytes_sent as u64)),
+                },
+                reason: context.lang.pick("网络传输数据量过大，占用大量网络带宽和时间。可能是 Shuffle 数据量大或缺少有效的数据裁剪。", "The network transfer volume is too large, consuming significant bandwidth and time. This may be caused by a large Shuffle volume or a lack of effective data pruning.").to_string(),
                 suggestions: vec![
-                    "检查是否可以减少 Shuffle 数据量".to_string(),
-                    "考虑使用 Colocate Join 避免 Shuffle".to_string(),
-                    "检查网络带宽是否充足".to_string(),
+                    context.lang.pick("检查是否可以减少 Shuffle 数据量", "Check whether the Shuffle data volume can be reduced").to_string(),
+                    context.lang.pick("考虑使用 Colocate Join 避免 Shuffle", "Consider using Colocate Join to avoid Shuffle").to_string(),
+                    context.lang.pick("检查网络带宽是否充足", "Check whether network bandwidth is sufficient").to_string(),
                 ],
                 parameter_suggestions: {
                     let mut suggestions = Vec::new();
@@ -73,8 +73,8 @@ impl DiagnosticRule for E002NetworkTimeHigh {
     fn id(&self) -> &str {
         "E002"
     }
-    fn name(&self) -> &str {
-        "网络时间占比高"
+    fn name(&self, lang: Lang) -> &str {
+        lang.pick("网络时间占比高", "High network time ratio")
     }
 
     fn applicable_to(&self, node: &ExecutionTreeNode) -> bool {
@@ -96,7 +96,7 @@ impl DiagnosticRule for E002NetworkTimeHigh {
         if ratio > 0.5 {
             Some(Diagnostic {
                 rule_id: self.id().to_string(),
-                rule_name: self.name().to_string(),
+                rule_name: self.name(context.lang).to_string(),
                 severity: RuleSeverity::Warning,
                 node_path: format!(
                     "{} (plan_node_id={})",
@@ -104,13 +104,15 @@ impl DiagnosticRule for E002NetworkTimeHigh {
                     context.node.plan_node_id.unwrap_or(-1)
                 ),
                 plan_node_id: context.node.plan_node_id,
-                message: format!("网络时间占比 {:.1}%，可能存在网络瓶颈", ratio * 100.0),
-                reason: "网络传输时间占比过高，查询瓶颈在网络。可能是网络带宽不足或跨机房传输。"
-                    .to_string(),
+                message: match context.lang {
+                    Lang::Zh => format!("网络时间占比 {:.1}%，可能存在网络瓶颈", ratio * 100.0),
+                    Lang::En => format!("Network time accounts for {:.1}%; there may be a network bottleneck", ratio * 100.0),
+                },
+                reason: context.lang.pick("网络传输时间占比过高，查询瓶颈在网络。可能是网络带宽不足或跨机房传输。", "Network transfer takes too large a share of time; the query is bottlenecked on the network. This may be due to insufficient bandwidth or cross-datacenter transfer.").to_string(),
                 suggestions: vec![
-                    "检查网络带宽和延迟".to_string(),
-                    "考虑使用 Colocate Join".to_string(),
-                    "减少跨节点数据传输".to_string(),
+                    context.lang.pick("检查网络带宽和延迟", "Check network bandwidth and latency").to_string(),
+                    context.lang.pick("考虑使用 Colocate Join", "Consider using Colocate Join").to_string(),
+                    context.lang.pick("减少跨节点数据传输", "Reduce cross-node data transfer").to_string(),
                 ],
                 parameter_suggestions: vec![],
             })
@@ -128,8 +130,8 @@ impl DiagnosticRule for E003ShuffleSkew {
     fn id(&self) -> &str {
         "E003"
     }
-    fn name(&self) -> &str {
-        "Shuffle 数据倾斜"
+    fn name(&self, lang: Lang) -> &str {
+        lang.pick("Shuffle 数据倾斜", "Shuffle data skew")
     }
 
     fn applicable_to(&self, node: &ExecutionTreeNode) -> bool {
@@ -150,21 +152,21 @@ impl DiagnosticRule for E003ShuffleSkew {
         if ratio > 2.0 {
             Some(Diagnostic {
                 rule_id: self.id().to_string(),
-                rule_name: self.name().to_string(),
+                rule_name: self.name(context.lang).to_string(),
                 severity: RuleSeverity::Warning,
                 node_path: format!("{} (plan_node_id={})", 
                     context.node.operator_name,
                     context.node.plan_node_id.unwrap_or(-1)),
                 plan_node_id: context.node.plan_node_id,
-                message: format!(
-                    "Shuffle 存在数据倾斜，max/avg 比率为 {:.2}",
-                    ratio
-                ),
-                reason: "Shuffle 数据在各节点间分布不均匀，部分节点接收更多数据。通常是 Shuffle 键存在热点值。".to_string(),
+                message: match context.lang {
+                    Lang::Zh => format!("Shuffle 存在数据倾斜，max/avg 比率为 {:.2}", ratio),
+                    Lang::En => format!("Shuffle data is skewed; max/avg ratio is {:.2}", ratio),
+                },
+                reason: context.lang.pick("Shuffle 数据在各节点间分布不均匀，部分节点接收更多数据。通常是 Shuffle 键存在热点值。", "Shuffle data is unevenly distributed across nodes, so some nodes receive more data. This is usually caused by hot values in the Shuffle key.").to_string(),
                 suggestions: vec![
-                    "检查分区键选择是否合理".to_string(),
-                    "考虑使用 Skew Join 优化".to_string(),
-                    "检查是否存在热点数据".to_string(),
+                    context.lang.pick("检查分区键选择是否合理", "Check whether the partition key is chosen appropriately").to_string(),
+                    context.lang.pick("考虑使用 Skew Join 优化", "Consider using Skew Join optimization").to_string(),
+                    context.lang.pick("检查是否存在热点数据", "Check for hot data").to_string(),
                 ],
                 parameter_suggestions: vec![],
             })

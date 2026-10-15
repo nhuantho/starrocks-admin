@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use crate::middleware::permission_extractor;
 use crate::services::casbin_service::CasbinService;
-use crate::utils::{ApiError, JwtUtil};
+use crate::utils::{ApiError, JwtUtil, Lang};
 use sqlx::SqlitePool;
 
 #[derive(Clone)]
@@ -122,8 +122,13 @@ pub async fn auth_middleware(
                 "User {} (ID: {}) blocked - must change password first. Attempted to access: {} {}",
                 claims.username, user_id, method, uri
             );
-            return Err(ApiError::unauthorized(
-                "首次登录必须修改密码后才能使用系统功能",
+            let lang = Lang::from_headers(req.headers());
+            return Err(ApiError::unauthorized_with_code(
+                lang.pick(
+                    "首次登录必须修改密码后才能使用系统功能",
+                    "Password change required on first login before using the system",
+                ),
+                "FIRST_LOGIN_PASSWORD_CHANGE_REQUIRED",
             ));
         }
     }

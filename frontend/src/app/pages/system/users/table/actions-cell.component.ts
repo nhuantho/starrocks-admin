@@ -13,7 +13,7 @@ import { UserWithRoles } from '../../../../@core/data/user.service';
         status="primary"
         *ngIf="value?.canEdit"
         (click)="editUser.emit(rowData)"
-        nbTooltip="编辑用户"
+        [nbTooltip]="'system.users.edit' | translate"
         nbTooltipPlacement="top"
       >
         <nb-icon icon="edit-2-outline"></nb-icon>
@@ -26,7 +26,7 @@ import { UserWithRoles } from '../../../../@core/data/user.service';
         status="danger"
         *ngIf="value?.canDelete"
         (click)="deleteUser.emit(rowData)"
-        nbTooltip="删除用户"
+        [nbTooltip]="'system.users.delete' | translate"
         nbTooltipPlacement="top"
       >
         <nb-icon icon="trash-2-outline"></nb-icon>

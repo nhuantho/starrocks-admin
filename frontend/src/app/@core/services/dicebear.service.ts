@@ -23,31 +23,32 @@ export class DiceBearService {
   private readonly baseUrl = 'https://api.dicebear.com/7.x';
   
   // 可用的头像样式 - 积极向上、多样化的风格
+  // label / description are translation keys (common.avatarStyles.*)
   readonly avatarStyles = [
-    { name: 'avataaars', label: '经典人物', description: '经典卡通人物风格' },
-    { name: 'avataaars-neutral', label: '简约人物', description: '简约中性人物风格' },
-    { name: 'adventurer', label: '冒险家', description: '可爱卡通冒险家' },
-    { name: 'adventurer-neutral', label: '简约冒险家', description: '简约冒险家风格' },
-    { name: 'big-ears', label: '大耳朵', description: '可爱大耳朵风格' },
-    { name: 'big-ears-neutral', label: '简约大耳朵', description: '简约大耳朵风格' },
-    { name: 'big-smile', label: '大笑脸', description: '开心大笑脸风格' },
-    { name: 'bottts', label: '机器人', description: '可爱机器人风格' },
-    { name: 'croodles', label: '涂鸦', description: '手绘涂鸦风格' },
-    { name: 'croodles-neutral', label: '简约涂鸦', description: '简约涂鸦风格' },
-    { name: 'fun-emoji', label: '趣味表情', description: '有趣的表情符号' },
-    { name: 'lorelei', label: '洛蕾莱', description: '现代简约风格' },
-    { name: 'lorelei-neutral', label: '简约洛蕾莱', description: '极简洛蕾莱风格' },
-    { name: 'micah', label: '米卡', description: '温暖插画风格' },
-    { name: 'miniavs', label: '迷你头像', description: '迷你可爱风格' },
-    { name: 'notionists', label: 'Notion风格', description: '专业Notion风格' },
-    { name: 'notionists-neutral', label: '简约Notion', description: '简约Notion风格' },
-    { name: 'open-peeps', label: '开放人物', description: '友好开放人物' },
-    { name: 'personas', label: '人物角色', description: '多彩人物角色' },
-    { name: 'pixel-art', label: '像素艺术', description: '复古像素风格' },
-    { name: 'pixel-art-neutral', label: '简约像素', description: '简约像素风格' },
-    { name: 'thumbs', label: '点赞', description: '积极点赞风格' },
-    { name: 'shapes', label: '几何图形', description: '抽象几何风格' },
-    { name: 'icons', label: '图标', description: '简洁图标风格' }
+    { name: 'avataaars', label: 'common.avatarStyles.avataaars.label', description: 'common.avatarStyles.avataaars.description' },
+    { name: 'avataaars-neutral', label: 'common.avatarStyles.avataaars-neutral.label', description: 'common.avatarStyles.avataaars-neutral.description' },
+    { name: 'adventurer', label: 'common.avatarStyles.adventurer.label', description: 'common.avatarStyles.adventurer.description' },
+    { name: 'adventurer-neutral', label: 'common.avatarStyles.adventurer-neutral.label', description: 'common.avatarStyles.adventurer-neutral.description' },
+    { name: 'big-ears', label: 'common.avatarStyles.big-ears.label', description: 'common.avatarStyles.big-ears.description' },
+    { name: 'big-ears-neutral', label: 'common.avatarStyles.big-ears-neutral.label', description: 'common.avatarStyles.big-ears-neutral.description' },
+    { name: 'big-smile', label: 'common.avatarStyles.big-smile.label', description: 'common.avatarStyles.big-smile.description' },
+    { name: 'bottts', label: 'common.avatarStyles.bottts.label', description: 'common.avatarStyles.bottts.description' },
+    { name: 'croodles', label: 'common.avatarStyles.croodles.label', description: 'common.avatarStyles.croodles.description' },
+    { name: 'croodles-neutral', label: 'common.avatarStyles.croodles-neutral.label', description: 'common.avatarStyles.croodles-neutral.description' },
+    { name: 'fun-emoji', label: 'common.avatarStyles.fun-emoji.label', description: 'common.avatarStyles.fun-emoji.description' },
+    { name: 'lorelei', label: 'common.avatarStyles.lorelei.label', description: 'common.avatarStyles.lorelei.description' },
+    { name: 'lorelei-neutral', label: 'common.avatarStyles.lorelei-neutral.label', description: 'common.avatarStyles.lorelei-neutral.description' },
+    { name: 'micah', label: 'common.avatarStyles.micah.label', description: 'common.avatarStyles.micah.description' },
+    { name: 'miniavs', label: 'common.avatarStyles.miniavs.label', description: 'common.avatarStyles.miniavs.description' },
+    { name: 'notionists', label: 'common.avatarStyles.notionists.label', description: 'common.avatarStyles.notionists.description' },
+    { name: 'notionists-neutral', label: 'common.avatarStyles.notionists-neutral.label', description: 'common.avatarStyles.notionists-neutral.description' },
+    { name: 'open-peeps', label: 'common.avatarStyles.open-peeps.label', description: 'common.avatarStyles.open-peeps.description' },
+    { name: 'personas', label: 'common.avatarStyles.personas.label', description: 'common.avatarStyles.personas.description' },
+    { name: 'pixel-art', label: 'common.avatarStyles.pixel-art.label', description: 'common.avatarStyles.pixel-art.description' },
+    { name: 'pixel-art-neutral', label: 'common.avatarStyles.pixel-art-neutral.label', description: 'common.avatarStyles.pixel-art-neutral.description' },
+    { name: 'thumbs', label: 'common.avatarStyles.thumbs.label', description: 'common.avatarStyles.thumbs.description' },
+    { name: 'shapes', label: 'common.avatarStyles.shapes.label', description: 'common.avatarStyles.shapes.description' },
+    { name: 'icons', label: 'common.avatarStyles.icons.label', description: 'common.avatarStyles.icons.description' }
   ];
 
   constructor() { }

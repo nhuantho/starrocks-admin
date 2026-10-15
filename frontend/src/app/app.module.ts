@@ -5,8 +5,11 @@
  */
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { NgModule } from '@angular/core';
-import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
+import { APP_INITIALIZER, NgModule } from '@angular/core';
+import { HttpClient, HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
+import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
+import { createTranslateLoader } from './@core/i18n/i18n.config';
+import { initLanguage, LanguageService } from './@core/services/language.service';
 import { RouteReuseStrategy } from '@angular/router';
 import { CoreModule } from './@core/core.module';
 import { ThemeModule } from './@theme/theme.module';
@@ -30,6 +33,13 @@ import { TabRouteReuseStrategy } from './@core/routing/tab-route-reuse.strategy'
     BrowserModule,
     BrowserAnimationsModule,
     HttpClientModule,
+    TranslateModule.forRoot({
+      loader: {
+        provide: TranslateLoader,
+        useFactory: createTranslateLoader,
+        deps: [HttpClient],
+      },
+    }),
     AuthModule,
     AppRoutingModule,
     NbSidebarModule.forRoot(),
@@ -42,6 +52,7 @@ import { TabRouteReuseStrategy } from './@core/routing/tab-route-reuse.strategy'
     ThemeModule.forRoot(),
   ],
   providers: [
+    { provide: APP_INITIALIZER, useFactory: initLanguage, deps: [LanguageService], multi: true },
     { provide: HTTP_INTERCEPTORS, useClass: JwtInterceptor, multi: true },
     { provide: RouteReuseStrategy, useClass: TabRouteReuseStrategy },
   ],

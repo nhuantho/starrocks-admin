@@ -1,0 +1,188 @@
+{
+  "notice": "Notice",
+  "language": "Language",
+  "theme": {
+    "placeholder": "Theme",
+    "default": "Light",
+    "dark": "Dark",
+    "cosmic": "Cosmic",
+    "corporate": "Corporate"
+  },
+  "header": {
+    "userSettings": "User Settings",
+    "logout": "Log Out",
+    "logoutSuccess": "Logged out successfully"
+  },
+  "confirm": "Confirm",
+  "cancel": "Cancel",
+  "ok": "OK",
+  "save": "Save",
+  "delete": "Delete",
+  "edit": "Edit",
+  "add": "Add",
+  "create": "Create",
+  "close": "Close",
+  "search": "Search",
+  "refresh": "Refresh",
+  "reset": "Reset",
+  "submit": "Submit",
+  "back": "Back",
+  "view": "View",
+  "details": "Details",
+  "copy": "Copy",
+  "export": "Export",
+  "loading": "Loading...",
+  "success": "Success",
+  "error": "Error",
+  "warning": "Warning",
+  "info": "Info",
+  "actions": "Actions",
+  "status": "Status",
+  "name": "Name",
+  "description": "Description",
+  "createdAt": "Created At",
+  "updatedAt": "Updated At",
+  "enabled": "Enabled",
+  "disabled": "Disabled",
+  "yes": "Yes",
+  "no": "No",
+  "all": "All",
+  "noData": "No data",
+  "unknown": "Unknown",
+  "searchPlaceholder": "Type your search request here...",
+  "confirmDialog": {
+    "deleteTitle": "Confirm Deletion",
+    "deleteMessage": "Are you sure you want to delete \"{{name}}\"?"
+  },
+  "errors": {
+    "operationFailed": "Operation failed. Please try again later.",
+    "activateClusterFirst": "Please activate a cluster first",
+    "badRequest": "Invalid request parameters",
+    "forbidden": "You do not have permission to perform this action",
+    "notFound": "The requested resource does not exist",
+    "serverError": "Internal server error",
+    "serviceUnavailable": "Service temporarily unavailable",
+    "networkError": "Network request failed"
+  },
+  "auth": {
+    "sessionExpired": "Your session has expired. Please log in again.",
+    "authFailed": "Authentication Failed",
+    "permissionDenied": "Permission Denied"
+  },
+  "tabs": {
+    "refresh": "Refresh",
+    "closeLeft": "Close Tabs to the Left",
+    "closeRight": "Close Tabs to the Right",
+    "closeOthers": "Close Other Tabs",
+    "pin": "Pin Tab",
+    "unpin": "Unpin Tab"
+  },
+  "clusterSelector": {
+    "placeholder": "Select cluster",
+    "noClusters": "No clusters",
+    "addCluster": "Add Cluster",
+    "refreshTooltip": "Refresh cluster list",
+    "manageTooltip": "Manage clusters",
+    "current": "Current: {{name}}",
+    "loadFailed": "Failed to load clusters",
+    "switched": "Switched to cluster: {{name}}"
+  },
+  "avatarStyles": {
+    "avataaars": {
+      "label": "Classic",
+      "description": "Classic cartoon character"
+    },
+    "avataaars-neutral": {
+      "label": "Simple Character",
+      "description": "Minimal neutral character"
+    },
+    "adventurer": {
+      "label": "Adventurer",
+      "description": "Cute cartoon adventurer"
+    },
+    "adventurer-neutral": {
+      "label": "Simple Adventurer",
+      "description": "Minimal adventurer"
+    },
+    "big-ears": {
+      "label": "Big Ears",
+      "description": "Cute big-eared style"
+    },
+    "big-ears-neutral": {
+      "label": "Simple Big Ears",
+      "description": "Minimal big-eared style"
+    },
+    "big-smile": {
+      "label": "Big Smile",
+      "description": "Cheerful big smile"
+    },
+    "bottts": {
+      "label": "Robot",
+      "description": "Cute robot"
+    },
+    "croodles": {
+      "label": "Doodle",
+      "description": "Hand-drawn doodle"
+    },
+    "croodles-neutral": {
+      "label": "Simple Doodle",
+      "description": "Minimal doodle"
+    },
+    "fun-emoji": {
+      "label": "Fun Emoji",
+      "description": "Playful emoji"
+    },
+    "lorelei": {
+      "label": "Lorelei",
+      "description": "Modern minimal style"
+    },
+    "lorelei-neutral": {
+      "label": "Simple Lorelei",
+      "description": "Ultra-minimal Lorelei"
+    },
+    "micah": {
+      "label": "Micah",
+      "description": "Warm illustration"
+    },
+    "miniavs": {
+      "label": "Mini Avatar",
+      "description": "Tiny and cute"
+    },
+    "notionists": {
+      "label": "Notion Style",
+      "description": "Professional Notion style"
+    },
+    "notionists-neutral": {
+      "label": "Simple Notion",
+      "description": "Minimal Notion style"
+    },
+    "open-peeps": {
+      "label": "Open Peeps",
+      "description": "Friendly open characters"
+    },
+    "personas": {
+      "label": "Personas",
+      "description": "Colorful personas"
+    },
+    "pixel-art": {
+      "label": "Pixel Art",
+      "description": "Retro pixel style"
+    },
+    "pixel-art-neutral": {
+      "label": "Simple Pixel",
+      "description": "Minimal pixel style"
+    },
+    "thumbs": {
+      "label": "Thumbs Up",
+      "description": "Positive thumbs-up style"
+    },
+    "shapes": {
+      "label": "Shapes",
+      "description": "Abstract geometric shapes"
+    },
+    "icons": {
+      "label": "Icons",
+      "description": "Clean icon style"
+    }
+  }
+}

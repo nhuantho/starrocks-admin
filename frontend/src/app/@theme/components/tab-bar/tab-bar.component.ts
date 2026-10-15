@@ -128,30 +128,30 @@ export class TabBarComponent implements OnInit, OnDestroy {
 
     return [
       {
-        label: '刷新',
+        label: 'common.tabs.refresh',
         icon: 'refresh-outline',
         action: 'refresh',
       },
       {
-        label: '关闭左侧',
+        label: 'common.tabs.closeLeft',
         icon: 'arrow-back-outline',
         action: 'close-left',
         disabled: !hasLeftClosable,
       },
       {
-        label: '关闭右侧',
+        label: 'common.tabs.closeRight',
         icon: 'arrow-forward-outline',
         action: 'close-right',
         disabled: !hasRightClosable,
       },
       {
-        label: '关闭其他',
+        label: 'common.tabs.closeOthers',
         icon: 'minus-circle-outline',
         action: 'close-others',
         disabled: !hasOtherClosable,
       },
       {
-        label: isPinned ? '取消固定' : '固定当前',
+        label: isPinned ? 'common.tabs.unpin' : 'common.tabs.pin',
         icon: isPinned ? 'unlock-outline' : 'lock-outline',
         action: 'toggle-pin',
       },

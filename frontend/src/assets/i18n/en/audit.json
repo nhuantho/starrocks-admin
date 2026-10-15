@@ -1,0 +1,41 @@
+{
+  "title": "Audit Logs",
+  "cluster": "Cluster",
+  "noClusterSelected": "No cluster selected",
+  "loadFailed": "Failed to load",
+  "refresh": {
+    "button": "Refresh",
+    "auto": "Auto refresh",
+    "off": "Off",
+    "seconds": "{{n}}s",
+    "minutes": "{{n}}m"
+  },
+  "filters": {
+    "searchPlaceholder": "Search Query ID / SQL / User",
+    "startTime": "Start time",
+    "endTime": "End time",
+    "search": "Search",
+    "active": "Active filters:",
+    "keyword": "Keyword",
+    "clear": "Clear filters"
+  },
+  "table": {
+    "noData": "No audit log records",
+    "user": "User",
+    "database": "Database",
+    "type": "Type",
+    "state": "State",
+    "startTime": "Start Time",
+    "durationMs": "Duration (ms)"
+  },
+  "pagination": {
+    "showing": "Showing {{from}} - {{to}} of {{total}}",
+    "perPage": "{{n}} / page",
+    "page": "Page {{current}} / {{total}}"
+  },
+  "profile": {
+    "executionTime": "Execution time",
+    "status": "Status",
+    "content": "Profile content"
+  }
+}

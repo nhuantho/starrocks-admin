@@ -4,10 +4,10 @@
       <nb-card-header>
         <div class="d-flex justify-content-between align-items-center">
           <div class="d-flex align-items-center gap-2">
-            <h5 class="mb-0">物化视图</h5>
+            <h5 class="mb-0">{{ 'mv.title' | translate }}</h5>
             <span class="text-hint">|</span>
             <span class="text-hint" style="font-size: 13px;">
-              集群: <strong>{{ activeCluster?.name || '未选择' }}</strong>
+              {{ 'mv.clusterLabel' | translate }} <strong>{{ activeCluster?.name || ('mv.notSelected' | translate) }}</strong>
             </span>
           </div>
           <div class="d-flex align-items-center gap-2">
@@ -19,7 +19,7 @@
               [disabled]="loading || !clusterId"
             >
               <nb-icon icon="refresh-outline"></nb-icon>
-              刷新
+              {{ 'mv.actions.refresh' | translate }}
             </button>
             <button
               nbButton
@@ -29,7 +29,7 @@
               [disabled]="!clusterId"
             >
               <nb-icon icon="plus-outline"></nb-icon>
-              创建
+              {{ 'mv.actions.create' | translate }}
             </button>
           </div>
         </div>
@@ -44,7 +44,7 @@
                 nbInput
                 fullWidth
                 type="text"
-                placeholder="搜索物化视图名称或数据库..."
+                [placeholder]="'mv.filters.searchPlaceholder' | translate"
                 [(ngModel)]="searchText"
                 (ngModelChange)="onSearch()"
               />
@@ -52,11 +52,11 @@
             <div class="col-md-2 col-sm-6 mb-2">
               <nb-select
                 fullWidth
-                placeholder="选择数据库"
+                [placeholder]="'mv.filters.selectDatabase' | translate"
                 [(selected)]="selectedDatabase"
                 (selectedChange)="applyFilters()"
               >
-                <nb-option value="all">所有数据库</nb-option>
+                <nb-option value="all">{{ 'mv.filters.allDatabases' | translate }}</nb-option>
                 <nb-option *ngFor="let db of databases" [value]="db">
                   {{ db }}
                 </nb-option>
@@ -65,7 +65,7 @@
             <div class="col-md-2 col-sm-6 mb-2">
               <nb-select
                 fullWidth
-                placeholder="刷新类型"
+                [placeholder]="'mv.filters.refreshType' | translate"
                 [(selected)]="selectedRefreshType"
                 (selectedChange)="applyFilters()"
               >
@@ -80,7 +80,7 @@
             <div class="col-md-2 col-sm-6 mb-2">
               <nb-select
                 fullWidth
-                placeholder="状态"
+                [placeholder]="'mv.filters.status' | translate"
                 [(selected)]="selectedActiveState"
                 (selectedChange)="applyFilters()"
               >
@@ -95,7 +95,7 @@
             <div class="col-md-2 col-sm-6 mb-2">
               <nb-select
                 fullWidth
-                placeholder="刷新状态"
+                [placeholder]="'mv.filters.refreshState' | translate"
                 [(selected)]="selectedRefreshState"
                 (selectedChange)="applyFilters()"
               >
@@ -118,7 +118,7 @@
                 <nb-icon
                   [icon]="showAdvancedFilters ? 'arrow-up-outline' : 'arrow-down-outline'"
                 ></nb-icon>
-                高级筛选
+                {{ 'mv.actions.advancedFilters' | translate }}
               </button>
             </div>
           </div>
@@ -126,11 +126,11 @@
           <!-- Advanced Filters -->
           <div *ngIf="showAdvancedFilters" class="advanced-filters mt-3">
             <nb-card accent="info">
-              <nb-card-header>高级筛选</nb-card-header>
+              <nb-card-header>{{ 'mv.actions.advancedFilters' | translate }}</nb-card-header>
               <nb-card-body>
                 <div class="row">
                   <div class="col-md-3 col-sm-6 mb-2">
-                    <label class="label">刷新时间起始</label>
+                    <label class="label">{{ 'mv.filters.refreshTimeStart' | translate }}</label>
                     <input
                       nbInput
                       fullWidth
@@ -140,7 +140,7 @@
                     />
                   </div>
                   <div class="col-md-3 col-sm-6 mb-2">
-                    <label class="label">刷新时间结束</label>
+                    <label class="label">{{ 'mv.filters.refreshTimeEnd' | translate }}</label>
                     <input
                       nbInput
                       fullWidth
@@ -150,29 +150,29 @@
                     />
                   </div>
                   <div class="col-md-2 col-sm-6 mb-2">
-                    <label class="label">最小行数</label>
+                    <label class="label">{{ 'mv.filters.minRows' | translate }}</label>
                     <input
                       nbInput
                       fullWidth
                       type="number"
-                      placeholder="最小行数"
+                      [placeholder]="'mv.filters.minRows' | translate"
                       [(ngModel)]="rowCountMin"
                       (ngModelChange)="applyFilters()"
                     />
                   </div>
                   <div class="col-md-2 col-sm-6 mb-2">
-                    <label class="label">最大行数</label>
+                    <label class="label">{{ 'mv.filters.maxRows' | translate }}</label>
                     <input
                       nbInput
                       fullWidth
                       type="number"
-                      placeholder="最大行数"
+                      [placeholder]="'mv.filters.maxRows' | translate"
                       [(ngModel)]="rowCountMax"
                       (ngModelChange)="applyFilters()"
                     />
                   </div>
                   <div class="col-md-2 col-sm-6 mb-2">
-                    <label class="label">分区类型</label>
+                    <label class="label">{{ 'mv.filters.partitionType' | translate }}</label>
                     <nb-select
                       fullWidth
                       [(selected)]="selectedPartitionType"
@@ -193,35 +193,35 @@
 
           <!-- Active Filters Display -->
           <div *ngIf="getActiveFiltersCount() > 0" class="active-filters mt-2">
-            <span class="me-2">当前筛选:</span>
+            <span class="me-2">{{ 'mv.filters.current' | translate }}</span>
             <nb-badge
               *ngIf="searchText"
               status="info"
-              text="搜索: {{ searchText }}"
+              [text]="'mv.filters.searchBadge' | translate: { value: searchText }"
               class="me-2"
             ></nb-badge>
             <nb-badge
               *ngIf="selectedDatabase !== 'all'"
               status="info"
-              text="数据库: {{ selectedDatabase }}"
+              [text]="'mv.filters.databaseBadge' | translate: { value: selectedDatabase }"
               class="me-2"
             ></nb-badge>
             <nb-badge
               *ngIf="selectedRefreshType !== 'all'"
               status="info"
-              text="类型: {{ selectedRefreshType }}"
+              [text]="'mv.filters.typeBadge' | translate: { value: selectedRefreshType }"
               class="me-2"
             ></nb-badge>
             <nb-badge
               *ngIf="selectedActiveState !== 'all'"
               status="info"
-              text="状态: {{ selectedActiveState }}"
+              [text]="'mv.filters.statusBadge' | translate: { value: selectedActiveState }"
               class="me-2"
             ></nb-badge>
             <nb-badge
               *ngIf="selectedRefreshState !== 'all'"
               status="info"
-              text="刷新状态: {{ selectedRefreshState }}"
+              [text]="'mv.filters.refreshStateBadge' | translate: { value: selectedRefreshState }"
               class="me-2"
             ></nb-badge>
             <button
@@ -231,7 +231,7 @@
               (click)="clearAllFilters()"
             >
               <nb-icon icon="close-outline"></nb-icon>
-              清除全部
+              {{ 'mv.actions.clearAll' | translate }}
             </button>
           </div>
         </div>
@@ -260,7 +260,7 @@
   <nb-card>
     <nb-card-header>
       <div class="d-flex justify-content-between align-items-center">
-        <h5>创建物化视图</h5>
+        <h5>{{ 'mv.create.title' | translate }}</h5>
         <button nbButton ghost (click)="closeCreateDialog()">
           <nb-icon icon="close-outline"></nb-icon>
         </button>
@@ -269,10 +269,10 @@
     <nb-card-body>
       <nb-accordion>
         <nb-accordion-item>
-          <nb-accordion-item-header>SQL 模板示例（点击查看）</nb-accordion-item-header>
+          <nb-accordion-item-header>{{ 'mv.create.templatesHeader' | translate }}</nb-accordion-item-header>
           <nb-accordion-item-body>
             <div class="template-section">
-              <h6>异步物化视图（手动刷新）</h6>
+              <h6>{{ 'mv.create.templateAsyncManual' | translate }}</h6>
               <pre class="code-template">CREATE MATERIALIZED VIEW mv_async_manual
 DISTRIBUTED BY HASH(order_date) BUCKETS 10
 REFRESH MANUAL
@@ -283,7 +283,7 @@ AS SELECT
 FROM orders
 GROUP BY order_date;</pre>
 
-              <h6>异步物化视图（自动刷新）</h6>
+              <h6>{{ 'mv.create.templateAsyncAuto' | translate }}</h6>
               <pre class="code-template">CREATE MATERIALIZED VIEW mv_async_auto
 DISTRIBUTED BY HASH(order_date) BUCKETS 10
 REFRESH ASYNC EVERY (INTERVAL 1 HOUR)
@@ -293,7 +293,7 @@ AS SELECT
 FROM orders
 GROUP BY order_date;</pre>
 
-              <h6>同步物化视图（ROLLUP，导入时自动刷新）</h6>
+              <h6>{{ 'mv.create.templateSyncRollup' | translate }}</h6>
               <pre class="code-template">CREATE MATERIALIZED VIEW mv_sync_rollup
 AS SELECT 
     customer_id,
@@ -308,18 +308,18 @@ GROUP BY customer_id, order_date;</pre>
       </nb-accordion>
 
       <div class="form-group mt-3">
-        <label class="label">CREATE MATERIALIZED VIEW SQL 语句</label>
+        <label class="label">{{ 'mv.create.sqlLabel' | translate }}</label>
         <textarea
           nbInput
           fullWidth
           rows="12"
-          placeholder="输入完整的 CREATE MATERIALIZED VIEW 语句..."
+          [placeholder]="'mv.create.sqlPlaceholder' | translate"
           [(ngModel)]="createSQL"
           [disabled]="creating"
         ></textarea>
         <small class="form-text text-muted">
           <nb-icon icon="bulb-outline"></nb-icon>
-          请输入完整的CREATE MATERIALIZED VIEW SQL语句。异步MV需要DISTRIBUTED BY，同步MV（ROLLUP）无需DISTRIBUTED BY。
+          {{ 'mv.create.sqlHint' | translate }}
         </small>
       </div>
     </nb-card-body>
@@ -331,7 +331,7 @@ GROUP BY customer_id, order_date;</pre>
           (click)="closeCreateDialog()"
           [disabled]="creating"
         >
-          取消
+          {{ 'mv.actions.cancel' | translate }}
         </button>
         <button
           nbButton
@@ -340,7 +340,7 @@ GROUP BY customer_id, order_date;</pre>
           [disabled]="creating || !createSQL.trim()"
         >
           <nb-icon icon="checkmark-outline"></nb-icon>
-          {{ creating ? '创建中...' : '创建' }}
+          {{ (creating ? 'mv.actions.creating' : 'mv.actions.create') | translate }}
         </button>
       </div>
     </nb-card-footer>
@@ -352,7 +352,7 @@ GROUP BY customer_id, order_date;</pre>
   <nb-card *ngIf="selectedMV">
     <nb-card-header>
       <div class="d-flex justify-content-between align-items-center">
-        <h5>物化视图详情: {{ selectedMV.name }}</h5>
+        <h5>{{ 'mv.detail.title' | translate: { name: selectedMV.name } }}</h5>
         <button nbButton ghost (click)="closeDetailDialog()">
           <nb-icon icon="close-outline"></nb-icon>
         </button>
@@ -360,92 +360,92 @@ GROUP BY customer_id, order_date;</pre>
     </nb-card-header>
     <nb-card-body>
       <nb-tabset>
-        <nb-tab tabTitle="基本信息">
+        <nb-tab [tabTitle]="'mv.detail.basicInfo' | translate">
           <div class="detail-section">
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label class="label">名称</label>
+                <label class="label">{{ 'mv.detail.name' | translate }}</label>
                 <p>{{ selectedMV.name }}</p>
               </div>
               <div class="col-md-6 mb-3">
-                <label class="label">数据库</label>
+                <label class="label">{{ 'mv.detail.database' | translate }}</label>
                 <p>{{ selectedMV.database_name }}</p>
               </div>
               <div class="col-md-6 mb-3">
-                <label class="label">刷新类型</label>
+                <label class="label">{{ 'mv.detail.refreshType' | translate }}</label>
                 <p [innerHTML]="getRefreshTypeBadge(selectedMV.refresh_type)"></p>
               </div>
               <div class="col-md-6 mb-3">
-                <label class="label">状态</label>
+                <label class="label">{{ 'mv.detail.status' | translate }}</label>
                 <p>
                   <span *ngIf="selectedMV.is_active" class="badge badge-success">Active</span>
                   <span *ngIf="!selectedMV.is_active" class="badge badge-warning">Inactive</span>
                 </p>
               </div>
               <div class="col-md-6 mb-3">
-                <label class="label">分区类型</label>
+                <label class="label">{{ 'mv.detail.partitionType' | translate }}</label>
                 <p>{{ selectedMV.partition_type || '-' }}</p>
               </div>
               <div class="col-md-6 mb-3">
-                <label class="label">行数</label>
+                <label class="label">{{ 'mv.detail.rows' | translate }}</label>
                 <p>{{ selectedMV.rows || '-' }}</p>
               </div>
               <div class="col-md-6 mb-3">
-                <label class="label">任务ID</label>
+                <label class="label">{{ 'mv.detail.taskId' | translate }}</label>
                 <p>{{ selectedMV.task_id || '-' }}</p>
               </div>
               <div class="col-md-6 mb-3">
-                <label class="label">任务名称</label>
+                <label class="label">{{ 'mv.detail.taskName' | translate }}</label>
                 <p>{{ selectedMV.task_name || '-' }}</p>
               </div>
               <div class="col-md-6 mb-3">
-                <label class="label">最后刷新开始时间</label>
+                <label class="label">{{ 'mv.detail.lastRefreshStart' | translate }}</label>
                 <p>{{ selectedMV.last_refresh_start_time || '-' }}</p>
               </div>
               <div class="col-md-6 mb-3">
-                <label class="label">最后刷新完成时间</label>
+                <label class="label">{{ 'mv.detail.lastRefreshFinished' | translate }}</label>
                 <p>{{ selectedMV.last_refresh_finished_time || '-' }}</p>
               </div>
               <div class="col-md-6 mb-3">
-                <label class="label">最后刷新耗时</label>
+                <label class="label">{{ 'mv.detail.lastRefreshDuration' | translate }}</label>
                 <p>{{ selectedMV.last_refresh_duration || '-' }}</p>
               </div>
               <div class="col-md-6 mb-3">
-                <label class="label">最后刷新状态</label>
+                <label class="label">{{ 'mv.detail.lastRefreshState' | translate }}</label>
                 <p [innerHTML]="getRefreshStateBadge(selectedMV.last_refresh_state)"></p>
               </div>
               
               <!-- Error information -->
               <div class="col-12 mb-3" *ngIf="selectedMV.last_refresh_error_message">
-                <label class="label">刷新错误信息</label>
+                <label class="label">{{ 'mv.detail.refreshError' | translate }}</label>
                 <nb-alert status="danger" closable="false">
-                  <strong>错误码：</strong>{{ selectedMV.last_refresh_error_code || '-' }}<br>
-                  <strong>错误信息：</strong>{{ selectedMV.last_refresh_error_message }}
+                  <strong>{{ 'mv.detail.errorCode' | translate }}</strong>{{ selectedMV.last_refresh_error_code || '-' }}<br>
+                  <strong>{{ 'mv.detail.errorMessage' | translate }}</strong>{{ selectedMV.last_refresh_error_message }}
                 </nb-alert>
               </div>
               
               <!-- Partition information -->
               <div class="col-md-6 mb-3" *ngIf="selectedMV.last_refresh_start_partition">
-                <label class="label">最后刷新起始分区</label>
+                <label class="label">{{ 'mv.detail.lastRefreshStartPartition' | translate }}</label>
                 <p>{{ selectedMV.last_refresh_start_partition }}</p>
               </div>
               <div class="col-md-6 mb-3" *ngIf="selectedMV.last_refresh_end_partition">
-                <label class="label">最后刷新结束分区</label>
+                <label class="label">{{ 'mv.detail.lastRefreshEndPartition' | translate }}</label>
                 <p>{{ selectedMV.last_refresh_end_partition }}</p>
               </div>
               
               <!-- Force refresh flag -->
               <div class="col-md-6 mb-3" *ngIf="selectedMV.last_refresh_force_refresh !== undefined && selectedMV.last_refresh_force_refresh !== null">
-                <label class="label">强制刷新</label>
+                <label class="label">{{ 'mv.detail.forceRefresh' | translate }}</label>
                 <p>
-                  <span *ngIf="selectedMV.last_refresh_force_refresh" class="badge badge-warning">是</span>
-                  <span *ngIf="!selectedMV.last_refresh_force_refresh" class="badge badge-basic">否</span>
+                  <span *ngIf="selectedMV.last_refresh_force_refresh" class="badge badge-warning">{{ 'mv.detail.yes' | translate }}</span>
+                  <span *ngIf="!selectedMV.last_refresh_force_refresh" class="badge badge-basic">{{ 'mv.detail.no' | translate }}</span>
                 </p>
               </div>
             </div>
           </div>
         </nb-tab>
-        <nb-tab tabTitle="DDL语句">
+        <nb-tab [tabTitle]="'mv.detail.ddl' | translate">
           <div class="ddl-section">
             <textarea
               nbInput
@@ -462,7 +462,7 @@ GROUP BY customer_id, order_date;</pre>
         <div class="d-flex gap-2">
           <button nbButton status="info" size="small" (click)="closeDetailDialog(); openEditDialog(selectedMV)">
             <nb-icon icon="edit-outline"></nb-icon>
-            编辑
+            {{ 'mv.actions.edit' | translate }}
           </button>
           <button 
             *ngIf="selectedMV.refresh_type !== 'ROLLUP'" 
@@ -472,7 +472,7 @@ GROUP BY customer_id, order_date;</pre>
             (click)="closeDetailDialog(); openRefreshDialog(selectedMV)"
           >
             <nb-icon icon="refresh-outline"></nb-icon>
-            刷新
+            {{ 'mv.actions.refresh' | translate }}
           </button>
           <button 
             *ngIf="selectedMV.refresh_type !== 'ROLLUP'" 
@@ -482,11 +482,11 @@ GROUP BY customer_id, order_date;</pre>
             (click)="closeDetailDialog(); toggleActiveState(selectedMV)"
           >
             <nb-icon icon="power-outline"></nb-icon>
-            {{ selectedMV.is_active ? '停用' : '激活' }}
+            {{ (selectedMV.is_active ? 'mv.actions.deactivate' : 'mv.actions.activate') | translate }}
           </button>
         </div>
         <button nbButton status="basic" (click)="closeDetailDialog()">
-          关闭
+          {{ 'mv.actions.close' | translate }}
         </button>
       </div>
     </nb-card-footer>
@@ -498,7 +498,7 @@ GROUP BY customer_id, order_date;</pre>
   <nb-card *ngIf="selectedMV">
     <nb-card-header>
       <div class="d-flex justify-content-between align-items-center">
-        <h5>刷新物化视图: {{ selectedMV.name }}</h5>
+        <h5>{{ 'mv.refresh.title' | translate: { name: selectedMV.name } }}</h5>
         <button nbButton ghost (click)="closeRefreshDialog()">
           <nb-icon icon="close-outline"></nb-icon>
         </button>
@@ -506,35 +506,35 @@ GROUP BY customer_id, order_date;</pre>
     </nb-card-header>
     <nb-card-body>
       <div class="form-group">
-        <label class="label">刷新模式</label>
+        <label class="label">{{ 'mv.refresh.mode' | translate }}</label>
         <nb-select fullWidth [(selected)]="refreshMode">
           <nb-option *ngFor="let option of refreshModeOptions" [value]="option.value">
             {{ option.label }}
           </nb-option>
         </nb-select>
         <small class="form-text text-muted">
-          ASYNC: 异步刷新（后台执行），SYNC: 同步刷新（阻塞等待完成）
+          {{ 'mv.refresh.modeHint' | translate }}
         </small>
       </div>
 
       <div class="form-group mt-3">
         <nb-checkbox [(checked)]="refreshForce">
-          强制刷新 (FORCE)
+          {{ 'mv.refresh.force' | translate }}
         </nb-checkbox>
         <small class="form-text text-muted d-block">
-          即使数据未变化也强制刷新物化视图
+          {{ 'mv.refresh.forceHint' | translate }}
         </small>
       </div>
 
       <div class="form-group mt-3" *ngIf="selectedMV.partition_type && selectedMV.partition_type !== 'UNPARTITIONED'">
-        <label class="label">分区刷新 (可选)</label>
+        <label class="label">{{ 'mv.refresh.partitionLabel' | translate }}</label>
         <div class="row">
           <div class="col-md-6">
             <input
               nbInput
               fullWidth
               type="text"
-              placeholder="起始分区"
+              [placeholder]="'mv.refresh.startPartition' | translate"
               [(ngModel)]="refreshPartitionStart"
             />
           </div>
@@ -543,14 +543,14 @@ GROUP BY customer_id, order_date;</pre>
               nbInput
               fullWidth
               type="text"
-              placeholder="结束分区"
+              [placeholder]="'mv.refresh.endPartition' | translate"
               [(ngModel)]="refreshPartitionEnd"
             />
           </div>
         </div>
         <small class="form-text text-muted">
           <nb-icon icon="info-outline"></nb-icon>
-          留空刷新所有分区，或指定分区范围仅刷新部分分区
+          {{ 'mv.refresh.partitionHint' | translate }}
         </small>
       </div>
     </nb-card-body>
@@ -562,7 +562,7 @@ GROUP BY customer_id, order_date;</pre>
           (click)="closeRefreshDialog()"
           [disabled]="refreshing"
         >
-          取消
+          {{ 'mv.actions.cancel' | translate }}
         </button>
         <button
           nbButton
@@ -571,7 +571,7 @@ GROUP BY customer_id, order_date;</pre>
           [disabled]="refreshing"
         >
           <nb-icon icon="refresh-outline"></nb-icon>
-          {{ refreshing ? '刷新中...' : '开始刷新' }}
+          {{ (refreshing ? 'mv.actions.refreshing' : 'mv.actions.startRefresh') | translate }}
         </button>
       </div>
     </nb-card-footer>
@@ -583,7 +583,7 @@ GROUP BY customer_id, order_date;</pre>
   <nb-card>
     <nb-card-header>
       <div class="d-flex justify-content-between align-items-center">
-        <h5>编辑物化视图: {{ selectedMV?.name }}</h5>
+        <h5>{{ 'mv.edit.title' | translate: { name: selectedMV?.name } }}</h5>
         <button nbButton ghost (click)="closeEditDialog()">
           <nb-icon icon="close-outline"></nb-icon>
         </button>
@@ -591,45 +591,45 @@ GROUP BY customer_id, order_date;</pre>
     </nb-card-header>
     <nb-card-body>
       <div class="form-group">
-        <label class="label">操作类型</label>
+        <label class="label">{{ 'mv.edit.actionType' | translate }}</label>
         <nb-select [(selected)]="editAction" fullWidth>
-          <nb-option value="rename">重命名</nb-option>
-          <nb-option value="refresh_strategy">修改刷新策略</nb-option>
-          <nb-option value="properties">修改属性</nb-option>
-          <nb-option value="advanced">高级模式（自定义ALTER子句）</nb-option>
+          <nb-option value="rename">{{ 'mv.edit.actions.rename' | translate }}</nb-option>
+          <nb-option value="refresh_strategy">{{ 'mv.edit.actions.refreshStrategy' | translate }}</nb-option>
+          <nb-option value="properties">{{ 'mv.edit.actions.properties' | translate }}</nb-option>
+          <nb-option value="advanced">{{ 'mv.edit.actions.advanced' | translate }}</nb-option>
         </nb-select>
       </div>
 
       <!-- Rename Form -->
       <div *ngIf="editAction === 'rename'" class="form-group">
-        <label class="label">新名称 <span class="text-danger">*</span></label>
+        <label class="label">{{ 'mv.edit.newName' | translate }} <span class="text-danger">*</span></label>
         <input
           nbInput
           fullWidth
           type="text"
           [(ngModel)]="editNewName"
-          placeholder="输入新的物化视图名称"
+          [placeholder]="'mv.edit.newNamePlaceholder' | translate"
         />
         <p class="caption text-hint mt-2">
           <nb-icon icon="info-outline"></nb-icon>
-          将生成SQL: ALTER MATERIALIZED VIEW {{ selectedMV?.database_name }}.{{ selectedMV?.name }} RENAME {{ editNewName }}
+          {{ 'mv.edit.generatedSql' | translate }} ALTER MATERIALIZED VIEW {{ selectedMV?.database_name }}.{{ selectedMV?.name }} RENAME {{ editNewName }}
         </p>
       </div>
 
       <!-- Refresh Strategy Form -->
       <div *ngIf="editAction === 'refresh_strategy'">
         <div class="form-group">
-          <label class="label">刷新策略 <span class="text-danger">*</span></label>
+          <label class="label">{{ 'mv.edit.refreshStrategy' | translate }} <span class="text-danger">*</span></label>
           <nb-select [(selected)]="editRefreshStrategy" fullWidth>
-            <nb-option value="MANUAL">手动刷新 (MANUAL)</nb-option>
-            <nb-option value="ASYNC">自动刷新 (ASYNC)</nb-option>
+            <nb-option value="MANUAL">{{ 'mv.edit.manual' | translate }}</nb-option>
+            <nb-option value="ASYNC">{{ 'mv.edit.async' | translate }}</nb-option>
           </nb-select>
         </div>
 
         <div *ngIf="editRefreshStrategy === 'ASYNC'" class="row">
           <div class="col-md-6">
             <div class="form-group">
-              <label class="label">刷新间隔</label>
+              <label class="label">{{ 'mv.edit.interval' | translate }}</label>
               <input
                 nbInput
                 fullWidth
@@ -642,12 +642,12 @@ GROUP BY customer_id, order_date;</pre>
           </div>
           <div class="col-md-6">
             <div class="form-group">
-              <label class="label">时间单位</label>
+              <label class="label">{{ 'mv.edit.unit' | translate }}</label>
               <nb-select [(selected)]="editRefreshUnit" fullWidth>
-                <nb-option value="HOUR">小时</nb-option>
-                <nb-option value="DAY">天</nb-option>
-                <nb-option value="WEEK">周</nb-option>
-                <nb-option value="MONTH">月</nb-option>
+                <nb-option value="HOUR">{{ 'mv.edit.units.HOUR' | translate }}</nb-option>
+                <nb-option value="DAY">{{ 'mv.edit.units.DAY' | translate }}</nb-option>
+                <nb-option value="WEEK">{{ 'mv.edit.units.WEEK' | translate }}</nb-option>
+                <nb-option value="MONTH">{{ 'mv.edit.units.MONTH' | translate }}</nb-option>
               </nb-select>
             </div>
           </div>
@@ -656,10 +656,10 @@ GROUP BY customer_id, order_date;</pre>
         <p class="caption text-hint mt-2">
           <nb-icon icon="info-outline"></nb-icon>
           <span *ngIf="editRefreshStrategy === 'MANUAL'">
-            将生成SQL: ALTER MATERIALIZED VIEW ... REFRESH MANUAL
+            {{ 'mv.edit.generatedSql' | translate }} ALTER MATERIALIZED VIEW ... REFRESH MANUAL
           </span>
           <span *ngIf="editRefreshStrategy === 'ASYNC'">
-            将生成SQL: ALTER MATERIALIZED VIEW ... REFRESH ASYNC EVERY(INTERVAL {{ editRefreshInterval }} {{ editRefreshUnit }})
+            {{ 'mv.edit.generatedSql' | translate }} ALTER MATERIALIZED VIEW ... REFRESH ASYNC EVERY(INTERVAL {{ editRefreshInterval }} {{ editRefreshUnit }})
           </span>
         </p>
       </div>
@@ -667,37 +667,37 @@ GROUP BY customer_id, order_date;</pre>
       <!-- Properties Form -->
       <div *ngIf="editAction === 'properties'">
         <div class="form-group">
-          <label class="label">属性名称 <span class="text-danger">*</span></label>
+          <label class="label">{{ 'mv.edit.propertyName' | translate }} <span class="text-danger">*</span></label>
           <input
             nbInput
             fullWidth
             type="text"
             [(ngModel)]="editPropertyKey"
-            placeholder="例如: session.enable_profile 或 mv_rewrite_staleness_second"
+            [placeholder]="'mv.edit.propertyNamePlaceholder' | translate"
           />
         </div>
         <div class="form-group">
-          <label class="label">属性值 <span class="text-danger">*</span></label>
+          <label class="label">{{ 'mv.edit.propertyValue' | translate }} <span class="text-danger">*</span></label>
           <input
             nbInput
             fullWidth
             type="text"
             [(ngModel)]="editPropertyValue"
-            placeholder="输入属性值"
+            [placeholder]="'mv.edit.propertyValuePlaceholder' | translate"
           />
         </div>
 
         <nb-accordion class="mt-3">
           <nb-accordion-item>
-            <nb-accordion-item-header>常用属性说明</nb-accordion-item-header>
+            <nb-accordion-item-header>{{ 'mv.edit.commonProperties' | translate }}</nb-accordion-item-header>
             <nb-accordion-item-body>
               <ul class="list-unstyled small">
-                <li><strong>session.enable_profile</strong> - 启用Profile (true/false)</li>
-                <li><strong>session.enable_spill</strong> - 启用中间结果落盘 (true/false)</li>
-                <li><strong>session.spill_mode</strong> - 落盘模式 (auto/force)</li>
-                <li><strong>mv_rewrite_staleness_second</strong> - 查询改写Staleness时间（秒）</li>
-                <li><strong>partition_ttl_number</strong> - 分区TTL数量</li>
-                <li><strong>partition_refresh_number</strong> - 分区刷新数量</li>
+                <li><strong>session.enable_profile</strong> - {{ 'mv.edit.props.enableProfile' | translate }}</li>
+                <li><strong>session.enable_spill</strong> - {{ 'mv.edit.props.enableSpill' | translate }}</li>
+                <li><strong>session.spill_mode</strong> - {{ 'mv.edit.props.spillMode' | translate }}</li>
+                <li><strong>mv_rewrite_staleness_second</strong> - {{ 'mv.edit.props.staleness' | translate }}</li>
+                <li><strong>partition_ttl_number</strong> - {{ 'mv.edit.props.partitionTtlNumber' | translate }}</li>
+                <li><strong>partition_refresh_number</strong> - {{ 'mv.edit.props.partitionRefreshNumber' | translate }}</li>
               </ul>
             </nb-accordion-item-body>
           </nb-accordion-item>
@@ -705,37 +705,37 @@ GROUP BY customer_id, order_date;</pre>
 
         <p class="caption text-hint mt-2">
           <nb-icon icon="info-outline"></nb-icon>
-          将生成SQL: ALTER MATERIALIZED VIEW ... SET ("{{ editPropertyKey }}" = "{{ editPropertyValue }}")
+          {{ 'mv.edit.generatedSql' | translate }} ALTER MATERIALIZED VIEW ... SET ("{{ editPropertyKey }}" = "{{ editPropertyValue }}")
         </p>
       </div>
 
       <!-- Advanced Form -->
       <div *ngIf="editAction === 'advanced'">
         <div class="form-group">
-          <label class="label">ALTER子句 <span class="text-danger">*</span></label>
+          <label class="label">{{ 'mv.edit.alterClause' | translate }} <span class="text-danger">*</span></label>
           <textarea
             nbInput
             fullWidth
             rows="4"
             [(ngModel)]="editAdvancedClause"
-            placeholder="例如: ACTIVE, INACTIVE, SWAP WITH other_mv, SET (...) 等"
+            [placeholder]="'mv.edit.alterClausePlaceholder' | translate"
           ></textarea>
         </div>
 
         <nb-alert status="info" closable="false">
-          <strong>支持的ALTER子句:</strong>
+          <strong>{{ 'mv.edit.supportedClauses' | translate }}</strong>
           <ul class="mb-0 mt-2">
-            <li><code>RENAME new_name</code> - 重命名</li>
-            <li><code>REFRESH MANUAL</code> 或 <code>REFRESH ASYNC EVERY(...)</code> - 修改刷新策略</li>
-            <li><code>ACTIVE</code> 或 <code>INACTIVE</code> - 修改状态</li>
-            <li><code>SET ("key" = "value")</code> - 修改属性</li>
-            <li><code>SWAP WITH other_mv_name</code> - 原子替换</li>
+            <li><code>RENAME new_name</code> - {{ 'mv.edit.clauseRename' | translate }}</li>
+            <li><code>REFRESH MANUAL</code> {{ 'mv.edit.or' | translate }} <code>REFRESH ASYNC EVERY(...)</code> - {{ 'mv.edit.clauseRefresh' | translate }}</li>
+            <li><code>ACTIVE</code> {{ 'mv.edit.or' | translate }} <code>INACTIVE</code> - {{ 'mv.edit.clauseStatus' | translate }}</li>
+            <li><code>SET ("key" = "value")</code> - {{ 'mv.edit.clauseProperties' | translate }}</li>
+            <li><code>SWAP WITH other_mv_name</code> - {{ 'mv.edit.clauseSwap' | translate }}</li>
           </ul>
         </nb-alert>
 
         <p class="caption text-hint mt-2">
           <nb-icon icon="alert-triangle-outline"></nb-icon>
-          请确保ALTER子句语法正确，完整SQL将为: ALTER MATERIALIZED VIEW {{ selectedMV?.database_name }}.{{ selectedMV?.name }} {{ editAdvancedClause }}
+          {{ 'mv.edit.advancedWarning' | translate }} ALTER MATERIALIZED VIEW {{ selectedMV?.database_name }}.{{ selectedMV?.name }} {{ editAdvancedClause }}
         </p>
       </div>
     </nb-card-body>
@@ -747,7 +747,7 @@ GROUP BY customer_id, order_date;</pre>
           (click)="closeEditDialog()"
           [disabled]="editing"
         >
-          取消
+          {{ 'mv.actions.cancel' | translate }}
         </button>
         <button
           nbButton
@@ -756,7 +756,7 @@ GROUP BY customer_id, order_date;</pre>
           [disabled]="editing"
         >
           <nb-icon icon="checkmark-outline"></nb-icon>
-          {{ editing ? '修改中...' : '确认修改' }}
+          {{ (editing ? 'mv.actions.editing' : 'mv.actions.confirmEdit') | translate }}
         </button>
       </div>
     </nb-card-footer>

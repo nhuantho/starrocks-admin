@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { NbDialogService } from '@nebular/theme';
+import { TranslateService } from '@ngx-translate/core';
 import { Observable } from 'rxjs';
 import { ConfirmDialogComponent } from '../components/confirm-dialog/confirm-dialog.component';
 
@@ -7,21 +8,24 @@ import { ConfirmDialogComponent } from '../components/confirm-dialog/confirm-dia
   providedIn: 'root'
 })
 export class ConfirmDialogService {
-  constructor(private dialogService: NbDialogService) {}
+  constructor(
+    private dialogService: NbDialogService,
+    private translate: TranslateService,
+  ) {}
 
   confirm(
     title: string,
     message: string,
-    confirmText: string = '确定',
-    cancelText: string = '取消',
+    confirmText?: string,
+    cancelText?: string,
     confirmStatus: string = 'primary'
   ): Observable<boolean> {
     return this.dialogService.open(ConfirmDialogComponent, {
       context: {
         title,
         message,
-        confirmText,
-        cancelText,
+        confirmText: confirmText || this.translate.instant('common.confirm'),
+        cancelText: cancelText || this.translate.instant('common.cancel'),
         confirmStatus
       },
       hasBackdrop: true,
@@ -32,15 +36,16 @@ export class ConfirmDialogService {
   }
 
   confirmDelete(itemName: string, additionalWarning?: string): Observable<boolean> {
-    const message = additionalWarning 
-      ? `确定要删除 "${itemName}" 吗？\n\n${additionalWarning}`
-      : `确定要删除 "${itemName}" 吗？`;
+    const question = this.translate.instant('common.confirmDialog.deleteMessage', { name: itemName });
+    const message = additionalWarning
+      ? `${question}\n\n${additionalWarning}`
+      : question;
 
     return this.confirm(
-      '确认删除',
+      this.translate.instant('common.confirmDialog.deleteTitle'),
       message,
-      '删除',
-      '取消',
+      this.translate.instant('common.delete'),
+      this.translate.instant('common.cancel'),
       'danger'
     );
   }

@@ -16,6 +16,18 @@ import { AddFunctionDialogComponent } from './add-function-dialog/add-function-d
 import { EditFunctionDialogComponent } from './edit-function-dialog/edit-function-dialog.component';
 import { ErrorHandler } from '../../../@core/utils/error-handler';
 import { ConfirmDialogService } from '../../../@core/services/confirm-dialog.service';
+import { TranslateService } from '@ngx-translate/core';
+
+// 内置分类名称（数据库中的值）到翻译键的映射
+const BUILTIN_CATEGORY_KEYS: { [categoryName: string]: string } = {
+  '集群信息': 'clusterInfo',
+  '数据库管理': 'database',
+  '事务管理': 'transaction',
+  '任务管理': 'task',
+  '元数据管理': 'metadata',
+  '存储管理': 'storage',
+  '作业管理': 'job',
+};
 
 interface SystemFunctionOld {
   name: string;
@@ -23,6 +35,7 @@ interface SystemFunctionOld {
   category: string;
   status: string;
   last_updated: string;
+  isSystem?: boolean;
 }
 
 interface SystemCategoryOld {
@@ -54,32 +67,39 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
   activeCluster: Cluster | null = null;
   
   // 系统默认功能（硬编码）
-  systemFunctions: SystemFunctionOld[] = [
-    { name: 'backends', description: '计算节点信息(BE/CN)', category: '集群信息', status: 'active', last_updated: '2024-01-01' },
-    { name: 'frontends', description: 'Frontend节点信息', category: '集群信息', status: 'active', last_updated: '2024-01-01' },
-    { name: 'brokers', description: 'Broker节点信息', category: '集群信息', status: 'active', last_updated: '2024-01-01' },
-    { name: 'statistic', description: '统计信息', category: '集群信息', status: 'active', last_updated: '2024-01-01' },
-    { name: 'dbs', description: '数据库信息', category: '数据库管理', status: 'active', last_updated: '2024-01-01' },
-    { name: 'tables', description: '表信息', category: '数据库管理', status: 'active', last_updated: '2024-01-01' },
-    { name: 'tablet_schema', description: 'Tablet Schema', category: '数据库管理', status: 'active', last_updated: '2024-01-01' },
-    { name: 'partitions', description: '分区信息', category: '数据库管理', status: 'active', last_updated: '2024-01-01' },
-    { name: 'transactions', description: '事务信息', category: '事务管理', status: 'active', last_updated: '2024-01-01' },
-    { name: 'routine_loads', description: 'Routine Load任务', category: '任务管理', status: 'active', last_updated: '2024-01-01' },
-    { name: 'stream_loads', description: 'Stream Load任务', category: '任务管理', status: 'active', last_updated: '2024-01-01' },
-    { name: 'loads', description: 'Load任务', category: '任务管理', status: 'active', last_updated: '2024-01-01' },
-    { name: 'load_error_hub', description: 'Load错误信息', category: '任务管理', status: 'active', last_updated: '2024-01-01' },
-    { name: 'catalog', description: 'Catalog信息', category: '元数据管理', status: 'active', last_updated: '2024-01-01' },
-    { name: 'resources', description: '资源信息', category: '元数据管理', status: 'active', last_updated: '2024-01-01' },
-    { name: 'workload_groups', description: '工作负载组', category: '元数据管理', status: 'active', last_updated: '2024-01-01' },
-    { name: 'workload_sched_policy', description: '工作负载调度策略', category: '元数据管理', status: 'active', last_updated: '2024-01-01' },
-    { name: 'compactions', description: '压缩任务', category: '存储管理', status: 'active', last_updated: '2024-01-01' },
-    { name: 'colocate_group', description: 'Colocate Group', category: '存储管理', status: 'active', last_updated: '2024-01-01' },
-    { name: 'bdbje', description: 'BDBJE信息', category: '存储管理', status: 'active', last_updated: '2024-01-01' },
-    { name: 'small_files', description: '小文件信息', category: '存储管理', status: 'active', last_updated: '2024-01-01' },
-    { name: 'trash', description: '回收站', category: '存储管理', status: 'active', last_updated: '2024-01-01' },
-    { name: 'jobs', description: '作业信息', category: '作业管理', status: 'active', last_updated: '2024-01-01' },
-    { name: 'repositories', description: '仓库信息', category: '作业管理', status: 'active', last_updated: '2024-01-01' }
-  ];
+  systemFunctions: SystemFunctionOld[] = ([
+    ['backends', 'clusterInfo'],
+    ['frontends', 'clusterInfo'],
+    ['brokers', 'clusterInfo'],
+    ['statistic', 'clusterInfo'],
+    ['dbs', 'database'],
+    ['tables', 'database'],
+    ['tablet_schema', 'database'],
+    ['partitions', 'database'],
+    ['transactions', 'transaction'],
+    ['routine_loads', 'task'],
+    ['stream_loads', 'task'],
+    ['loads', 'task'],
+    ['load_error_hub', 'task'],
+    ['catalog', 'metadata'],
+    ['resources', 'metadata'],
+    ['workload_groups', 'metadata'],
+    ['workload_sched_policy', 'metadata'],
+    ['compactions', 'storage'],
+    ['colocate_group', 'storage'],
+    ['bdbje', 'storage'],
+    ['small_files', 'storage'],
+    ['trash', 'storage'],
+    ['jobs', 'job'],
+    ['repositories', 'job']
+  ] as [string, string][]).map(([name, category]) => ({
+    name,
+    description: name,
+    category,
+    status: 'active',
+    last_updated: '2024-01-01',
+    isSystem: true,
+  }));
 
   // 自定义功能
   customFunctions: SystemFunction[] = [];
@@ -113,13 +133,23 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
     private toastrService: NbToastrService,
     private systemFunctionService: SystemFunctionService,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private translate: TranslateService,
   ) {
     // Get clusterId from ClusterContextService
     this.clusterId = this.clusterContext.getActiveClusterId() || 0;
   }
 
   ngOnInit() {
+    // Rebuild table settings (noDataMessage) when the language changes
+    this.translate.onLangChange
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        if (this.functionData.length > 0) {
+          this.setupTableSettings();
+        }
+      });
+
     // Subscribe to active cluster changes
     this.clusterContext.activeCluster$
       .pipe(takeUntil(this.destroy$))
@@ -171,7 +201,8 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
           description: foundFunc.description,
           category: foundFunc.categoryName,
           status: 'active',
-          last_updated: foundFunc.updatedAt
+          last_updated: foundFunc.updatedAt,
+          isSystem: foundFunc.isSystem
         };
       }
     }
@@ -202,7 +233,7 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         console.error('Failed to load system functions:', error);
-        this.toastrService.danger(ErrorHandler.extractErrorMessage(error), '加载失败');
+        this.toastrService.danger(ErrorHandler.extractErrorMessage(error), this.translate.instant('sysfn.toast.loadFailed'));
         this.loading = false;
       }
     });
@@ -289,11 +320,11 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         next: (newFunction) => {
           this.customFunctions.push(newFunction);
           this.mergeAndOrganizeFunctions();
-          this.toastrService.success('功能添加成功', '成功');
+          this.toastrService.success(this.translate.instant('sysfn.toast.addSuccess'), this.translate.instant('sysfn.toast.success'));
         },
         error: (error) => {
           console.error('Failed to create function:', error);
-          this.toastrService.danger(ErrorHandler.extractErrorMessage(error), '添加失败');
+          this.toastrService.danger(ErrorHandler.extractErrorMessage(error), this.translate.instant('sysfn.toast.addFailed'));
         }
       });
   }
@@ -315,11 +346,11 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
             this.customFunctions[index] = updatedFunction;
             this.mergeAndOrganizeFunctions();
           }
-          this.toastrService.success('功能更新成功', '成功');
+          this.toastrService.success(this.translate.instant('sysfn.toast.updateSuccess'), this.translate.instant('sysfn.toast.success'));
         },
         error: (error) => {
           console.error('Failed to update function:', error);
-          this.toastrService.danger(ErrorHandler.extractErrorMessage(error), '更新失败');
+          this.toastrService.danger(ErrorHandler.extractErrorMessage(error), this.translate.instant('sysfn.toast.updateFailed'));
         }
       });
   }
@@ -379,11 +410,11 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         .pipe(takeUntil(this.destroy$))
         .subscribe({
           next: () => {
-            this.toastrService.success('分类顺序已保存', '成功');
+            this.toastrService.success(this.translate.instant('sysfn.toast.categoryOrderSaved'), this.translate.instant('sysfn.toast.success'));
           },
           error: (error) => {
             console.error('Failed to save category orders:', error);
-            this.toastrService.danger(ErrorHandler.extractErrorMessage(error), '保存失败');
+            this.toastrService.danger(ErrorHandler.extractErrorMessage(error), this.translate.instant('sysfn.toast.saveFailed'));
           }
         });
     }
@@ -409,11 +440,11 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         .pipe(takeUntil(this.destroy$))
         .subscribe({
           next: () => {
-            this.toastrService.success('功能顺序已保存', '成功');
+            this.toastrService.success(this.translate.instant('sysfn.toast.functionOrderSaved'), this.translate.instant('sysfn.toast.success'));
           },
           error: (error) => {
             console.error('Failed to save function orders:', error);
-            this.toastrService.danger(ErrorHandler.extractErrorMessage(error), '保存失败');
+            this.toastrService.danger(ErrorHandler.extractErrorMessage(error), this.translate.instant('sysfn.toast.saveFailed'));
           }
         });
     }
@@ -432,13 +463,13 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
             this.mergeAndOrganizeFunctions();
           }
           this.toastrService.success(
-            updatedFunction.isFavorited ? '已添加到收藏' : '已取消收藏',
-            '成功'
+            this.translate.instant(updatedFunction.isFavorited ? 'sysfn.toast.favorited' : 'sysfn.toast.unfavorited'),
+            this.translate.instant('sysfn.toast.success')
           );
         },
         error: (error) => {
           console.error('Failed to toggle favorite:', error);
-          this.toastrService.danger(ErrorHandler.extractErrorMessage(error), '操作失败');
+          this.toastrService.danger(ErrorHandler.extractErrorMessage(error), this.translate.instant('sysfn.toast.operationFailed'));
         }
       });
   }
@@ -460,11 +491,11 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
                 // 从本地数据中移除
                 this.customFunctions = this.customFunctions.filter(f => f.id !== functionId);
                 this.mergeAndOrganizeFunctions();
-                this.toastrService.success('功能已删除', '成功');
+                this.toastrService.success(this.translate.instant('sysfn.toast.deleteSuccess'), this.translate.instant('sysfn.toast.success'));
               },
               error: (error) => {
                 console.error('Failed to delete function:', error);
-                this.toastrService.danger(ErrorHandler.extractErrorMessage(error), '删除失败');
+                this.toastrService.danger(ErrorHandler.extractErrorMessage(error), this.translate.instant('sysfn.toast.deleteFailed'));
               }
             });
         }
@@ -517,7 +548,8 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         description: func.description,
         category: func.categoryName,
         status: 'active',
-        last_updated: func.updatedAt
+        last_updated: func.updatedAt,
+        isSystem: func.isSystem
       };
       
       this.loadFunctionData(func.functionName);
@@ -536,12 +568,13 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
               description: func.description,
               category: func.categoryName,
               status: 'active',
-              last_updated: func.updatedAt
+              last_updated: func.updatedAt,
+              isSystem: func.isSystem
             };
           },
           error: (error) => {
             console.error('Failed to execute custom function:', error);
-            this.toastrService.danger(ErrorHandler.extractErrorMessage(error), '执行失败');
+            this.toastrService.danger(ErrorHandler.extractErrorMessage(error), this.translate.instant('sysfn.toast.executeFailed'));
           }
         });
     }
@@ -573,9 +606,10 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
           this.selectedFunction = {
             name: functionName,
             description: this.getFunctionDescription(functionName),
-            category: '系统功能',
+            category: this.translate.instant('sysfn.systemFunction'),
             status: 'active',
-            last_updated: new Date().toISOString()
+            last_updated: new Date().toISOString(),
+            isSystem: true
           };
         }
 
@@ -589,7 +623,7 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
       error: (error) => {
         console.error('[SystemManagement] Failed to load function data:', error);
         this.loading = false;
-        this.toastrService.danger(ErrorHandler.extractErrorMessage(error), '加载失败');
+        this.toastrService.danger(ErrorHandler.extractErrorMessage(error), this.translate.instant('sysfn.toast.loadFailed'));
       }
     });
   }
@@ -660,7 +694,7 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         display: true,
         perPage: 10
       },
-      noDataMessage: '暂无数据'
+      noDataMessage: this.translate.instant('sysfn.noData')
     };
   }
 
@@ -735,34 +769,26 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
 
   // 获取功能描述
   getFunctionDescription(functionName: string): string {
-    const descriptionMap: { [key: string]: string } = {
-      'backends': '计算节点信息(BE/CN)',
-      'frontends': 'Frontend节点信息',
-      'brokers': 'Broker节点信息',
-      'statistic': '统计信息',
-      'dbs': '数据库信息',
-      'tables': '表信息',
-      'tablet_schema': 'Tablet Schema',
-      'partitions': '分区信息',
-      'transactions': '事务信息',
-      'routine_loads': 'Routine Load任务',
-      'stream_loads': 'Stream Load任务',
-      'loads': 'Load任务',
-      'load_error_hub': 'Load错误信息',
-      'catalog': 'Catalog信息',
-      'resources': '资源信息',
-      'workload_groups': '工作负载组',
-      'workload_sched_policy': '工作负载调度策略',
-      'compactions': '压缩任务',
-      'colocate_group': 'Colocate Group',
-      'bdbje': 'BDBJE信息',
-      'small_files': '小文件信息',
-      'trash': '回收站',
-      'jobs': '作业信息',
-      'repositories': '仓库信息'
-    };
-    
-    return descriptionMap[functionName] || '系统功能';
+    const key = `sysfn.functions.${functionName}`;
+    const translated = this.translate.instant(key);
+    return translated !== key ? translated : this.translate.instant('sysfn.systemFunction');
+  }
+
+  // 获取功能描述的显示文本（仅翻译内置系统功能，自定义功能保持原样）
+  getFunctionDescriptionLabel(functionName: string, description: string, isSystem?: boolean): string {
+    // Chinese UI shows the description stored in the database unchanged
+    if (!isSystem || this.translate.currentLang === 'zh-CN') {
+      return description;
+    }
+    const key = `sysfn.functions.${functionName}`;
+    const translated = this.translate.instant(key);
+    return translated !== key ? translated : description;
+  }
+
+  // 获取分类的显示名称（仅翻译内置分类，自定义分类保持原样）
+  getCategoryLabel(categoryName: string): string {
+    const key = BUILTIN_CATEGORY_KEYS[categoryName];
+    return key ? this.translate.instant(`sysfn.categories.${key}`) : categoryName;
   }
 
   // 格式化最后更新时间
@@ -814,21 +840,21 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
   // 删除分类
   deleteCategory(categoryName: string) {
     this.confirmDialogService.confirm(
-      '确认删除分类',
-      `确定要删除分类 "${categoryName}" 吗？\n\n这将删除该分类下的所有自定义功能。`,
-      '删除',
-      '取消',
+      this.translate.instant('sysfn.confirm.deleteCategoryTitle'),
+      this.translate.instant('sysfn.confirm.deleteCategoryMessage', { name: categoryName }),
+      this.translate.instant('sysfn.confirm.delete'),
+      this.translate.instant('sysfn.confirm.cancel'),
       'danger'
     ).subscribe(confirmed => {
       if (confirmed) {
         this.systemFunctionService.deleteCategory(categoryName).subscribe({
           next: () => {
-            this.toastrService.success('分类删除成功');
+            this.toastrService.success(this.translate.instant('sysfn.toast.categoryDeleted'));
             this.loadSystemFunctions(); // 重新加载功能列表
           },
           error: (error) => {
             console.error('删除分类失败:', error);
-            this.toastrService.danger(ErrorHandler.extractErrorMessage(error), '删除失败');
+            this.toastrService.danger(ErrorHandler.extractErrorMessage(error), this.translate.instant('sysfn.toast.deleteFailed'));
           }
         });
       }

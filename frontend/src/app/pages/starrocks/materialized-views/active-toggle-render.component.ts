@@ -17,7 +17,7 @@ import { ViewCell } from 'ng2-smart-table';
           [outline]="true"
           class="ms-2"
           (click)="onToggle()"
-          [title]="isActive ? '停用' : '激活'">
+          [title]="(isActive ? 'mv.actions.deactivate' : 'mv.actions.activate') | translate">
           <nb-icon icon="power-outline"></nb-icon>
         </button>
       </ng-container>

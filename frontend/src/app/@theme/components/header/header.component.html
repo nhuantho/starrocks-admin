@@ -20,8 +20,17 @@
     status="basic" 
     size="small"
     class="theme-switcher"
-    placeholder="主题">
-    <nb-option *ngFor="let theme of themes" [value]="theme.value">{{ theme.name }}</nb-option>
+    [placeholder]="'common.theme.placeholder' | translate">
+    <nb-option *ngFor="let theme of themes" [value]="theme.value">{{ theme.name | translate }}</nb-option>
+  </nb-select>
+  <nb-select
+    [selected]="currentLanguage"
+    (selectedChange)="changeLanguage($event)"
+    status="basic"
+    size="small"
+    class="language-switcher"
+    [placeholder]="'common.language' | translate">
+    <nb-option *ngFor="let lang of languages" [value]="lang.value">{{ lang.label }}</nb-option>
   </nb-select>
 </div>
 

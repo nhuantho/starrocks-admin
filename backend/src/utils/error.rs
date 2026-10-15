@@ -16,6 +16,10 @@ pub enum ApiError {
     #[error("Unauthorized: {0}")]
     Unauthorized(String),
 
+    /// Unauthorized error carrying a stable, machine-readable error code
+    #[error("Unauthorized: {message}")]
+    UnauthorizedWithCode { message: String, error_code: &'static str },
+
     #[error("Token expired")]
     TokenExpired,
 
@@ -93,6 +97,11 @@ impl ApiError {
         Self::Unauthorized(message.into())
     }
 
+    /// Helper to create unauthorized error with a stable string error code
+    pub fn unauthorized_with_code(message: impl Into<String>, error_code: &'static str) -> Self {
+        Self::UnauthorizedWithCode { message: message.into(), error_code }
+    }
+
     /// Helper to create cluster not found error
     pub fn cluster_not_found(cluster_id: i64) -> Self {
         Self::ClusterNotFound { cluster_id }
@@ -163,6 +172,7 @@ impl ApiError {
         match self {
             // Authentication errors 1xxx
             Self::Unauthorized(_) => 1001,
+            Self::UnauthorizedWithCode { .. } => 1001,
             Self::TokenExpired => 1002,
             Self::InvalidCredentials => 1003,
 
@@ -205,6 +215,9 @@ pub struct ApiErrorResponse {
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub details: Option<serde_json::Value>,
+    /// Stable string error code for clients (e.g. "FIRST_LOGIN_PASSWORD_CHANGE_REQUIRED")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_code: Option<&'static str>,
 }
 
 impl IntoResponse for ApiError {
@@ -213,6 +226,10 @@ impl IntoResponse for ApiError {
         let message = self.to_string();
         let details = match &self {
             Self::ValidationErrorWithData { data, .. } => Some(data.clone()),
+            _ => None,
+        };
+        let error_code = match &self {
+            Self::UnauthorizedWithCode { error_code, .. } => Some(*error_code),
             _ => None,
         };
 
@@ -224,7 +241,7 @@ impl IntoResponse for ApiError {
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
 
-        let response = ApiErrorResponse { code, message, details };
+        let response = ApiErrorResponse { code, message, details, error_code };
 
         (status, Json(response)).into_response()
     }

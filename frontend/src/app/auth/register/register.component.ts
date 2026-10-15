@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { NbToastrService } from '@nebular/theme';
+import { TranslateService } from '@ngx-translate/core';
 import { AuthService } from '../../@core/data/auth.service';
 import { DiceBearService } from '../../@core/services/dicebear.service';
 
@@ -31,7 +32,8 @@ export class RegisterComponent {
     protected router: Router,
     private authService: AuthService,
     private toastrService: NbToastrService,
-    private diceBearService: DiceBearService
+    private diceBearService: DiceBearService,
+    private translate: TranslateService,
   ) {
     this.generateAvatarOptions();
     // 随机选择一个头像
@@ -59,19 +61,19 @@ export class RegisterComponent {
 
     // Validation
     if (!this.user.username || !this.user.email || !this.user.password || !this.user.confirmPassword) {
-      this.errors.push('All fields are required!');
+      this.errors.push(this.translate.instant('auth.register.allFieldsRequired'));
       this.submitted = false;
       return;
     }
 
     if (this.user.password !== this.user.confirmPassword) {
-      this.errors.push('Passwords do not match!');
+      this.errors.push(this.translate.instant('auth.register.passwordMismatch'));
       this.submitted = false;
       return;
     }
 
     if (this.user.password.length < 6) {
-      this.errors.push('Password must be at least 6 characters long!');
+      this.errors.push(this.translate.instant('auth.register.passwordMinLength'));
       this.submitted = false;
       return;
     }
@@ -87,7 +89,10 @@ export class RegisterComponent {
       next: (response) => {
         this.submitted = false;
         // Show single toast notification for registration success
-        this.toastrService.success('Please login with your credentials', 'Registration Successful');
+        this.toastrService.success(
+          this.translate.instant('auth.register.successMessage'),
+          this.translate.instant('auth.register.success'),
+        );
         // Navigate to login after short delay
         setTimeout(() => {
           this.router.navigate(['/auth/login']);
@@ -96,7 +101,7 @@ export class RegisterComponent {
       error: (error) => {
         this.submitted = false;
         // Show error in alert (form validation errors use alert, API errors use toast)
-        const errorMessage = error.error?.message || 'Registration failed. Please try again.';
+        const errorMessage = error.error?.message || this.translate.instant('auth.register.failedMessage');
         this.errors = [errorMessage];
         this.showMessages = true;
         // Don't show toast for API errors since we already show alert

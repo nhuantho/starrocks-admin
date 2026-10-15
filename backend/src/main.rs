@@ -673,20 +673,22 @@ async fn serve_static_files(uri: Uri) -> impl IntoResponse {
         .iter()
         .any(|ext| path.ends_with(&format!(".{}", ext)));
 
-    let asset_path = if is_static_asset {
-        // Extract filename from path (handles cases like /starrocks-admin/pages/starrocks/runtime.js)
-        // Find the last segment that looks like a filename (contains a dot)
-        path.split('/')
-            .next_back()
-            .filter(|s| s.contains('.'))
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| path.to_string())
+    // Try to get the file from embedded assets.
+    // Static assets are looked up by their full path first (e.g. assets/i18n/en/common.json),
+    // then by progressively stripping leading route segments, which handles sub-path
+    // deployments such as /starrocks-admin/pages/starrocks/runtime.js -> runtime.js
+    // and /starrocks-admin/assets/i18n/en/common.json -> assets/i18n/en/common.json.
+    let found = if is_static_asset {
+        let segments: Vec<&str> = path.split('/').collect();
+        (0..segments.len()).find_map(|i| {
+            let candidate = segments[i..].join("/");
+            WebAssets::get(&candidate).map(|file| (candidate, file))
+        })
     } else {
-        path.to_string()
+        WebAssets::get(path).map(|file| (path.to_string(), file))
     };
 
-    // Try to get the file from embedded assets
-    if let Some(file) = WebAssets::get(&asset_path) {
+    if let Some((asset_path, file)) = found {
         let content_type = get_content_type(&asset_path);
         let data: Vec<u8> = file.data.to_vec();
         return Response::builder()

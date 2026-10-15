@@ -20,6 +20,7 @@ import {
 } from './organization-form/organization-form-dialog.component';
 import { AuthService } from '../../../@core/data/auth.service';
 import { UserService } from '../../../@core/data/user.service';
+import { TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'ngx-organizations',
@@ -37,7 +38,7 @@ export class OrganizationsComponent implements OnInit, OnDestroy {
   canUpdateOrganization = false;
   canDeleteOrganization = false;
 
-  settings = this.buildTableSettings();
+  settings: any = {};
 
   constructor(
     private organizationService: OrganizationService,
@@ -47,12 +48,17 @@ export class OrganizationsComponent implements OnInit, OnDestroy {
     private toastrService: NbToastrService,
     private authService: AuthService,
     private userService: UserService,
+    private translate: TranslateService,
   ) {}
 
   ngOnInit(): void {
     this.permissionService.permissions$
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.applyPermissionState());
+
+    this.translate.onLangChange
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => (this.settings = this.buildTableSettings()));
 
     this.applyPermissionState();
   }
@@ -151,7 +157,7 @@ export class OrganizationsComponent implements OnInit, OnDestroy {
     }
 
     this.confirmDialog
-      .confirmDelete(organization.name, '此操作不可恢复，组织下的所有数据将被删除')
+      .confirmDelete(organization.name, this.translate.instant('system.organizations.deleteWarning'))
       .subscribe((confirmed) => {
         if (confirmed) {
           this.performDelete(organization.id);
@@ -169,7 +175,10 @@ export class OrganizationsComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.organizationService.createOrganization(payload).subscribe({
       next: () => {
-        this.toastrService.success('组织创建成功', '成功');
+        this.toastrService.success(
+          this.translate.instant('system.organizations.created'),
+          this.translate.instant('system.shared.success'),
+        );
         this.loadOrganizations();
       },
       error: (error) => {
@@ -189,7 +198,10 @@ export class OrganizationsComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.organizationService.updateOrganization(id, payload).subscribe({
       next: () => {
-        this.toastrService.success('组织更新成功', '成功');
+        this.toastrService.success(
+          this.translate.instant('system.organizations.updated'),
+          this.translate.instant('system.shared.success'),
+        );
         this.loadOrganizations();
       },
       error: (error) => {
@@ -203,7 +215,10 @@ export class OrganizationsComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.organizationService.deleteOrganization(id).subscribe({
       next: () => {
-        this.toastrService.success('组织删除成功', '成功');
+        this.toastrService.success(
+          this.translate.instant('system.organizations.deleted'),
+          this.translate.instant('system.shared.success'),
+        );
         this.loadOrganizations();
       },
       error: (error) => {
@@ -233,6 +248,7 @@ export class OrganizationsComponent implements OnInit, OnDestroy {
   }
 
   private buildTableSettings(): any {
+    const t = (key: string) => this.translate.instant(key);
     return {
       actions: {
         add: false,
@@ -242,40 +258,40 @@ export class OrganizationsComponent implements OnInit, OnDestroy {
       },
       columns: {
         code: {
-          title: '组织代码',
+          title: t('system.organizations.table.code'),
           type: 'string',
           width: '15%',
         },
         name: {
-          title: '组织名称',
+          title: t('system.organizations.table.name'),
           type: 'string',
           width: '20%',
         },
         description: {
-          title: '描述',
+          title: t('system.organizations.table.description'),
           type: 'string',
           width: '30%',
         },
         is_system: {
-          title: '系统组织',
+          title: t('system.organizations.table.isSystem'),
           type: 'html',
           width: '10%',
           valuePrepareFunction: (cell: boolean) => {
             return cell
-              ? '<span class="badge badge-danger">是</span>'
-              : '<span class="badge badge-basic">否</span>';
+              ? `<span class="badge badge-danger">${t('system.shared.yes')}</span>`
+              : `<span class="badge badge-basic">${t('system.shared.no')}</span>`;
           },
         },
         created_at: {
-          title: '创建时间',
+          title: t('system.organizations.table.createdAt'),
           type: 'string',
           width: '15%',
           valuePrepareFunction: (cell: string) => {
-            return cell ? new Date(cell).toLocaleString('zh-CN') : '';
+            return cell ? new Date(cell).toLocaleString(this.translate.currentLang || 'en') : '';
           },
         },
         actions: {
-          title: '操作',
+          title: t('system.organizations.table.actions'),
           type: 'custom',
           width: '10%',
           filter: false,

@@ -9,7 +9,7 @@ use crate::services::MySQLClient;
 use crate::services::profile_analyzer::{
     AnalysisContext, ClusterVariables, ProfileAnalysisResponse, analyze_profile_with_context,
 };
-use crate::utils::{ApiResult, error::ApiError};
+use crate::utils::{ApiResult, Lang, error::ApiError};
 
 /// Validate and sanitize query_id to prevent SQL injection
 /// StarRocks query_id format: UUID like "12345678-1234-1234-1234-123456789abc"
@@ -188,6 +188,7 @@ pub async fn analyze_profile_handler(
     State(state): State<Arc<crate::AppState>>,
     axum::extract::Extension(org_ctx): axum::extract::Extension<crate::middleware::OrgContext>,
     Path(query_id): Path<String>,
+    lang: Lang,
 ) -> ApiResult<Json<ProfileAnalysisResponse>> {
     // Get the active cluster with organization isolation
     let cluster = if org_ctx.is_super_admin {
@@ -240,7 +241,7 @@ pub async fn analyze_profile_handler(
     let cluster_variables = fetch_cluster_variables(&mysql_client).await;
 
     // Build analysis context with cluster variables
-    let context = AnalysisContext { cluster_variables };
+    let context = AnalysisContext { cluster_variables, lang };
 
     // Parse the profile and return analysis with cluster context
     analyze_profile_with_context(&profile_content, &context)

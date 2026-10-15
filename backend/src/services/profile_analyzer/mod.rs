@@ -54,6 +54,7 @@ pub use analyzer::RuleEngine;
 pub use models::*;
 pub use parser::ProfileComposer;
 
+use crate::utils::i18n::Lang;
 use std::collections::HashMap;
 
 /// Cluster session variables fetched from the live cluster
@@ -65,6 +66,8 @@ pub type ClusterVariables = HashMap<String, String>;
 pub struct AnalysisContext {
     /// Live cluster variables (actual current values)
     pub cluster_variables: Option<ClusterVariables>,
+    /// Language for user-facing diagnostic text
+    pub lang: Lang,
 }
 
 /// Analyze a profile text and return complete analysis results
@@ -116,10 +119,25 @@ pub fn analyze_profile_with_context(
     let mut composer = ProfileComposer::new();
     let profile = composer
         .parse(profile_text)
-        .map_err(|e| format!("解析Profile失败: {:?}", e))?;
+        .map_err(|e| match context.lang {
+            Lang::Zh => format!("解析Profile失败: {:?}", e),
+            Lang::En => format!("Failed to parse profile: {:?}", e),
+        })?;
 
     let execution_tree = profile.execution_tree.clone();
     let mut summary = profile.summary.clone();
+
+    // The composer produces the completeness warning in Chinese; regenerate it in English when needed
+    if context.lang == Lang::En && summary.profile_completeness_warning.is_some() {
+        let total = summary.total_instance_count.unwrap_or(0);
+        let missing = summary.missing_instance_count.unwrap_or(0);
+        let missing_pct =
+            if total > 0 { (missing as f64 / total as f64 * 100.0).round() as i32 } else { 0 };
+        summary.profile_completeness_warning = Some(format!(
+            "Incomplete profile data: execution data is missing for {} of {} Fragments ({}%). Try querying again later.",
+            missing, total, missing_pct
+        ));
+    }
 
     // Calculate DataCache hit rate directly from profile text
     // This handles nested metrics like DataCache: -> DataCacheReadDiskBytes
@@ -169,8 +187,11 @@ pub fn analyze_profile_with_context(
 
     // Run RuleEngine for diagnostics with optional cluster variables
     let rule_engine = RuleEngine::new();
-    let rule_diagnostics =
-        rule_engine.analyze_with_cluster_variables(&profile, context.cluster_variables.as_ref());
+    let rule_diagnostics = rule_engine.analyze_with_cluster_variables(
+        &profile,
+        context.cluster_variables.as_ref(),
+        context.lang,
+    );
 
     // Convert rule diagnostics to API response format
     let diagnostics: Vec<DiagnosticResult> = rule_diagnostics
@@ -224,13 +245,16 @@ pub fn analyze_profile_with_context(
     }
 
     // Aggregate diagnostics by rule_id for overview display
-    let aggregated_diagnostics = aggregate_diagnostics(&diagnostics);
+    let aggregated_diagnostics = aggregate_diagnostics(&diagnostics, context.lang);
 
     // Generate hotspots from diagnostics for backward compatibility
-    let hotspots: Vec<HotSpot> = rule_diagnostics.iter().map(|d| d.to_hotspot()).collect();
+    let hotspots: Vec<HotSpot> = rule_diagnostics
+        .iter()
+        .map(|d| d.to_hotspot(context.lang))
+        .collect();
 
     // Generate conclusion, suggestions and performance score using RuleEngine
-    let conclusion = RuleEngine::generate_conclusion(&rule_diagnostics, &profile);
+    let conclusion = RuleEngine::generate_conclusion(&rule_diagnostics, &profile, context.lang);
     let all_suggestions = RuleEngine::generate_suggestions(&rule_diagnostics);
     let performance_score = RuleEngine::calculate_performance_score(&rule_diagnostics, &profile);
 
@@ -251,7 +275,10 @@ pub fn analyze_profile_with_context(
 
 /// Aggregate diagnostics by rule_id for overview display
 /// Groups multiple diagnostics of the same rule together
-fn aggregate_diagnostics(diagnostics: &[DiagnosticResult]) -> Vec<AggregatedDiagnostic> {
+fn aggregate_diagnostics(
+    diagnostics: &[DiagnosticResult],
+    lang: Lang,
+) -> Vec<AggregatedDiagnostic> {
     use std::collections::{HashMap, HashSet};
 
     // Group by rule_id
@@ -296,7 +323,10 @@ fn aggregate_diagnostics(diagnostics: &[DiagnosticResult]) -> Vec<AggregatedDiag
             // Generate aggregated message
             let node_count = affected_nodes.len();
             let message = if node_count > 1 {
-                format!("{} 个节点存在此问题", node_count)
+                match lang {
+                    Lang::Zh => format!("{} 个节点存在此问题", node_count),
+                    Lang::En => format!("{} nodes have this issue", node_count),
+                }
             } else {
                 first.message.clone()
             };

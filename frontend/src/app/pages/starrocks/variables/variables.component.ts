@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 
 import { NbToastrService, NbDialogService } from '@nebular/theme';
 import { LocalDataSource } from 'ng2-smart-table';
+import { TranslateService } from '@ngx-translate/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { ClusterContextService } from '../../../@core/data/cluster-context.service';
@@ -24,39 +25,43 @@ export class VariablesComponent implements OnInit, OnDestroy {
   variableType = 'global'; // 'global' or 'session'
   private destroy$ = new Subject<void>();
 
-  settings = {
-    hideSubHeader: false, // Enable search
-    noDataMessage: '未找到匹配的变量',
-    actions: {
-      add: false,
-      edit: true,
-      delete: false,
-      position: 'right',
-    },
-    edit: {
-      editButtonContent: '<i class="nb-edit"></i>',
-    },
-    pager: {
-      display: true,
-      perPage: 20,
-    },
-    columns: {
-      name: {
-        title: 'Variable Name',
-        type: 'string',
-        width: '40%',
+  settings: any;
+
+  private buildSettings(): any {
+    return {
+      hideSubHeader: false, // Enable search
+      noDataMessage: this.translate.instant('cluster.variables.noMatch'),
+      actions: {
+        add: false,
+        edit: true,
+        delete: false,
+        position: 'right',
       },
-      value: {
-        title: 'Value',
-        type: 'string',
-        width: '60%',
-        valuePrepareFunction: (value: any) => {
-          if (!value) return 'NULL';
-          return value.length > 200 ? value.substring(0, 200) + '...' : value;
+      edit: {
+        editButtonContent: '<i class="nb-edit"></i>',
+      },
+      pager: {
+        display: true,
+        perPage: 20,
+      },
+      columns: {
+        name: {
+          title: this.translate.instant('cluster.variables.columns.name'),
+          type: 'string',
+          width: '40%',
+        },
+        value: {
+          title: this.translate.instant('cluster.variables.columns.value'),
+          type: 'string',
+          width: '60%',
+          valuePrepareFunction: (value: any) => {
+            if (!value) return 'NULL';
+            return value.length > 200 ? value.substring(0, 200) + '...' : value;
+          },
         },
       },
-    },
-  };
+    };
+  }
 
   constructor(
     
@@ -64,13 +69,21 @@ export class VariablesComponent implements OnInit, OnDestroy {
     private dialogService: NbDialogService,
     private clusterContext: ClusterContextService,
     private nodeService: NodeService,
+    private translate: TranslateService,
   ) {
+    this.settings = this.buildSettings();
     // Try to get clusterId from route first
     // Get clusterId from ClusterContextService
     this.clusterId = this.clusterContext.getActiveClusterId() || 0;
   }
 
   ngOnInit(): void {
+    this.translate.onLangChange
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.settings = this.buildSettings();
+      });
+
     // Subscribe to active cluster changes
     this.clusterContext.activeCluster$
       .pipe(takeUntil(this.destroy$))
@@ -111,8 +124,8 @@ export class VariablesComponent implements OnInit, OnDestroy {
       error: (error) => {
         console.error('[Variables] Error loading variables:', error);
         this.toastrService.danger(
-          error.error?.message || '加载变量失败',
-          '错误'
+          error.error?.message || this.translate.instant('cluster.variables.loadFailed'),
+          this.translate.instant('cluster.shared.error')
         );
         this.variables = [];
         this.source.load([]);
@@ -126,7 +139,7 @@ export class VariablesComponent implements OnInit, OnDestroy {
   }
 
   editVariable(variable: Variable): void {
-    const newValue = prompt(`修改变量 "${variable.name}":`, variable.value);
+    const newValue = prompt(this.translate.instant('cluster.variables.editPrompt', { name: variable.name }), variable.value);
     if (newValue !== null && newValue !== variable.value) {
       this.loading = true;
       this.nodeService.updateVariable(variable.name, {
@@ -134,13 +147,16 @@ export class VariablesComponent implements OnInit, OnDestroy {
         scope: this.variableType.toUpperCase(),
       }).subscribe({
         next: () => {
-          this.toastrService.success(`变量 "${variable.name}" 更新成功`, '成功');
+          this.toastrService.success(
+            this.translate.instant('cluster.variables.updateSuccess', { name: variable.name }),
+            this.translate.instant('cluster.shared.success'),
+          );
           this.loadVariables();
         },
         error: (error) => {
           this.toastrService.danger(
-            error.error?.message || '更新变量失败',
-            '错误'
+            error.error?.message || this.translate.instant('cluster.variables.updateFailed'),
+            this.translate.instant('cluster.shared.error')
           );
           this.loading = false;
         },

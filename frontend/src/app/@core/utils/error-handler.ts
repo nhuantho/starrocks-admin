@@ -1,7 +1,23 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { NbToastrService } from '@nebular/theme';
+import { TranslateService } from '@ngx-translate/core';
 
 export class ErrorHandler {
+  private static translate?: TranslateService;
+
+  /** Registered once at startup (see CoreModule) so static helpers can translate. */
+  static setTranslateService(translate: TranslateService): void {
+    this.translate = translate;
+  }
+
+  private static t(key: string, fallback: string): string {
+    if (!this.translate) {
+      return fallback;
+    }
+    const value = this.translate.instant(key);
+    return value && value !== key ? value : fallback;
+  }
+
   static extractErrorMessage(error: any): string {
     console.log('[ErrorHandler] Full error object:', error);
     console.log('[ErrorHandler] Error type:', typeof error);
@@ -43,7 +59,7 @@ export class ErrorHandler {
     }
     
     console.log('[ErrorHandler] Using fallback message');
-    return '操作失败，请稍后重试';
+    return this.t('common.errors.operationFailed', 'Operation failed. Please try again later.');
   }
   
   /**
@@ -57,27 +73,28 @@ export class ErrorHandler {
     if (errorMsg.includes('No active cluster') || 
         errorMsg.includes('没有激活') ||
         (error.status === 404 && errorMsg.includes('System function'))) {
-      return '请先激活一个集群';
+      return this.t('common.errors.activateClusterFirst', 'Please activate a cluster first');
     }
     
     // If it's a 404, likely a cluster issue
     if (error.status === 404) {
-      return '请先激活一个集群';
+      return this.t('common.errors.activateClusterFirst', 'Please activate a cluster first');
     }
     
     return errorMsg;
   }
   
   private static getDefaultMessageByStatus(status: number): string {
-    const statusMessages: { [key: number]: string } = {
-      400: '请求参数有误',
-      401: '没有权限执行此操作',
-      403: '没有权限执行此操作',
-      404: '请求的资源不存在',
-      500: '服务器内部错误',
-      503: '服务暂时不可用'
+    const statusMessages: { [key: number]: [string, string] } = {
+      400: ['common.errors.badRequest', 'Invalid request parameters'],
+      401: ['common.errors.forbidden', 'You do not have permission to perform this action'],
+      403: ['common.errors.forbidden', 'You do not have permission to perform this action'],
+      404: ['common.errors.notFound', 'The requested resource does not exist'],
+      500: ['common.errors.serverError', 'Internal server error'],
+      503: ['common.errors.serviceUnavailable', 'Service temporarily unavailable'],
     };
-    return statusMessages[status] || '网络请求失败';
+    const [key, fallback] = statusMessages[status] || ['common.errors.networkError', 'Network request failed'];
+    return this.t(key, fallback);
   }
 
   /**
@@ -85,6 +102,6 @@ export class ErrorHandler {
    */
   static handleHttpError(error: any, toastrService: NbToastrService): void {
     const errorMsg = this.extractErrorMessage(error);
-    toastrService.danger(errorMsg, '错误', { duration: 5000 });
+    toastrService.danger(errorMsg, this.t('common.error', 'Error'), { duration: 5000 });
   }
 }

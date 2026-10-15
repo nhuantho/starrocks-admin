@@ -23,7 +23,7 @@
       </nb-icon>
       
       <!-- Tab标题 -->
-      <span class="tab-title">{{ tab.title }}</span>
+      <span class="tab-title">{{ tab.titleKey ? (tab.titleKey | translate) : tab.title }}</span>
       
       <!-- 关闭按钮 -->
       <nb-icon 
@@ -49,6 +49,6 @@
     [class.disabled]="item.disabled"
     (click)="onContextMenuItemClick(item, $event)">
     <nb-icon [icon]="item.icon" [ngClass]="['menu-item-icon', 'icon-' + item.action]"></nb-icon>
-    <span>{{ item.label }}</span>
+    <span>{{ item.label | translate }}</span>
   </button>
 </div>

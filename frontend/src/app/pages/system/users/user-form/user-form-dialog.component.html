@@ -2,9 +2,9 @@
   <nb-card-header>
     <div class="dialog-header">
       <div>
-        <h5>{{ mode === 'create' ? '新增用户' : '编辑用户' }}</h5>
+        <h5>{{ (mode === 'create' ? 'system.users.form.createTitle' : 'system.users.form.editTitle') | translate }}</h5>
         <p class="dialog-subtitle">
-          {{ mode === 'create' ? '创建新用户并分配角色权限' : '修改用户信息与角色分配' }}
+          {{ (mode === 'create' ? 'system.users.form.createSubtitle' : 'system.users.form.editSubtitle') | translate }}
         </p>
       </div>
       <button nbButton ghost status="basic" (click)="cancel()">
@@ -18,12 +18,12 @@
       <div class="form-container">
           <!-- Organization Selection (Super Admin Only) -->
           <div class="form-group" *ngIf="isSuperAdmin">
-            <label class="label" for="input-organization">所属组织</label>
+            <label class="label" for="input-organization">{{ 'system.users.form.organization' | translate }}</label>
             <nb-form-field>
               <nb-select
                 formControlName="organizationId"
                 id="input-organization"
-                placeholder="请选择组织"
+                [placeholder]="'system.users.form.organizationPlaceholder' | translate"
                 [status]="form.get('organizationId')?.invalid && form.get('organizationId')?.touched ? 'danger' : 'basic'"
                 fullWidth
               >
@@ -35,14 +35,14 @@
             </nb-form-field>
             <ng-container *ngIf="form.get('organizationId')?.invalid && form.get('organizationId')?.touched">
               <p class="caption status-danger" *ngIf="form.get('organizationId')?.errors?.['required']">
-                请选择组织
+                {{ 'system.users.form.organizationRequired' | translate }}
               </p>
             </ng-container>
           </div>
 
           <!-- Organization Display (Org Admin) -->
           <div class="form-group" *ngIf="!isSuperAdmin && currentOrganization">
-            <label class="label">所属组织</label>
+            <label class="label">{{ 'system.users.form.organization' | translate }}</label>
             <nb-form-field>
               <input
                 nbInput
@@ -52,18 +52,18 @@
                 disabled
               />
             </nb-form-field>
-            <p class="caption status-hint">组织管理员只能在本组织内创建用户</p>
+            <p class="caption status-hint">{{ 'system.users.form.orgAdminHint' | translate }}</p>
           </div>
 
           <!-- Username -->
           <div class="form-group">
-            <label class="label" for="input-username">用户名</label>
+            <label class="label" for="input-username">{{ 'system.users.form.username' | translate }}</label>
             <nb-form-field>
               <input
                 nbInput
                 fullWidth
                 id="input-username"
-                placeholder="请输入用户名（3-50个字符）"
+                [placeholder]="'system.users.form.usernamePlaceholder' | translate"
                 formControlName="username"
                 [status]="form.get('username')?.invalid && form.get('username')?.touched ? 'danger' : 'basic'"
                 maxlength="50"
@@ -71,24 +71,24 @@
             </nb-form-field>
             <ng-container *ngIf="form.get('username')?.invalid && form.get('username')?.touched">
               <p class="caption status-danger" *ngIf="form.get('username')?.errors?.['required']">
-                用户名不能为空
+                {{ 'system.users.form.usernameRequired' | translate }}
               </p>
               <p class="caption status-danger" *ngIf="form.get('username')?.errors?.['minlength']">
-                用户名至少需要3个字符
+                {{ 'system.users.form.usernameMinLength' | translate }}
               </p>
             </ng-container>
           </div>
 
           <!-- Email -->
           <div class="form-group">
-            <label class="label" for="input-email">邮箱地址</label>
+            <label class="label" for="input-email">{{ 'system.users.form.email' | translate }}</label>
             <nb-form-field>
               <input
                 nbInput
                 fullWidth
                 type="email"
                 id="input-email"
-                placeholder="请输入邮箱地址"
+                [placeholder]="'system.users.form.emailPlaceholder' | translate"
                 formControlName="email"
                 [status]="form.get('email')?.invalid && form.get('email')?.touched ? 'danger' : 'basic'"
                 maxlength="100"
@@ -96,10 +96,10 @@
             </nb-form-field>
             <ng-container *ngIf="form.get('email')?.invalid && form.get('email')?.touched">
               <p class="caption status-danger" *ngIf="form.get('email')?.errors?.['required']">
-                邮箱不能为空
+                {{ 'system.users.form.emailRequired' | translate }}
               </p>
               <p class="caption status-danger" *ngIf="form.get('email')?.errors?.['email']">
-                请输入有效的邮箱地址
+                {{ 'system.users.form.emailInvalid' | translate }}
               </p>
             </ng-container>
           </div>
@@ -107,8 +107,8 @@
           <!-- Password -->
           <div class="form-group">
             <label class="label" for="input-password">
-              密码
-              <span class="label-hint" *ngIf="mode === 'edit'">（留空则不修改）</span>
+              {{ 'system.users.form.password' | translate }}
+              <span class="label-hint" *ngIf="mode === 'edit'">{{ 'system.users.form.passwordKeepHint' | translate }}</span>
             </label>
             <nb-form-field>
               <input
@@ -116,55 +116,55 @@
                 fullWidth
                 type="password"
                 id="input-password"
-                [placeholder]="mode === 'create' ? '请输入密码（至少6个字符）' : '请输入新密码（留空则不修改）'"
+                [placeholder]="(mode === 'create' ? 'system.users.form.passwordPlaceholder' : 'system.users.form.newPasswordPlaceholder') | translate"
                 formControlName="password"
                 [status]="form.get('password')?.invalid && form.get('password')?.touched ? 'danger' : 'basic'"
               />
             </nb-form-field>
             <ng-container *ngIf="form.get('password')?.invalid && form.get('password')?.touched">
               <p class="caption status-danger" *ngIf="form.get('password')?.errors?.['required']">
-                密码不能为空
+                {{ 'system.users.form.passwordRequired' | translate }}
               </p>
               <p class="caption status-danger" *ngIf="form.get('password')?.errors?.['minlength']">
-                密码至少需要6个字符
+                {{ 'system.users.form.passwordMinLength' | translate }}
               </p>
             </ng-container>
           </div>
 
           <!-- Confirm Password -->
           <div class="form-group">
-            <label class="label" for="input-confirm-password">确认密码</label>
+            <label class="label" for="input-confirm-password">{{ 'system.users.form.confirmPassword' | translate }}</label>
             <nb-form-field>
               <input
                 nbInput
                 fullWidth
                 type="password"
                 id="input-confirm-password"
-                placeholder="请再次输入密码以确认"
+                [placeholder]="'system.users.form.confirmPasswordPlaceholder' | translate"
                 formControlName="confirmPassword"
                 [status]="(form.get('confirmPassword')?.invalid || form.errors?.['passwordMismatch']) && form.get('confirmPassword')?.touched ? 'danger' : 'basic'"
               />
             </nb-form-field>
             <ng-container *ngIf="form.get('confirmPassword')?.invalid && form.get('confirmPassword')?.touched">
               <p class="caption status-danger" *ngIf="form.get('confirmPassword')?.errors?.['required']">
-                请确认密码
+                {{ 'system.users.form.confirmPasswordRequired' | translate }}
               </p>
             </ng-container>
             <ng-container *ngIf="form.errors?.['passwordMismatch'] && form.get('confirmPassword')?.touched">
               <p class="caption status-danger">
-                两次输入的密码不一致
+                {{ 'system.users.form.passwordMismatch' | translate }}
               </p>
             </ng-container>
           </div>
 
           <!-- Role Selection -->
           <div class="form-group">
-            <label class="label" for="input-roles">角色</label>
+            <label class="label" for="input-roles">{{ 'system.users.form.roles' | translate }}</label>
             <nb-form-field>
               <nb-select
                 formControlName="roleIds"
                 id="input-roles"
-                placeholder="请选择角色（可多选）"
+                [placeholder]="'system.users.form.rolesPlaceholder' | translate"
                 [status]="form.get('roleIds')?.invalid && form.get('roleIds')?.touched ? 'danger' : 'basic'"
                 multiple
                 fullWidth
@@ -177,11 +177,11 @@
             </nb-form-field>
             <ng-container *ngIf="form.get('roleIds')?.invalid && form.get('roleIds')?.touched">
               <p class="caption status-danger" *ngIf="form.get('roleIds')?.errors?.['required']">
-                请至少选择一个角色
+                {{ 'system.users.form.rolesRequired' | translate }}
               </p>
             </ng-container>
             <p class="caption status-hint" *ngIf="filteredRoles.length === 0">
-              暂无可用角色，请先创建角色
+              {{ 'system.users.form.noRoles' | translate }}
             </p>
           </div>
       </div>
@@ -190,9 +190,9 @@
 
   <nb-card-footer>
     <div class="footer-actions">
-      <button nbButton ghost status="basic" (click)="cancel()">取消</button>
+      <button nbButton ghost status="basic" (click)="cancel()">{{ 'system.shared.cancel' | translate }}</button>
       <button nbButton status="primary" (click)="submit()" [disabled]="form.invalid || loading">
-        {{ mode === 'create' ? '创建用户' : '保存修改' }}
+        {{ (mode === 'create' ? 'system.users.form.submitCreate' : 'system.shared.saveChanges') | translate }}
       </button>
     </div>
   </nb-card-footer>

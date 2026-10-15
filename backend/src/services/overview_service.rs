@@ -5,7 +5,7 @@
 use crate::services::{
     ClusterService, DataStatistics, DataStatisticsService, MetricsSnapshot, MySQLClient,
 };
-use crate::utils::{ApiError, ApiResult};
+use crate::utils::{ApiError, ApiResult, Lang};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
@@ -544,12 +544,13 @@ impl OverviewService {
         &self,
         cluster_id: i64,
         time_range: Option<&TimeRange>,
+        lang: Lang,
     ) -> ApiResult<DataStatistics> {
         if let Some(ref service) = self.data_statistics_service {
             if let Some(stats) = service.get_statistics(cluster_id).await? {
                 let age = Utc::now() - stats.updated_at;
                 if age.num_minutes() < 10 {
-                    return Ok(stats);
+                    return Ok(stats.localized(lang));
                 }
             }
 
@@ -557,6 +558,7 @@ impl OverviewService {
             service
                 .update_statistics(cluster_id, time_range_start)
                 .await
+                .map(|stats| stats.localized(lang))
         } else {
             Err(ApiError::internal_error("Data statistics service not configured"))
         }
@@ -1018,6 +1020,7 @@ impl OverviewService {
         &self,
         cluster_id: i64,
         time_range: TimeRange,
+        lang: Lang,
     ) -> ApiResult<ExtendedClusterOverview> {
         let cluster = self.cluster_service.get_cluster(cluster_id).await?;
 
@@ -1037,7 +1040,7 @@ impl OverviewService {
             starrocks_version_result,
         ) = tokio::join!(
             async {
-                self.get_data_statistics(cluster_id, Some(&time_range))
+                self.get_data_statistics(cluster_id, Some(&time_range), lang)
                     .await
                     .ok()
             },
@@ -1076,7 +1079,7 @@ impl OverviewService {
         let starrocks_version = starrocks_version_result;
 
         let health = if let Some(ref latest_snapshot) = latest {
-            self.calculate_cluster_health(cluster_id, latest_snapshot, &starrocks_version)
+            self.calculate_cluster_health(cluster_id, latest_snapshot, &starrocks_version, lang)
                 .await?
         } else {
             return Err(ApiError::internal_error("No metrics snapshot available"));
@@ -1097,7 +1100,7 @@ impl OverviewService {
             cap.real_data_size_bytes = stats.total_data_size;
         }
 
-        let alerts = self.generate_alerts(&health, &resources, &compaction);
+        let alerts = self.generate_alerts(&health, &resources, &compaction, lang);
 
         Ok(ExtendedClusterOverview {
             cluster_id,
@@ -1126,6 +1129,7 @@ impl OverviewService {
         _cluster_id: i64,
         snapshot: &MetricsSnapshot,
         starrocks_version: &str,
+        lang: Lang,
     ) -> ApiResult<ClusterHealth> {
         let be_nodes_online = snapshot.backend_alive;
         let be_nodes_total = snapshot.backend_total;
@@ -1135,17 +1139,29 @@ impl OverviewService {
 
         let mut alerts = Vec::new();
         let status = if be_nodes_online < be_nodes_total {
-            alerts.push(format!("{} 计算节点离线", be_nodes_total - be_nodes_online));
+            alerts.push(match lang {
+                Lang::Zh => format!("{} 计算节点离线", be_nodes_total - be_nodes_online),
+                Lang::En => format!("{} compute node(s) offline", be_nodes_total - be_nodes_online),
+            });
             HealthStatus::Critical
         } else if compaction_score > 100.0 {
-            alerts.push(format!("Compaction Score过高: {:.1}", compaction_score));
+            alerts.push(match lang {
+                Lang::Zh => format!("Compaction Score过高: {:.1}", compaction_score),
+                Lang::En => format!("Compaction Score too high: {:.1}", compaction_score),
+            });
             HealthStatus::Critical
         } else if compaction_score > 50.0 || snapshot.disk_usage_pct > 80.0 {
             if compaction_score > 50.0 {
-                alerts.push(format!("Compaction Score偏高: {:.1}", compaction_score));
+                alerts.push(match lang {
+                    Lang::Zh => format!("Compaction Score偏高: {:.1}", compaction_score),
+                    Lang::En => format!("Compaction Score is high: {:.1}", compaction_score),
+                });
             }
             if snapshot.disk_usage_pct > 80.0 {
-                alerts.push(format!("磁盘使用率偏高: {:.1}%", snapshot.disk_usage_pct));
+                alerts.push(match lang {
+                    Lang::Zh => format!("磁盘使用率偏高: {:.1}%", snapshot.disk_usage_pct),
+                    Lang::En => format!("Disk usage is high: {:.1}%", snapshot.disk_usage_pct),
+                });
             }
             HealthStatus::Warning
         } else {
@@ -1808,6 +1824,7 @@ impl OverviewService {
         health: &ClusterHealth,
         resources: &ResourceMetrics,
         _compaction: &CompactionStats,
+        lang: Lang,
     ) -> Vec<Alert> {
         let mut alerts = Vec::new();
 
@@ -1815,10 +1832,24 @@ impl OverviewService {
         if health.be_nodes_online < health.be_nodes_total {
             alerts.push(Alert {
                 level: AlertLevel::Critical,
-                category: "节点状态".to_string(),
-                message: format!("{} 计算节点离线", health.be_nodes_total - health.be_nodes_online),
+                category: lang.pick("节点状态", "Node Status").to_string(),
+                message: match lang {
+                    Lang::Zh => {
+                        format!("{} 计算节点离线", health.be_nodes_total - health.be_nodes_online)
+                    },
+                    Lang::En => format!(
+                        "{} compute node(s) offline",
+                        health.be_nodes_total - health.be_nodes_online
+                    ),
+                },
                 timestamp: Utc::now(),
-                action: Some("检查计算节点状态并重启".to_string()),
+                action: Some(
+                    lang.pick(
+                        "检查计算节点状态并重启",
+                        "Check compute node status and restart them",
+                    )
+                    .to_string(),
+                ),
             });
         }
 
@@ -1827,9 +1858,20 @@ impl OverviewService {
             alerts.push(Alert {
                 level: AlertLevel::Critical,
                 category: "Compaction".to_string(),
-                message: format!("Compaction Score过高: {:.1}", health.compaction_score),
+                message: match lang {
+                    Lang::Zh => format!("Compaction Score过高: {:.1}", health.compaction_score),
+                    Lang::En => {
+                        format!("Compaction Score too high: {:.1}", health.compaction_score)
+                    },
+                },
                 timestamp: Utc::now(),
-                action: Some("检查磁盘IO性能，考虑增加计算节点".to_string()),
+                action: Some(
+                    lang.pick(
+                        "检查磁盘IO性能，考虑增加计算节点",
+                        "Check disk IO performance and consider adding compute nodes",
+                    )
+                    .to_string(),
+                ),
             });
         }
 
@@ -1842,10 +1884,19 @@ impl OverviewService {
             };
             alerts.push(Alert {
                 level,
-                category: "容量".to_string(),
-                message: format!("磁盘使用率过高: {:.1}%", resources.disk_usage_pct),
+                category: lang.pick("容量", "Capacity").to_string(),
+                message: match lang {
+                    Lang::Zh => format!("磁盘使用率过高: {:.1}%", resources.disk_usage_pct),
+                    Lang::En => format!("Disk usage too high: {:.1}%", resources.disk_usage_pct),
+                },
                 timestamp: Utc::now(),
-                action: Some("清理过期数据或扩容磁盘".to_string()),
+                action: Some(
+                    lang.pick(
+                        "清理过期数据或扩容磁盘",
+                        "Clean up expired data or expand disk capacity",
+                    )
+                    .to_string(),
+                ),
             });
         }
 
@@ -1853,10 +1904,19 @@ impl OverviewService {
         if resources.cpu_usage_pct > 80.0 {
             alerts.push(Alert {
                 level: AlertLevel::Warning,
-                category: "资源".to_string(),
-                message: format!("CPU使用率偏高: {:.1}%", resources.cpu_usage_pct),
+                category: lang.pick("资源", "Resources").to_string(),
+                message: match lang {
+                    Lang::Zh => format!("CPU使用率偏高: {:.1}%", resources.cpu_usage_pct),
+                    Lang::En => format!("CPU usage is high: {:.1}%", resources.cpu_usage_pct),
+                },
                 timestamp: Utc::now(),
-                action: Some("检查慢查询，优化查询性能".to_string()),
+                action: Some(
+                    lang.pick(
+                        "检查慢查询，优化查询性能",
+                        "Check slow queries and optimize query performance",
+                    )
+                    .to_string(),
+                ),
             });
         }
 
