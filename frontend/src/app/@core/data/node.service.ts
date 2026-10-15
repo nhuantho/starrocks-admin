@@ -72,6 +72,7 @@ export interface Frontend {
 export interface Query {
   QueryId: string;
   ConnectionId: string;
+  Catalog?: string;
   Database: string;
   User: string;
   ScanBytes: string;
@@ -182,6 +183,12 @@ export interface ProfileListItem {
   Time: string;
   State: string;
   Statement: string;
+  Catalog?: string;
+  Database?: string;
+  User?: string;
+  EndTime?: string;
+  FeNode?: string;
+  Engine?: string;
 }
 
 export interface ProfileDetail {
@@ -412,6 +419,14 @@ export class NodeService {
 
   getProfile(queryId: string): Observable<ProfileDetail> {
     return this.api.get<ProfileDetail>(`/clusters/profiles/${queryId}`);
+  }
+
+  getProfileStatus(queryId: string): Observable<ProfileListItem> {
+    return this.api.get<ProfileListItem>(`/clusters/profiles/${encodeURIComponent(queryId)}/status`);
+  }
+
+  explainQuery(sql: string, catalog?: string, database?: string): Observable<{plan: string; execution_time_ms: number}> {
+    return this.api.post<{plan: string; execution_time_ms: number}>('/clusters/profiles/explain', {sql, catalog, database});
   }
 
   analyzeProfile(queryId: string): Observable<ProfileAnalysisResult> {

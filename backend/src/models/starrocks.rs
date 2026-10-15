@@ -66,7 +66,7 @@ pub struct Backend {
     pub backend_id: String,
 
     // IP address
-    #[serde(rename = "IP", default = "default_empty_string")]
+    #[serde(rename = "IP", alias = "Host", default = "default_empty_string")]
     pub host: String,
 
     // Heartbeat port
@@ -245,6 +245,8 @@ pub struct Query {
     pub query_id: String,
     #[serde(rename = "ConnectionId")]
     pub connection_id: String,
+    #[serde(rename = "Catalog", default)]
+    pub catalog: String,
     #[serde(rename = "Database", default)]
     pub database: String,
     #[serde(rename = "User")]
@@ -446,6 +448,18 @@ pub struct ProfileListItem {
     pub state: String,
     #[serde(rename = "Statement")]
     pub statement: String,
+    #[serde(rename = "Catalog", default)]
+    pub catalog: String,
+    #[serde(rename = "Database", default)]
+    pub database: String,
+    #[serde(rename = "User", default)]
+    pub user: String,
+    #[serde(rename = "EndTime", default)]
+    pub end_time: String,
+    #[serde(rename = "FeNode", default)]
+    pub fe_node: String,
+    #[serde(rename = "Engine", default)]
+    pub engine: String,
 }
 
 // Profile detail from get_query_profile()

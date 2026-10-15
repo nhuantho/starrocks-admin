@@ -409,5 +409,41 @@
     "IoSeekTime": "Total IO seek time; only applies to shared-data clusters",
     "LocalDiskReadIOTime": "I/O time reading data from the local cache; only applies to shared-data clusters",
     "RemoteReadIOTime": "I/O time reading data from remote OSS; only applies to shared-data clusters"
+  },
+  "inspect": {
+    "title": "Query details",
+    "explainSql": "Explain SQL",
+    "explainTab": "SQL and EXPLAIN",
+    "runtimeTab": "Runtime profile",
+    "catalog": "Catalog",
+    "database": "Database",
+    "user": "User",
+    "endTime": "End time",
+    "frontend": "Frontend",
+    "refreshStatus": "Refresh status",
+    "planHint": "Generate a plan using current metadata. EXPLAIN does not rerun the query. For unqualified SQL, choose the original catalog and database.",
+    "sessionDefault": "Session default",
+    "optional": "Optional",
+    "generate": "Generate EXPLAIN",
+    "generating": "Generating…",
+    "runtimeHint": "Runtime profiles must have been collected for the original query. In Doris, enable_profile=true is required in that query session. Older profiles may have expired.",
+    "loadRuntime": "Load runtime profile",
+    "loading": "Loading…",
+    "selectQuery": "Select a query from the Profiles list to load its runtime profile.",
+    "statusMissing": "This query is no longer visible in live queries or retained profile history. Its final state is unknown."
+  },
+  "workspace": {
+    "eyebrow": "QUERY OBSERVABILITY",
+    "description": "Understand every query, from execution status to the physical plan.",
+    "summary": "Visible query summary",
+    "visible": "Visible queries",
+    "running": "Running",
+    "finished": "Finished",
+    "unsuccessful": "Failed / cancelled",
+    "activity": "Query activity",
+    "historyHint": "Live queries and retained profiles visible to this connection",
+    "planOutput": "Execution plan",
+    "planEmpty": "Your plan starts here",
+    "planEmptyHint": "Choose the catalog and database, then generate an EXPLAIN plan."
   }
 }

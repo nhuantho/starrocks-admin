@@ -2,6 +2,69 @@ use crate::utils::error::ApiError;
 use mysql_async::{Conn, Pool, prelude::Queryable};
 use std::sync::Arc;
 
+#[cfg(test)]
+mod catalog_tests {
+    use super::{catalog_switch_command, parse_catalog_names, quote_identifier};
+
+    fn strings(values: &[&str]) -> Vec<String> {
+        values.iter().map(|value| value.to_string()).collect()
+    }
+
+    #[test]
+    fn doris_catalogs_use_names_instead_of_numeric_ids() {
+        let columns = strings(&["CatalogId", "CatalogName", "Type", "IsCurrent"]);
+        let rows = vec![
+            strings(&["0", "internal", "internal", "yes"]),
+            strings(&["10024", "iceberg_catalog", "iceberg", "no"]),
+        ];
+        assert_eq!(
+            parse_catalog_names(&columns, &rows).unwrap(),
+            strings(&["internal", "iceberg_catalog"])
+        );
+        assert_eq!(catalog_switch_command(&columns).unwrap(), "SWITCH");
+    }
+
+    #[test]
+    fn starrocks_catalogs_include_default_and_external() {
+        let columns = strings(&["Catalog", "Type", "Comment"]);
+        let rows = vec![
+            strings(&["default_catalog", "Internal", ""]),
+            strings(&["hive_catalog", "Hive", ""]),
+        ];
+        assert_eq!(
+            parse_catalog_names(&columns, &rows).unwrap(),
+            strings(&["default_catalog", "hive_catalog"])
+        );
+        assert_eq!(catalog_switch_command(&columns).unwrap(), "SET CATALOG");
+    }
+
+    #[test]
+    fn catalog_names_follow_column_metadata_and_skip_invalid_rows() {
+        let columns = strings(&["Type", "catalogname", "CatalogId"]);
+        let rows = vec![
+            strings(&["internal", "internal", "0"]),
+            strings(&["hms", "lake house", "12"]),
+            strings(&["hms", "lake house", "12"]),
+            strings(&["hms", " ", "13"]),
+            vec![],
+        ];
+        assert_eq!(
+            parse_catalog_names(&columns, &rows).unwrap(),
+            strings(&["internal", "lake house"])
+        );
+        assert!(parse_catalog_names(&strings(&["CatalogId"]), &[strings(&["0"])]).is_err());
+        assert!(parse_catalog_names(&columns, &[]).unwrap().is_empty());
+        assert!(parse_catalog_names(&[], &[]).unwrap().is_empty());
+    }
+
+    #[test]
+    fn quotes_catalog_and_database_identifiers() {
+        assert_eq!(quote_identifier("lake house"), "`lake house`");
+        assert_eq!(quote_identifier("sales`2026"), "`sales``2026`");
+        assert_eq!(quote_identifier("name; DROP CATALOG x"), "`name; DROP CATALOG x`");
+    }
+}
+
 #[derive(Clone)]
 pub struct MySQLClient {
     pool: Arc<Pool>,
@@ -11,6 +74,55 @@ pub struct MySQLClient {
 /// with persistent context (catalog, database)
 pub struct MySQLSession {
     conn: Conn,
+    catalog_switch_command: Option<&'static str>,
+}
+
+pub(crate) fn quote_identifier(identifier: &str) -> String {
+    format!("`{}`", identifier.replace('`', "``"))
+}
+
+pub(crate) fn catalog_name_column(columns: &[String]) -> Result<usize, ApiError> {
+    columns
+        .iter()
+        .position(|column| {
+            column.eq_ignore_ascii_case("CatalogName") || column.eq_ignore_ascii_case("Catalog")
+        })
+        .ok_or_else(|| {
+            ApiError::internal_error("SHOW CATALOGS did not return a catalog name column")
+        })
+}
+
+pub(crate) fn is_doris_catalogs(columns: &[String]) -> Result<bool, ApiError> {
+    let name_column = catalog_name_column(columns)?;
+    Ok(columns[name_column].eq_ignore_ascii_case("CatalogName"))
+}
+
+fn catalog_switch_command(columns: &[String]) -> Result<&'static str, ApiError> {
+    Ok(if is_doris_catalogs(columns)? { "SWITCH" } else { "SET CATALOG" })
+}
+
+pub(crate) fn parse_catalog_names(
+    columns: &[String],
+    rows: &[Vec<String>],
+) -> Result<Vec<String>, ApiError> {
+    // The MySQL result adapter has no column metadata when there are no visible rows.
+    if rows.is_empty() {
+        return Ok(Vec::new());
+    }
+    let index = catalog_name_column(columns)?;
+    let mut names = Vec::new();
+    for row in rows {
+        if let Some(name) = row
+            .get(index)
+            .map(|name| name.trim())
+            .filter(|name| !name.is_empty())
+        {
+            if !names.iter().any(|existing| existing == name) {
+                names.push(name.to_string());
+            }
+        }
+    }
+    Ok(names)
 }
 
 impl MySQLClient {
@@ -26,7 +138,7 @@ impl MySQLClient {
             tracing::error!("Failed to get connection from pool: {}", e);
             ApiError::cluster_connection_failed(format!("Failed to get connection: {}", e))
         })?;
-        Ok(MySQLSession { conn })
+        Ok(MySQLSession { conn, catalog_switch_command: None })
     }
 
     /// Execute a query and return results as (column_names, rows)
@@ -89,37 +201,23 @@ impl MySQLClient {
 impl MySQLSession {
     /// Set catalog context on this session's connection
     pub async fn use_catalog(&mut self, catalog: &str) -> Result<(), ApiError> {
-        if catalog.is_empty() || catalog == "default_catalog" {
+        if catalog.is_empty() {
             return Ok(());
         }
 
-        // StarRocks uses SET CATALOG, not USE CATALOG
-        // Try without quotes first
-        let set_catalog_sql = format!("SET CATALOG {}", catalog);
-        if let Err(primary_err) = self
-            .conn
-            .query::<mysql_async::Row, _>(&set_catalog_sql)
-            .await
-        {
-            tracing::debug!(
-                "SET CATALOG {} without quotes failed: {}. Retrying with backticks.",
-                catalog,
-                primary_err
-            );
-
-            // Retry with backticks for catalog names with special characters
-            let set_catalog_sql_quoted = format!("SET CATALOG `{}`", catalog);
-            self.conn
-                .query::<mysql_async::Row, _>(&set_catalog_sql_quoted)
-                .await
-                .map_err(|e| {
-                    tracing::error!("Failed to switch to catalog {}: {}", catalog, e);
-                    ApiError::internal_error(format!(
-                        "Failed to switch to catalog {}: {}",
-                        catalog, e
-                    ))
-                })?;
+        // Identify the engine from result metadata rather than retrying permission failures.
+        if self.catalog_switch_command.is_none() {
+            let (columns, _, _) = self.execute("SHOW CATALOGS").await?;
+            self.catalog_switch_command = Some(catalog_switch_command(&columns)?);
         }
+
+        let sql = format!("{} {}", self.catalog_switch_command.unwrap(), quote_identifier(catalog));
+        self.conn
+            .query::<mysql_async::Row, _>(&sql)
+            .await
+            .map_err(|e| {
+                ApiError::internal_error(format!("Failed to switch to catalog {}: {}", catalog, e))
+            })?;
 
         tracing::debug!("Successfully switched to catalog: {}", catalog);
         Ok(())
@@ -131,7 +229,7 @@ impl MySQLSession {
             return Ok(());
         }
 
-        let use_db_sql = format!("USE `{}`", database);
+        let use_db_sql = format!("USE {}", quote_identifier(database));
         self.conn
             .query::<mysql_async::Row, _>(&use_db_sql)
             .await

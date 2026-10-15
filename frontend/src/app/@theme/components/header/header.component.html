@@ -1,15 +1,17 @@
 <div class="header-container">
   <div class="logo-container">
-    <a (click)="toggleSidebar()" href="#" class="sidebar-toggle">
+    <a (click)="toggleSidebar()" href="#" class="sidebar-toggle" aria-label="Toggle navigation">
       <nb-icon icon="menu-2-outline"></nb-icon>
     </a>
     <a class="logo modern-logo" href="#" (click)="navigateHome()">
-      <span class="logo-icon">
-        <nb-icon icon="layers-outline"></nb-icon>
+      <span class="logo-icon" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="28" height="28" fill="none">
+          <path d="M24 7H13a5 5 0 0 0 0 10h6a5 5 0 0 1 0 10H8M8 7v5m16 10v5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+        </svg>
       </span>
       <span class="logo-text">
-        <span class="logo-main">StarRocks</span>
-        <span class="logo-sub">Admin</span>
+        <span class="logo-main">Stellar</span>
+        <span class="logo-sub">StarRocks &amp; Doris</span>
       </span>
     </a>
   </div>
@@ -36,8 +38,6 @@
 
 <div class="header-container">
   <nb-actions size="small">
-    <nb-action class="control-item" icon="email-outline"></nb-action>
-    <nb-action class="control-item" icon="bell-outline"></nb-action>
     <nb-action class="user-action" *nbIsGranted="['view', 'user']">
       <nb-user [nbContextMenu]="userMenu"
                nbContextMenuTag="user-context-menu"

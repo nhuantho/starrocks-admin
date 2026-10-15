@@ -92,7 +92,8 @@ export class JwtInterceptor implements HttpInterceptor {
             // This happens when user logs out but components are still running auto-refresh
           }
         }
-        return throwError(() => error);
+        // RxJS 6 expects the error itself; a factory would reach subscribers as a function.
+        return throwError(error);
       }),
     );
   }
