@@ -1,0 +1,117 @@
+{
+  "confidence": "high",
+  "diagnostics": [
+    {
+      "confidence": "high",
+      "impact": 0.99,
+      "node": "doris_f1_p0_JDBC_SCAN_OPERATOR_0_none",
+      "rule": "DORIS_TIME_SHARE",
+      "severity": "Info"
+    },
+    {
+      "confidence": "medium",
+      "impact": 0.99,
+      "node": "doris_f1_p0_JDBC_SCAN_OPERATOR_0_none",
+      "rule": "DORIS_CONNECTOR_INIT",
+      "severity": "Info"
+    },
+    {
+      "confidence": "high",
+      "impact": 0.99,
+      "node": "doris_f1_p0_JDBC_SCAN_OPERATOR_0_none",
+      "rule": "DORIS_SCAN_WAIT",
+      "severity": "Info"
+    }
+  ],
+  "engine": "doris",
+  "engine_version": "doris-4.1.3-rc02-7126cf65d96",
+  "nodes": [
+    {
+      "children": [
+        "doris_f0_p0_EXCHANGE_OPERATOR_1_none"
+      ],
+      "exec_ns": 129342,
+      "id": "doris_f0_p0_RESULT_SINK_OPERATOR_2_none",
+      "memory": 0,
+      "pct": 0.37,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f1_p0_DATA_STREAM_SINK_OPERATOR_none_1"
+      ],
+      "exec_ns": 31228,
+      "id": "doris_f0_p0_EXCHANGE_OPERATOR_1_none",
+      "memory": 128,
+      "pct": 0.09,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f1_p0_JDBC_SCAN_OPERATOR_0_none"
+      ],
+      "exec_ns": 45922,
+      "id": "doris_f1_p0_DATA_STREAM_SINK_OPERATOR_none_1",
+      "memory": 0,
+      "pct": 0.13,
+      "rows": 1
+    },
+    {
+      "children": [],
+      "exec_ns": 34680000,
+      "id": "doris_f1_p0_JDBC_SCAN_OPERATOR_0_none",
+      "memory": 0,
+      "pct": 99.41,
+      "rows": 1
+    }
+  ],
+  "phases": {
+    "additive": true,
+    "details": [
+      [
+        "fetch",
+        34.0
+      ],
+      [
+        "write",
+        0.0
+      ]
+    ],
+    "segments": [
+      [
+        "parse",
+        0.0
+      ],
+      [
+        "plan",
+        3.0
+      ],
+      [
+        "meta",
+        0.0
+      ],
+      [
+        "schedule",
+        4.0
+      ],
+      [
+        "execute_fetch",
+        34.0
+      ]
+    ],
+    "total_ms": 41.0,
+    "unaccounted_ms": 0.0
+  },
+  "profile_level": null,
+  "root": "doris_f0_p0_RESULT_SINK_OPERATOR_2_none",
+  "root_cause_paths": [
+    [
+      "doris_f1_p0_JDBC_SCAN_OPERATOR_0_none",
+      "doris_f1_p0_DATA_STREAM_SINK_OPERATOR_none_1",
+      "doris_f0_p0_EXCHANGE_OPERATOR_1_none",
+      "doris_f0_p0_RESULT_SINK_OPERATOR_2_none"
+    ]
+  ],
+  "score": 98.01,
+  "warnings": []
+}

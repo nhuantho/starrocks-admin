@@ -308,6 +308,9 @@ pub struct ProfileSummary {
     /// Warning message if profile is incomplete
     #[serde(skip_serializing_if = "Option::is_none")]
     pub profile_completeness_warning: Option<String>,
+    /// Doris workload group the query ran in
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workload_group: Option<String>,
 }
 
 /// Top time-consuming node for quick performance overview
@@ -599,6 +602,65 @@ pub struct ProfileAnalysisResponse {
     /// Fragment and Pipeline information for node detail view
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub fragments: Vec<Fragment>,
+    /// Engine release parsed from the profile (Doris only for now)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub engine_version: Option<String>,
+    /// Profile detail level when it can be determined (Doris `profile_level`)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub profile_level: Option<u8>,
+    /// Overall evidence confidence: high, medium or low
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub confidence: Option<String>,
+    /// Measured query phases (parse, plan, schedule, execute and fetch, ...)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phase_breakdown: Option<PhaseBreakdown>,
+    /// Set when this response was served from an archived snapshot
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub archived: Option<ArchivedSnapshotInfo>,
+}
+
+/// Measured query phases. Only values printed in the profile are included.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct PhaseBreakdown {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_ms: Option<f64>,
+    pub segments: Vec<PhaseSegment>,
+    /// Total minus the stacked segments, when the segments do not exceed the total
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unaccounted_ms: Option<f64>,
+    /// False when segments exceed the total, so they must not be drawn as a stack
+    pub additive: bool,
+    /// Measured values shown next to the stack but not part of it
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub details: Vec<PhaseSegment>,
+    pub note: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PhaseSegment {
+    pub key: String,
+    pub label: String,
+    pub time_ms: f64,
+    pub raw: String,
+}
+
+/// Archive metadata for a stored profile snapshot
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ArchivedSnapshotInfo {
+    pub snapshot_id: i64,
+    pub captured_at: String,
+    pub reason: String,
+}
+
+/// Copyable SQL shown as advice only; never executed by the server
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SqlSnippet {
+    pub label: String,
+    pub sql: String,
+    /// session, global or statement
+    pub scope: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub warning: Option<String>,
 }
 
 /// A measured operator and its downstream dependency path, not a wall-clock critical path.
@@ -629,6 +691,8 @@ pub struct AggregatedDiagnostic {
     pub suggestions: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub parameter_suggestions: Vec<ParameterTuningSuggestion>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub impact: Option<f64>,
 }
 
 /// Diagnostic result from rule engine
@@ -637,7 +701,7 @@ pub struct AggregatedDiagnostic {
 /// - message: 诊断结果概要说明 (Summary of the issue)
 /// - reason: 详细诊断原因说明 (Detailed explanation of why this happens)
 /// - suggestions: 建议措施 (Recommended actions)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DiagnosticResult {
     pub rule_id: String,
     pub rule_name: String,
@@ -654,6 +718,17 @@ pub struct DiagnosticResult {
     pub suggestions: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub parameter_suggestions: Vec<ParameterTuningSuggestion>,
+    /// Estimated share (0-1) of measured operator time or rows affected
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub impact: Option<f64>,
+    /// high, medium or low
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub confidence: Option<String>,
+    /// Counter names that support this finding, for highlighting
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub evidence_counters: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sql_snippets: Vec<SqlSnippet>,
 }
 
 /// Parameter tuning suggestion
@@ -671,6 +746,14 @@ pub struct ParameterTuningSuggestion {
     /// Expected impact of changing this parameter
     #[serde(default)]
     pub impact: String,
+    /// session or global
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scope: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub risk: Option<String>,
+    /// Evidence that motivated this suggestion
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
 }
 
 // ============================================================================

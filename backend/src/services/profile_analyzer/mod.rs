@@ -221,8 +221,12 @@ pub fn analyze_profile_with_context(
                     command: p.command.clone(),
                     description: p.description.clone(),
                     impact: p.impact.clone(),
+                    scope: None,
+                    risk: None,
+                    reason: None,
                 })
                 .collect(),
+            ..Default::default()
         })
         .collect();
 
@@ -281,12 +285,17 @@ pub fn analyze_profile_with_context(
         node_diagnostics,
         profile_content: Some(profile_text.to_string()),
         fragments: profile.fragments.clone(),
+        engine_version: None,
+        profile_level: None,
+        confidence: None,
+        phase_breakdown: None,
+        archived: None,
     })
 }
 
 /// Aggregate diagnostics by rule_id for overview display
 /// Groups multiple diagnostics of the same rule together
-fn aggregate_diagnostics(
+pub(crate) fn aggregate_diagnostics(
     diagnostics: &[DiagnosticResult],
     lang: Lang,
 ) -> Vec<AggregatedDiagnostic> {
@@ -342,6 +351,11 @@ fn aggregate_diagnostics(
                 first.message.clone()
             };
 
+            let impact = diags
+                .iter()
+                .filter_map(|d| d.impact)
+                .fold(None, |max: Option<f64>, value| Some(max.map_or(value, |m| m.max(value))));
+
             AggregatedDiagnostic {
                 rule_id,
                 rule_name: first.rule_name.clone(),
@@ -352,6 +366,7 @@ fn aggregate_diagnostics(
                 node_count,
                 suggestions,
                 parameter_suggestions,
+                impact,
             }
         })
         .collect();
@@ -362,7 +377,13 @@ fn aggregate_diagnostics(
         if severity_cmp != std::cmp::Ordering::Equal {
             severity_cmp
         } else {
-            b.node_count.cmp(&a.node_count)
+            // Impact is only set by engines that measure it (Doris); StarRocks keeps node_count order.
+            let impact_cmp = b
+                .impact
+                .unwrap_or(0.0)
+                .partial_cmp(&a.impact.unwrap_or(0.0))
+                .unwrap_or(std::cmp::Ordering::Equal);
+            impact_cmp.then(b.node_count.cmp(&a.node_count))
         }
     });
 
@@ -372,6 +393,7 @@ fn aggregate_diagnostics(
 /// Get severity order for sorting (higher = more severe)
 fn severity_order(severity: &str) -> u8 {
     match severity {
+        "Critical" => 4,
         "Error" => 3,
         "Warning" => 2,
         "Info" => 1,

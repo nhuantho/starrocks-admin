@@ -41,12 +41,13 @@ fn real_413_profile_has_four_operators_and_three_true_edges() {
 
 #[test]
 fn parses_statistic_units_counts_and_zero_without_inventing_values() {
-    assert_eq!(duration("1min2sec3ms"), Some(62_003_000_000));
-    assert_eq!(duration("12.25us"), Some(12_250));
-    assert_eq!(duration("N/A"), None);
-    assert_eq!(duration("0ns"), Some(0));
-    assert_eq!(number("150.0M (150000000)"), Some(150_000_000));
-    assert_eq!(number("1.5K"), Some(1500));
+    use metric::{quantity, statistic};
+    assert_eq!(quantity("1min2sec3ms", None), Some((62_003_000_000.0, Unit::Duration)));
+    assert_eq!(quantity("12.25us", None), Some((12_250.0, Unit::Duration)));
+    assert_eq!(quantity("N/A", None), None);
+    assert_eq!(quantity("0ns", None), Some((0.0, Unit::Duration)));
+    assert_eq!(quantity("150.0M (150000000)", None), Some((150_000_000.0, Unit::Count)));
+    assert_eq!(quantity("1.5K", None), Some((1500.0, Unit::Count)));
     assert_eq!(statistic("sum 1,000, avg 500, max 800, min 200", "sum"), Some("1,000"));
     assert_eq!(statistic("avg 12ms, max 50ms, min 0ns", "max"), Some("50ms"));
 }
@@ -188,13 +189,25 @@ fn spills_generate_measured_actionable_recommendations() {
         "- ProbeRows:",
         "- SpillWriteBytes: sum 2.5 MB, avg 1.25 MB, max 2 MB, min 0 B\n            - ProbeRows:",
     );
-    let response = parsed(&fixture);
+    // No captured profile proves a spill counter name yet, so the rule is experimental.
+    assert!(
+        !parsed(&fixture)
+            .diagnostics
+            .iter()
+            .any(|d| d.rule_id == "DORIS_SPILL")
+    );
+    let response = analyze_with(
+        &fixture,
+        &AnalysisContext { lang: Lang::En, ..Default::default() },
+        &DorisOptions { experimental_rules: true },
+    )
+    .unwrap();
     let diagnostic = response
         .diagnostics
         .iter()
         .find(|d| d.rule_id == "DORIS_SPILL")
         .unwrap();
-    assert!(diagnostic.reason.contains("2621440"));
+    assert!(diagnostic.reason.contains("2.50 MB"));
     assert!(!diagnostic.suggestions.is_empty());
     assert!(diagnostic.parameter_suggestions.is_empty()); // Do not suggest StarRocks settings for Doris.
 }
