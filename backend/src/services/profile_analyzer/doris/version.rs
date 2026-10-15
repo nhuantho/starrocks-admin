@@ -35,11 +35,6 @@ impl DorisVersion {
         self.major >= 4
     }
 
-    /// `auto_profile_threshold_ms` takes effect from 3.0 (same source).
-    pub fn supports_auto_profile_threshold(&self) -> bool {
-        self.major >= 3
-    }
-
     /// Spill-to-disk variables are documented for 4.x only.
     /// https://doris.apache.org/docs/4.x/key-features/spill-to-disk/
     pub fn supports_spill_variables(&self) -> bool {
@@ -83,7 +78,7 @@ mod tests {
         assert_eq!(v, DorisVersion { major: 4, minor: 1, patch: 3 });
         assert!(v.supports_profile_level());
         let old = DorisVersion::parse("doris-2.1.7-rc03-abc").unwrap();
-        assert!(!old.supports_profile_level() && !old.supports_auto_profile_threshold());
+        assert!(!old.supports_profile_level());
         assert_eq!(DorisVersion::parse("3.0").unwrap().patch, 0);
         assert!(DorisVersion::parse("unknown").is_none());
     }

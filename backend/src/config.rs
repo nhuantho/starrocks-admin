@@ -13,6 +13,35 @@ pub struct Config {
     pub static_config: StaticConfig,
     pub metrics: MetricsCollectorConfig,
     pub audit: AuditLogConfig,
+    pub profile_snapshots: ProfileSnapshotConfig,
+}
+
+/// Opt-in archive of analyzed query profiles (see docs/profile/doris-runtime-diagnostics.md)
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
+pub struct ProfileSnapshotConfig {
+    /// Archive profiles when diagnostics are opened for a finished query (default: false)
+    pub enabled: bool,
+    /// Maximum snapshots kept per cluster; oldest are purged first
+    pub max_per_cluster: i64,
+    /// Maximum total profile bytes kept per cluster
+    pub max_bytes_per_cluster: i64,
+    /// Snapshots older than this are purged
+    pub max_age_days: i64,
+    /// Profiles larger than this are not archived
+    pub max_profile_bytes: i64,
+}
+
+impl Default for ProfileSnapshotConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            max_per_cluster: 200,
+            max_bytes_per_cluster: 256 * 1024 * 1024,
+            max_age_days: 30,
+            max_profile_bytes: 16 * 1024 * 1024,
+        }
+    }
 }
 
 /// Audit log configuration for StarRocks audit table
@@ -190,6 +219,9 @@ impl Config {
     /// - APP_METRICS_ENABLED: Enable/disable metrics collector (true/false)
     /// - APP_AUDIT_DATABASE: Audit log database name (default: starrocks_audit_db__)
     /// - APP_AUDIT_TABLE: Audit log table name (default: starrocks_audit_tbl__)
+    /// - APP_PROFILE_SNAPSHOTS_ENABLED: Archive analyzed profiles (true/false, default false)
+    /// - APP_PROFILE_SNAPSHOTS_MAX_AGE_DAYS: Snapshot retention (accepts "30d")
+    /// - APP_PROFILE_SNAPSHOTS_MAX_PER_CLUSTER: Snapshot count cap per cluster
     fn apply_env_overrides(&mut self) {
         if let Ok(host) = std::env::var("APP_SERVER_HOST") {
             self.server.host = host;
@@ -276,6 +308,26 @@ impl Config {
         if let Ok(table) = std::env::var("APP_AUDIT_TABLE") {
             self.audit.table = table;
             tracing::info!("Override audit.table from env: {}", self.audit.table);
+        }
+
+        // Profile snapshot overrides
+        if let Ok(enabled) = std::env::var("APP_PROFILE_SNAPSHOTS_ENABLED")
+            && let Ok(val) = enabled.parse()
+        {
+            self.profile_snapshots.enabled = val;
+            tracing::info!("Override profile_snapshots.enabled from env: {}", val);
+        }
+        if let Ok(days) = std::env::var("APP_PROFILE_SNAPSHOTS_MAX_AGE_DAYS")
+            && let Ok(val) = parse_days_to_i64(&days)
+        {
+            self.profile_snapshots.max_age_days = val;
+            tracing::info!("Override profile_snapshots.max_age_days from env: {}", val);
+        }
+        if let Ok(count) = std::env::var("APP_PROFILE_SNAPSHOTS_MAX_PER_CLUSTER")
+            && let Ok(val) = count.parse()
+        {
+            self.profile_snapshots.max_per_cluster = val;
+            tracing::info!("Override profile_snapshots.max_per_cluster from env: {}", val);
         }
     }
 

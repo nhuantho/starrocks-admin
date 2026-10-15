@@ -40,6 +40,13 @@ mod profile_permission_tests {
         assert_eq!(extract_permission("POST", "/api/clusters/profiles/explain"), expected);
         assert_eq!(extract_permission("GET", "/api/clusters/profiles/query-1/status"), expected);
         assert_ne!(extract_permission("POST", "/api/clusters/profiles/query-1"), expected);
+        assert_eq!(extract_permission("POST", "/api/clusters/profiles/compare"), expected);
+        for uri in ["snapshots", "settings", "recurring", "query-1/report"] {
+            assert_eq!(
+                extract_permission("GET", &format!("/api/clusters/profiles/{uri}")),
+                expected
+            );
+        }
     }
 }
 
@@ -86,6 +93,10 @@ fn extract_users_action(segments: &[&str], method: &str) -> Option<String> {
 fn extract_clusters_action_special(segments: &[&str], method: &str) -> Option<String> {
     // EXPLAIN is read-only and follows the existing profile-view permission.
     if method == "POST" && segments == ["clusters", "profiles", "explain"] {
+        return Some("profiles:get".to_string());
+    }
+    // Comparing two profiles only reads them.
+    if method == "POST" && segments == ["clusters", "profiles", "compare"] {
         return Some("profiles:get".to_string());
     }
     if segments.len() < 2 {

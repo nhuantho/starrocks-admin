@@ -44,10 +44,13 @@
 //! ```
 
 pub mod analyzer;
+pub mod compare;
 mod dependency_paths;
 pub mod doris;
+pub mod fingerprint;
 pub mod models;
 pub mod parser;
+pub mod report;
 
 #[cfg(test)]
 mod tests;
