@@ -919,6 +919,14 @@ impl MetricsCollectorService {
         let pool = self.mysql_pool_manager.get_pool(cluster).await?;
         let mysql_client = MySQLClient::from_pool(pool);
 
+        // The audit schema and percentile SQL below are StarRocks-specific. On Doris,
+        // repeated probes of this absent table create failed profiles and evict useful
+        // workload profiles when enable_profile is global. Use the existing metrics fallback.
+        let (columns, _) = mysql_client.query_raw("SHOW CATALOGS").await?;
+        if crate::services::mysql_client::is_doris_catalogs(&columns)? {
+            return Ok((0.0, 0.0, 0.0));
+        }
+
         // Detect the available query time column name
         let query_time_col = match self.detect_query_time_column(&mysql_client).await {
             Some(col) => col,

@@ -183,6 +183,27 @@ pub async fn get_profile(
     Ok(Json(ProfileDetail { query_id: safe_query_id, profile_content }))
 }
 
+/// Lightweight response for the list; the cluster still authorizes the underlying profile read.
+#[utoipa::path(
+    get, path = "/api/clusters/profiles/{query_id}/metadata",
+    params(("query_id" = String, Path, description = "Query ID")),
+    responses((status = 200, description = "Captured session metadata", body = crate::services::query_profile_service::ProfileMetadata)),
+    security(("bearer_auth" = [])), tag = "Profiles"
+)]
+pub async fn get_profile_metadata(
+    State(state): State<Arc<crate::AppState>>,
+    axum::extract::Extension(org_ctx): axum::extract::Extension<crate::middleware::OrgContext>,
+    Path(query_id): Path<String>,
+) -> ApiResult<Json<crate::services::query_profile_service::ProfileMetadata>> {
+    let query_id = sanitize_query_id(&query_id)?;
+    let service = profile_service(&state, &org_ctx).await?;
+    let profile = service.profile_text(&query_id).await?;
+    if profile.len() > crate::services::profile_analyzer::doris::MAX_PROFILE_BYTES {
+        return Err(ApiError::invalid_data("Profile exceeds the 16 MiB analysis limit"));
+    }
+    Ok(Json(crate::services::query_profile_service::parse_profile_metadata(&profile)))
+}
+
 /// Analyze a query profile and return structured visualization data
 #[utoipa::path(
     get,
@@ -214,12 +235,23 @@ pub async fn analyze_profile_handler(
 }
 
 fn is_terminal(response: &ProfileAnalysisResponse) -> bool {
-    let state = response
-        .summary
-        .as_ref()
-        .map(|s| s.query_state.to_ascii_uppercase())
-        .unwrap_or_default();
-    !state.is_empty() && !matches!(state.as_str(), "RUNNING" | "PENDING" | "QUEUED" | "WAITING")
+    response.summary.as_ref().is_some_and(|summary| {
+        summary.is_profile_complete != Some(false)
+            && matches!(
+                summary.query_state.to_ascii_uppercase().as_str(),
+                "FINISHED"
+                    | "EOF"
+                    | "OK"
+                    | "SUCCESS"
+                    | "FAILED"
+                    | "ERROR"
+                    | "ERR"
+                    | "CANCELLED"
+                    | "CANCELED"
+                    | "ABORTED"
+                    | "TIMEOUT"
+            )
+    })
 }
 
 fn analyze_text(
@@ -519,7 +551,7 @@ pub async fn profile_settings(
     }
     if let Some(threshold) = variables.get("auto_profile_threshold_ms") {
         if threshold.trim() == "-1" {
-            guidance.push(text(lang, "auto_profile_threshold_ms = -1: slow queries are not profiled automatically (3.0+).", "auto_profile_threshold_ms = -1：不会自动为慢查询采集 Profile（3.0+）。").into());
+            guidance.push(text(lang, "auto_profile_threshold_ms = -1: no duration threshold filters queries when enable_profile=true.", "auto_profile_threshold_ms = -1：enable_profile=true 时不会按查询时长过滤 Profile。").into());
         } else {
             guidance.push(format!(
                 "auto_profile_threshold_ms = {threshold}. {}",
@@ -536,10 +568,11 @@ pub async fn profile_settings(
         None => guidance.push(text(lang, "The FE keeps a limited number of profiles (max_query_profile_num); older ones are evicted. This account could not read the FE config.", "FE 只保留有限数量的 Profile（max_query_profile_num），较早的会被淘汰。当前账号无法读取 FE 配置。").into()),
     }
     guidance.push(text(lang, "Profiles are fetched from all FE nodes; a profile is missing if it was evicted, never collected, or not visible to the configured cluster account.", "Profile 从所有 FE 节点获取；若被淘汰、从未采集或对所配置的集群账号不可见，则无法获取。").into());
+    guidance.push(text(lang, "dbt INSERT/INSERT OVERWRITE can appear as LOAD. QUERY history is aggregated across FEs; SQL profile metadata and LOAD listings come from the connected pooled FE. Check the executing FE when a LOAD is missing.", "dbt INSERT/INSERT OVERWRITE 可能显示为 LOAD。QUERY 历史跨 FE 聚合；SQL Profile 元数据和 LOAD 列表来自连接池所连接的 FE。LOAD 缺失时请检查执行该语句的 FE。").into());
     if snapshots_enabled {
         guidance.push(text(lang, "Profile snapshots are enabled: diagnostics you open for finished queries are archived here and remain available after the cluster evicts them.", "已开启 Profile 快照：已完成查询的诊断在打开时会归档，集群淘汰后仍可查看。").into());
     } else {
-        guidance.push(text(lang, "Ask an administrator to enable [profile_snapshots] in the server config to keep profiles after the cluster evicts them.", "可请管理员在服务配置中开启 [profile_snapshots]，以便在集群淘汰后保留 Profile。").into());
+        guidance.push(text(lang, "Snapshots are disabled. Enable [profile_snapshots] and open diagnostics before FE eviction to archive a finished query. There is no unattended Airflow/dbt collector.", "快照未开启。开启 [profile_snapshots] 后，需在 FE 淘汰前打开已完成查询的诊断以归档。当前没有无人值守的 Airflow/dbt 采集器。").into());
     }
     let snippets = vec![
         crate::services::profile_analyzer::models::SqlSnippet {
@@ -742,5 +775,33 @@ mod recurring_tests {
         assert_eq!(groups[0].max_ms, 300.0);
         assert_eq!(groups[0].sample_sql, "select * from t where id = ?");
         assert_eq!(groups[0].query_ids, ["q1", "q2"]);
+    }
+}
+
+#[cfg(test)]
+mod snapshot_state_tests {
+    use super::*;
+
+    #[test]
+    fn archive_requires_explicit_terminal_state_and_no_incomplete_marker() {
+        let fixture = include_str!("../../tests/fixtures/profiles/doris-4.1.3-jdbc.txt");
+        let original = crate::services::profile_analyzer::doris::analyze_with(
+            fixture,
+            &AnalysisContext::default(),
+            &Default::default(),
+        )
+        .unwrap();
+        for state in ["RUNNING", "PENDING", "UNKNOWN", "", "unexpected"] {
+            let mut response = original.clone();
+            response.summary.as_mut().unwrap().query_state = state.into();
+            assert!(!is_terminal(&response), "{state}");
+        }
+        for state in ["OK", "FINISHED", "FAILED", "CANCELLED", "TIMEOUT"] {
+            let mut response = original.clone();
+            response.summary.as_mut().unwrap().query_state = state.into();
+            assert!(is_terminal(&response), "{state}");
+            response.summary.as_mut().unwrap().is_profile_complete = Some(false);
+            assert!(!is_terminal(&response), "{state}");
+        }
     }
 }

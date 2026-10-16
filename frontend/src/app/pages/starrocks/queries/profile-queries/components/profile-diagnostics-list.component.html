@@ -1,0 +1,58 @@
+<p class="empty" *ngIf="!sorted.length">{{ 'profile.findings.none' | translate }}</p>
+<ol class="findings" *ngIf="sorted.length" [attr.aria-label]="'profile.findings.title' | translate">
+  <li *ngFor="let d of sorted; let i = index; trackBy: trackByIndex" class="finding" [attr.data-severity]="d.severity">
+    <button #findingButton type="button" class="finding-header" (click)="toggle(i)" (keydown)="onKeydown($event, i)"
+            [attr.aria-expanded]="expanded.has(i)">
+      <span class="severity"><span aria-hidden="true">{{ severitySymbol(d.severity) }}</span> {{ ('profile.severity.' + d.severity) | translate }}</span>
+      <span class="name">{{ d.rule_name }}</span>
+      <span class="meta" *ngIf="impactPercent(d) as impact">{{ 'profile.findings.impact' | translate }} {{ impact }}</span>
+      <span class="meta confidence" *ngIf="d.confidence">{{ ('profile.confidence.' + d.confidence) | translate }}</span>
+    </button>
+    <p class="message">{{ d.message }}</p>
+    <div class="details" *ngIf="expanded.has(i)">
+      <p class="where">
+        <span>{{ 'profile.findings.where' | translate }}:</span>
+        <button *ngIf="isOperatorFinding(d.node_path); else queryLevel" type="button" class="link" (click)="focusNode(d)">{{ nodeLabel(d.node_path) }}</button>
+        <ng-template #queryLevel>{{ 'profile.findings.queryLevel' | translate }}</ng-template>
+        <code class="rule">{{ d.rule_id }}</code>
+      </p>
+      <p class="evidence"><strong>{{ 'profile.runtime.evidence' | translate }}:</strong> {{ d.reason }}</p>
+      <p class="counters" *ngIf="d.evidence_counters?.length">
+        <code *ngFor="let counter of d.evidence_counters">{{ counter }}</code>
+      </p>
+      <ul class="suggestions" *ngIf="d.suggestions?.length">
+        <li *ngFor="let s of d.suggestions">{{ s }}</li>
+      </ul>
+      <div class="params" *ngIf="d.parameter_suggestions?.length">
+        <strong>{{ 'profile.findings.parameters' | translate }}</strong>
+        <div class="param" *ngFor="let p of d.parameter_suggestions">
+          <div class="param-line">
+            <code>{{ p.name }}</code>
+            <span>{{ p.current ?? '?' }} → <b>{{ p.recommended }}</b></span>
+            <span class="scope" [attr.data-scope]="p.scope || 'session'">{{ ('profile.scope.' + (p.scope || 'session')) | translate }}</span>
+          </div>
+          <p *ngIf="p.reason" class="muted">{{ 'profile.findings.why' | translate }}: {{ p.reason }}</p>
+          <p *ngIf="p.risk" class="risk">{{ 'profile.findings.risk' | translate }}: {{ p.risk }}</p>
+          <div class="command">
+            <pre>{{ p.command }}</pre>
+            <button nbButton ghost size="tiny" type="button" (click)="copyText.emit(p.command)">{{ 'profile.findings.copy' | translate }}</button>
+          </div>
+        </div>
+      </div>
+      <div class="snippets" *ngIf="d.sql_snippets?.length">
+        <div class="snippet" *ngFor="let snippet of d.sql_snippets">
+          <div class="param-line">
+            <strong>{{ snippet.label }}</strong>
+            <span class="scope" [attr.data-scope]="snippet.scope">{{ ('profile.scope.' + snippet.scope) | translate }}</span>
+          </div>
+          <p class="risk" *ngIf="snippet.warning">⚠ {{ snippet.warning }}</p>
+          <div class="command">
+            <pre>{{ snippet.sql }}</pre>
+            <button nbButton ghost size="tiny" type="button" (click)="copyText.emit(snippet.sql)">{{ 'profile.findings.copy' | translate }}</button>
+          </div>
+        </div>
+      </div>
+      <p class="advice-note">{{ 'profile.findings.adviceOnly' | translate }}</p>
+    </div>
+  </li>
+</ol>

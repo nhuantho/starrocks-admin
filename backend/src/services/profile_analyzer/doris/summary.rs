@@ -462,7 +462,7 @@ impl DorisSummary {
             None => Finding::query(
                 "DORIS_QUERY_FAILED",
                 text(lang, "Query did not finish successfully", "查询未成功完成"),
-                Severity::Critical,
+                Severity::Warning,
                 text(lang, "The failure message is not recognized; no cause is inferred.", "无法识别失败信息，未推断原因。").into(),
                 evidence,
                 vec![text(lang, "Read the full error in the FE log or the client; diagnostics below may be partial.", "查看 FE 日志或客户端中的完整错误；下方诊断可能不完整。").into()],

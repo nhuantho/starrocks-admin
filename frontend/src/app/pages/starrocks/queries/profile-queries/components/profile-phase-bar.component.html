@@ -1,0 +1,35 @@
+<section class="phase-bar" *ngIf="breakdown?.segments?.length" [attr.aria-label]="'profile.phases.title' | translate">
+  <div class="phase-heading">
+    <strong>{{ 'profile.phases.title' | translate }}</strong>
+    <span *ngIf="breakdown?.total_ms !== undefined">{{ 'profile.phases.total' | translate }} {{ formatMs(breakdown?.total_ms) }}</span>
+  </div>
+  <ng-container *ngIf="view as v">
+    <div class="phase-stack" *ngIf="v.stacked" role="img"
+         [attr.aria-label]="'profile.phases.stackLabel' | translate">
+      <span *ngFor="let bar of v.bars; trackBy: trackByKey" class="phase-segment" [attr.data-phase]="bar.key"
+            [style.width.%]="bar.percent" [title]="bar.label + ': ' + bar.raw"></span>
+      <span *ngIf="v.unaccountedPercent > 0" class="phase-segment" data-phase="other" [style.width.%]="v.unaccountedPercent"
+            [title]="'profile.phases.unaccounted' | translate"></span>
+    </div>
+    <p class="phase-overlap" *ngIf="!v.stacked">{{ 'profile.phases.notAdditive' | translate }}</p>
+    <ul class="phase-legend">
+      <li *ngFor="let bar of v.bars; trackBy: trackByKey" [attr.data-phase]="bar.key">
+        <span class="swatch" aria-hidden="true"></span>
+        <span class="label">{{ bar.label }}</span>
+        <span class="track" *ngIf="!v.stacked"><span class="fill" [style.width.%]="bar.percent"></span></span>
+        <code>{{ bar.raw }}</code>
+      </li>
+      <li *ngIf="v.unaccountedPercent > 0" data-phase="other">
+        <span class="swatch" aria-hidden="true"></span>
+        <span class="label">{{ 'profile.phases.unaccounted' | translate }}</span>
+        <code>{{ formatMs(breakdown?.unaccounted_ms) }}</code>
+      </li>
+      <li *ngFor="let detail of breakdown?.details" class="phase-detail">
+        <span class="swatch" aria-hidden="true"></span>
+        <span class="label">{{ detail.label }}</span>
+        <code>{{ detail.raw }}</code>
+      </li>
+    </ul>
+  </ng-container>
+  <p class="phase-note">{{ breakdown?.note }}</p>
+</section>

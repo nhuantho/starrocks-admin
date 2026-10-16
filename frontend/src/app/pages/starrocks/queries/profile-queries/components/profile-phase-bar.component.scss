@@ -1,0 +1,23 @@
+:host { display: block; }
+.phase-bar { font-size: 0.72rem; }
+.phase-heading { display: flex; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.4rem; color: var(--stellar-muted, #8f9bb3); }
+.phase-heading strong { color: var(--text-basic-color, #222b45); }
+.phase-stack { display: flex; height: 0.65rem; border-radius: 0.35rem; overflow: hidden; background: var(--stellar-subtle, #f7f9fc); border: 1px solid var(--stellar-border, #e4e9f2); }
+.phase-segment { display: block; height: 100%; min-width: 2px; }
+.phase-overlap { margin: 0 0 0.35rem; color: var(--stellar-muted, #8f9bb3); }
+.phase-legend { list-style: none; margin: 0.5rem 0 0; padding: 0; display: grid; gap: 0.25rem; }
+.phase-legend li { display: flex; align-items: center; gap: 0.45rem; min-width: 0; }
+.phase-legend .label { flex: 0 1 auto; overflow-wrap: anywhere; }
+.phase-legend code { margin-left: auto; font-size: 0.68rem; }
+.phase-legend .track { flex: 1 1 4rem; height: 0.4rem; background: var(--stellar-subtle, #f7f9fc); border-radius: 0.2rem; overflow: hidden; }
+.phase-legend .fill { display: block; height: 100%; background: var(--stellar-accent, #3366ff); }
+.swatch { width: 0.6rem; height: 0.6rem; border-radius: 0.15rem; flex: none; background: currentColor; }
+.phase-detail .swatch { background: transparent; border: 1px dashed var(--stellar-muted, #8f9bb3); }
+.phase-note { margin: 0.45rem 0 0; color: var(--stellar-muted, #8f9bb3); font-size: 0.66rem; line-height: 1.4; }
+// Hue per phase; the legend repeats the name and value so color is not the only cue.
+[data-phase='parse'] { color: #8f9bb3; } .phase-segment[data-phase='parse'] { background: #8f9bb3; }
+[data-phase='plan'] { color: #3366ff; } .phase-segment[data-phase='plan'] { background: #3366ff; }
+[data-phase='meta'] { color: #00b3a6; } .phase-segment[data-phase='meta'] { background: #00b3a6; }
+[data-phase='schedule'] { color: #ffaa00; } .phase-segment[data-phase='schedule'] { background: #ffaa00; }
+[data-phase='execute_fetch'] { color: #00d68f; } .phase-segment[data-phase='execute_fetch'] { background: #00d68f; }
+[data-phase='other'] { color: #c5cee0; } .phase-segment[data-phase='other'] { background: #c5cee0; }

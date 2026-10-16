@@ -25,6 +25,12 @@ export class ApiService {
     return this.http.get<T>(`${this.resolvedBaseUrl}${path}`, { params: httpParams });
   }
 
+  // GET a text body (reports, exports) instead of JSON
+  getText(path: string, params?: Record<string, any>): Observable<string> {
+    const httpParams = params ? new HttpParams({ fromObject: params as any }) : undefined;
+    return this.http.get(`${this.resolvedBaseUrl}${path}`, { params: httpParams, responseType: 'text' });
+  }
+
   post<T>(path: string, body: any = {}, customTimeout?: number): Observable<T> {
     const timeoutMs = customTimeout || 650000; // Default 650 seconds (10.8 minutes), slightly longer than Nginx timeout
     return this.http.post<T>(`${this.resolvedBaseUrl}${path}`, body).pipe(

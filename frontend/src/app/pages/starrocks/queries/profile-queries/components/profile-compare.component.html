@@ -1,0 +1,59 @@
+<div class="compare">
+  <div *ngIf="loading" class="state"><nb-spinner size="small" status="primary"></nb-spinner> {{ 'profile.compare.loading' | translate }}</div>
+  <p *ngIf="error" class="state error" role="alert">{{ error }}</p>
+  <ng-container *ngIf="comparison as c">
+    <div class="headline">
+      <div><span>{{ 'profile.compare.base' | translate }}</span><code>{{ c.base_query_id }}</code><strong>{{ formatMs(c.base_total_ms) }}</strong></div>
+      <div><span>{{ 'profile.compare.target' | translate }}</span><code>{{ c.target_query_id }}</code><strong>{{ formatMs(c.target_total_ms) }}</strong></div>
+      <div><span>{{ 'profile.compare.totalDelta' | translate }}</span><strong [class]="deltaClass(c.total_delta_ms)">{{ formatDelta(c.total_delta_ms, 'ms') }}</strong></div>
+      <div><span>{{ 'profile.compare.scoreDelta' | translate }}</span><strong>{{ c.score_delta > 0 ? '+' : '' }}{{ c.score_delta | number:'1.0-1' }}</strong></div>
+      <div><span>{{ 'profile.compare.fingerprint' | translate }}</span><strong>{{ (c.same_fingerprint ? 'profile.compare.same' : 'profile.compare.different') | translate }}</strong></div>
+    </div>
+    <p class="warning" *ngFor="let w of c.warnings">⚠ {{ w }}</p>
+
+    <h4>{{ 'profile.phases.title' | translate }}</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">{{ 'profile.compare.phase' | translate }}</th><th scope="col">{{ 'profile.compare.base' | translate }}</th><th scope="col">{{ 'profile.compare.target' | translate }}</th><th scope="col">Δ</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let p of c.phases">
+            <th scope="row">{{ p.label }}</th><td>{{ formatMs(p.base_ms) }}</td><td>{{ formatMs(p.target_ms) }}</td>
+            <td [class]="deltaClass(p.delta_ms)">{{ formatDelta(p.delta_ms, 'ms') }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4>{{ 'profile.compare.operators' | translate }}</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">{{ 'profile.operator.counter' | translate }}</th><th scope="col">{{ 'profile.compare.base' | translate }}</th><th scope="col">{{ 'profile.compare.target' | translate }}</th><th scope="col">Δ</th><th scope="col">{{ 'profile.compare.rows' | translate }}</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let o of c.operators">
+            <th scope="row" [title]="o.node_id">{{ o.operator_name }}</th>
+            <td>{{ formatMs(o.base_ns === undefined ? undefined : o.base_ns / 1e6) }}</td>
+            <td>{{ formatMs(o.target_ns === undefined ? undefined : o.target_ns / 1e6) }}</td>
+            <td [class]="deltaClass(o.delta_ns)">{{ formatDelta(o.delta_ns, 'ns') }}</td>
+            <td>{{ o.base_rows ?? 'N/A' }} → {{ o.target_rows ?? 'N/A' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note" *ngIf="c.only_in_base.length || c.only_in_target.length">
+      {{ 'profile.compare.unmatched' | translate: { base: c.only_in_base.length, target: c.only_in_target.length } }}
+    </p>
+
+    <div class="diag-columns">
+      <div>
+        <h4>{{ 'profile.compare.newFindings' | translate }}</h4>
+        <p *ngIf="!c.new_diagnostics.length" class="note">—</p>
+        <ul><li *ngFor="let d of c.new_diagnostics"><code>{{ d.rule_id }}</code> {{ d.node_path }}</li></ul>
+      </div>
+      <div>
+        <h4>{{ 'profile.compare.resolvedFindings' | translate }}</h4>
+        <p *ngIf="!c.resolved_diagnostics.length" class="note">—</p>
+        <ul><li *ngFor="let d of c.resolved_diagnostics"><code>{{ d.rule_id }}</code> {{ d.node_path }}</li></ul>
+      </div>
+    </div>
+  </ng-container>
+</div>

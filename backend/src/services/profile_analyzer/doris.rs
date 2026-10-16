@@ -611,6 +611,19 @@ pub fn analyze_with(
     let variables = context.cluster_variables.as_ref();
     let mut warnings = Vec::new();
     let doris_summary = DorisSummary::parse(profile_text);
+    // Real 4.1.3 failures can contain a complete Summary/Execution
+    // Summary but no runtime operators (doris-4.1.3-failed-summary.txt).
+    if doris_summary.version.is_some()
+        && doris_summary.task_state().is_some_and(|state| {
+            matches!(
+                state.to_ascii_uppercase().as_str(),
+                "ERR" | "ERROR" | "FAILED" | "CANCELLED" | "CANCELED" | "ABORTED" | "TIMEOUT"
+            )
+        })
+        && !profile_text.lines().any(|line| OPERATOR.is_match(line))
+    {
+        return Ok(analyze_failed_summary(profile_text, &doris_summary, context));
+    }
     let (operators, detail_only) = collect_operators(profile_text, &mut warnings)?;
     let mut tree = build_tree(&operators, &mut warnings);
     let running = doris_summary.is_running();
@@ -745,7 +758,7 @@ pub fn analyze_with(
     diagnostics.sort_by_key(|d| std::cmp::Reverse(scoring::rank(d)));
 
     let root_cause_paths = root_cause_paths(&tree, &operator_diagnostics);
-    let summary = build_summary(&doris_summary, &tree, running, lang, &mut warnings);
+    let summary = build_summary(&doris_summary, Some(&tree), running, lang, &mut warnings);
     let timed = tree
         .nodes
         .iter()
@@ -790,11 +803,9 @@ pub fn analyze_with(
         .filter(|d| !rules::ADVISORY.contains(&d.rule_id.as_str()))
         .cloned()
         .collect();
-    let profile_level = doris_summary.profile_level().or_else(|| {
-        variables
-            .and_then(|vars| vars.get("profile_level"))
-            .and_then(|value| value.trim().parse().ok())
-    });
+    // A console/pool session's current setting cannot establish the level used by
+    // a historical query (for example a query submitted by Airflow).
+    let profile_level = doris_summary.profile_level();
     Ok(ProfileAnalysisResponse {
         engine: "doris".into(),
         metric_basis: "Operator share = average ExecTime / sum of operator average ExecTime. Parallel execution and dependency waits are not additive wall-clock time; missing counters remain unknown.".into(),
@@ -818,6 +829,56 @@ pub fn analyze_with(
         phase_breakdown: doris_summary.phase_breakdown(lang),
         archived: None,
     })
+}
+
+fn analyze_failed_summary(
+    profile_text: &str,
+    doris: &DorisSummary,
+    context: &AnalysisContext,
+) -> ProfileAnalysisResponse {
+    let lang = context.lang;
+    let warning = text(
+        lang,
+        "This failed query has no runtime operator counters. Only the recorded summary is available; no execution graph or operator bottleneck is inferred.",
+        "此失败查询没有运行时算子计数器。仅提供已记录的摘要，不推断执行图或算子瓶颈。",
+    );
+    let mut warnings = vec![warning.into()];
+    let summary = build_summary(doris, None, false, lang, &mut warnings);
+    let mut diagnostics: Vec<_> = doris
+        .findings(lang)
+        .into_iter()
+        .map(|mut finding| {
+            finding.confidence = Confidence::Medium;
+            finding.into_diagnostic("query".into(), None)
+        })
+        .collect();
+    diagnostics.sort_by_key(|d| std::cmp::Reverse(scoring::rank(d)));
+    ProfileAnalysisResponse {
+        engine: "doris".into(),
+        metric_basis: warning.into(),
+        topology_warnings: warnings,
+        root_cause_paths: Vec::new(),
+        operator_diagnostics: HashMap::new(),
+        hotspots: Vec::new(),
+        conclusion: warning.into(),
+        suggestions: diagnostics
+            .iter()
+            .flat_map(|d| d.suggestions.iter().cloned())
+            .collect(),
+        performance_score: scoring::score(&diagnostics),
+        execution_tree: None,
+        summary: Some(summary),
+        aggregated_diagnostics: aggregate_diagnostics(&diagnostics, lang),
+        diagnostics,
+        node_diagnostics: HashMap::new(),
+        profile_content: Some(profile_text.into()),
+        fragments: Vec::new(),
+        engine_version: doris.version_raw.clone(),
+        profile_level: doris.profile_level(),
+        confidence: Some(Confidence::Medium.as_str().into()),
+        phase_breakdown: doris.phase_breakdown(lang),
+        archived: None,
+    }
 }
 
 /// Rank operators with findings by their largest impact (then execution time), merge paths that
@@ -877,7 +938,7 @@ fn root_cause_paths(
 
 fn build_summary(
     doris: &DorisSummary,
-    tree: &ExecutionTree,
+    tree: Option<&ExecutionTree>,
     running: bool,
     lang: Lang,
     warnings: &mut Vec<String>,
@@ -919,8 +980,8 @@ fn build_summary(
     summary.query_execution_wall_time_ms = summary.total_time_ms;
     summary.query_execution_wall_time = Some(summary.total_time.clone());
     let mut ranked: Vec<_> = tree
-        .nodes
-        .iter()
+        .into_iter()
+        .flat_map(|tree| tree.nodes.iter())
         .filter(|n| n.metrics.operator_total_time.is_some())
         .collect();
     ranked.sort_by_key(|node| std::cmp::Reverse(node.metrics.operator_total_time));
@@ -944,10 +1005,11 @@ fn build_summary(
             })
             .collect(),
     );
-    if ranked.len() < tree.nodes.len() {
+    let operator_count = tree.map_or(0, |tree| tree.nodes.len());
+    if ranked.len() < operator_count {
         warnings.push(format!(
             "ExecTime is missing for {} operators; their time and percentage remain unknown.",
-            tree.nodes.len() - ranked.len()
+            operator_count - ranked.len()
         ));
     }
     summary

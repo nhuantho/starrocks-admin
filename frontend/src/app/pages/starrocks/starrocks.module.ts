@@ -36,6 +36,12 @@ import { FrontendsComponent } from './frontends/frontends.component';
 import { MaterializedViewsComponent } from './materialized-views/materialized-views.component';
 import { QueryExecutionComponent } from './queries/query-execution/query-execution.component';
 import { ProfileQueriesComponent } from './queries/profile-queries/profile-queries.component';
+import { ProfilePhaseBarComponent } from './queries/profile-queries/components/profile-phase-bar.component';
+import { ProfileDiagnosticsListComponent } from './queries/profile-queries/components/profile-diagnostics-list.component';
+import { DorisOperatorPanelComponent } from './queries/profile-queries/components/doris-operator-panel.component';
+import { ProfileCompareComponent } from './queries/profile-queries/components/profile-compare.component';
+import { ProfileGuidanceComponent } from './queries/profile-queries/components/profile-guidance.component';
+import { ProfileHistoryInsightsComponent } from './queries/profile-queries/components/profile-history-insights.component';
 import { AuditLogsComponent } from './queries/audit-logs/audit-logs.component';
 import { SessionsComponent } from './sessions/sessions.component';
 import { VariablesComponent } from './variables/variables.component';
@@ -60,6 +66,12 @@ import { ActiveToggleRenderComponent } from './materialized-views/active-toggle-
     ActiveToggleRenderComponent,
     QueryExecutionComponent,
     ProfileQueriesComponent,
+    ProfilePhaseBarComponent,
+    ProfileDiagnosticsListComponent,
+    DorisOperatorPanelComponent,
+    ProfileCompareComponent,
+    ProfileGuidanceComponent,
+    ProfileHistoryInsightsComponent,
     AuditLogsComponent,
     SessionsComponent,
     VariablesComponent,

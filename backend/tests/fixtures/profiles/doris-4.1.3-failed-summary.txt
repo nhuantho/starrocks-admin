@@ -1,0 +1,80 @@
+Summary:
+   - Profile ID: 9ef16a98d754b62-90772f1d6a2b529a
+   - Task Type: QUERY
+   - Start Time: 2026-10-15 22:40:17
+   - End Time: 2026-10-15 22:40:17
+   - Total: 1ms
+   - Task State: ERR
+   - User: user_1
+   - Default Catalog: internal
+   - Default Db: 
+   - Sql Statement: SELECT COUNT(*) as col_1 FROM col_2.col_3 WHERE col_4 > 0 LIMIT 1
+   - Distributed Plan: N/A
+Execution Summary:
+   - Workload Group: normal
+   - Parse SQL Time: 0ms
+   - Plan Time: N/A
+     - Garbage Collect During Plan Time: -1ms
+     - Nereids Preload External Metadata Time: 0ms
+     - Nereids Lock Table Time: N/A
+     - Nereids Analysis Time: N/A
+     - Nereids Rewrite Time: N/A
+       - Nereids Fold Const By BE Time: 0ms
+     - Nereids Collect Table Partition Time: N/A
+   - Nereids Pre Rewrite By Mv Time: N/A
+     - Nereids Optimize Time: N/A
+     - Nereids Translate Time: N/A
+       - Init Scan Node Time: N/A
+       - Finalize Scan Node Time: N/A
+         - Get Splits Time: N/A
+         - Get Partitions Time: N/A
+         - Get Partition Files Time: N/A
+         - Sink Set Partition Values Time: N/A
+       - Create Scan Range Time: N/A
+         - Iceberg Scan Metrics: N/A
+         - Paimon Scan Metrics: N/A
+     - Nereids Distribute Time: N/A
+   - Get Meta Version Time: 0ns
+     - Get Partition Version Time: N/A
+     - Get Partition Version Count (hasData): 0
+     - Get Partition Version Count: 0
+     - Get Table Version Time: N/A
+     - Get Table Version Count: 0
+   - Schedule Time: N/A
+     - Fragment Assign Time: N/A
+     - Fragment Serialize Time: N/A
+     - Fragment RPC Phase1 Time: N/A
+     - Fragment RPC Phase2 Time: N/A
+     - Fragment Compressed Size: 0.00 
+     - Fragment RPC Count: 0
+   - Schedule Time Of BE: {}
+   - Wait and Fetch Result Time: N/A
+   - Fetch Result Time: 0ms
+   - Write Result Time: 0ms
+   - Doris Version: doris-4.1.3-rc02-7126cf65d96
+   - Is Nereids: Yes
+   - Is Cached: No
+   - Total Instances Num: 0
+   - Instances Num Per BE: 
+   - Parallel Fragment Exec Instance Num: 8
+   - Trace ID: 
+   - Transaction Commit Time: N/A
+   - System Message: N/A
+   - Executed By Frontend: N/A
+   - Splits Assignment Weight: N/A
+
+ChangedSessionVariables:
+[
+  {
+    "VarName": "enable_profile",
+    "CurrentValue": "true",
+    "DefaultValue": "false"
+  },
+  {
+    "VarName": "max_allowed_packet",
+    "CurrentValue": "67108864",
+    "DefaultValue": "16777216"
+  }
+]
+
+Appendix:

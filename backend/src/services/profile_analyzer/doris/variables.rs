@@ -145,9 +145,9 @@ pub fn profile_level_finding(
     if !version.is_some_and(|v| v.supports_profile_level()) {
         return None;
     }
-    let current = variables
-        .and_then(|vars| vars.get("profile_level").cloned())
-        .or_else(|| profile_level.map(|level| level.to_string()));
+    let current = profile_level
+        .map(|level| level.to_string())
+        .or_else(|| variables.and_then(|vars| vars.get("profile_level").cloned()));
     if current
         .as_deref()
         .and_then(|v| v.trim().parse::<u8>().ok())

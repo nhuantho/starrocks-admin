@@ -19,7 +19,8 @@
     "startTime": "开始时间",
     "executionTime": "执行时间",
     "state": "状态",
-    "sqlStatement": "SQL语句"
+    "sqlStatement": "SQL语句",
+    "taskType": "类型"
   },
   "tabs": {
     "analysis": "执行分析",
@@ -27,7 +28,7 @@
   },
   "analysis": {
     "analyzing": "正在分析 Profile...",
-    "retentionHint": "提示: StarRocks 的 Profile 数据会定期清理，较早的查询可能已无法获取详细分析。",
+    "retentionHint": "数据库可能会淘汰 Profile。部分失败查询仅包含摘要，尚未启动运行时算子。",
     "failed": "分析失败: {{error}}",
     "unknownError": "未知错误"
   },
@@ -61,7 +62,8 @@
     "resultBytes": "返回给客户端的结果数据量",
     "dataCacheHitRate": "DataCache命中率",
     "noMetrics": "暂无指标数据",
-    "dataCacheTooltip": "存算分离架构 DataCache 命中率\n本地缓存读取: {{local}}\n远程存储读取: {{remote}}\n命中率: {{hitRate}}%\n(命中率 >= 70% 为健康)"
+    "dataCacheTooltip": "存算分离架构 DataCache 命中率\n本地缓存读取: {{local}}\n远程存储读取: {{remote}}\n命中率: {{hitRate}}%\n(命中率 >= 70% 为健康)",
+    "workloadGroup": "Workload Group"
   },
   "node": {
     "tab": "节点",
@@ -92,7 +94,10 @@
     "success": "图表已导出",
     "successTitle": "导出成功",
     "imageFailed": "导出图片失败",
-    "moduleLoadFailed": "加载导出模块失败"
+    "moduleLoadFailed": "加载导出模块失败",
+    "redact": "脱敏 SQL 字面量",
+    "markdown": "Markdown",
+    "failed": "导出失败"
   },
   "copy": {
     "profileCopied": "Profile 内容已复制到剪贴板",
@@ -454,7 +459,9 @@
     "recommendations": "优化建议",
     "counters": "Doris 运行时计数器",
     "waitHint": "ExecTime 与依赖等待是独立计数器，不能相加作为查询墙钟时间。",
-    "openDiagnostics": "打开查询诊断"
+    "openDiagnostics": "打开查询诊断",
+    "warningCount": "{{count}} 条拓扑警告",
+    "noOperators": "此查询未记录运行时算子。右侧显示已记录的摘要诊断。"
   },
   "live": {
     "pause": "暂停实时更新 · 5秒",
@@ -466,5 +473,100 @@
     "waiting": "等待运行时 Profile。必须在原查询会话中开启采集。保留最后可用快照。",
     "statusUnavailable": "暂时无法获取查询状态；显示 Profile 报告的状态。",
     "unavailable": "无法确认完整的最终 Profile。已停止自动重试；可手动刷新。保留最后快照。"
+  },
+  "phases": {
+    "title": "查询阶段",
+    "total": "总耗时",
+    "stackLabel": "各查询阶段占总耗时的比例",
+    "unaccounted": "未归属",
+    "notAdditive": "这些阶段存在重叠，因此分别显示而不堆叠。"
+  },
+  "findings": {
+    "title": "诊断结果",
+    "none": "无诊断结果。",
+    "impact": "影响",
+    "where": "位置",
+    "queryLevel": "整个查询",
+    "parameters": "参数建议",
+    "why": "原因",
+    "risk": "风险",
+    "copy": "复制",
+    "adviceOnly": "仅为建议：不会在集群上执行任何操作，请自行评估后执行。"
+  },
+  "severity": {
+    "Critical": "严重",
+    "Error": "错误",
+    "Warning": "警告",
+    "Info": "提示"
+  },
+  "confidence": {
+    "high": "高",
+    "medium": "中",
+    "low": "低"
+  },
+  "scope": {
+    "session": "会话",
+    "global": "全局（整个集群）",
+    "statement": "语句"
+  },
+  "operator": {
+    "instances": "实例数",
+    "filter": "筛选计数器",
+    "caption": "算子计数器在各任务间的总和、平均、最大和最小值",
+    "counter": "计数器",
+    "evidence": "证据",
+    "skewed": "倾斜",
+    "note": "max/avg 比较最慢任务与平均值。等待计数器独立于 ExecTime，不会相加；N/A 表示未测量。"
+  },
+  "compare": {
+    "title": "对比 Profile",
+    "close": "关闭对比",
+    "loading": "正在对比 Profile...",
+    "base": "基线",
+    "target": "对比项",
+    "totalDelta": "总耗时变化",
+    "scoreDelta": "评分变化",
+    "fingerprint": "SQL 指纹",
+    "same": "相同语句",
+    "different": "不同语句",
+    "phase": "阶段",
+    "operators": "变化最大的算子",
+    "rows": "行数",
+    "unmatched": "{{base}} 个算子仅在基线中，{{target}} 个仅在对比项中（执行计划已变化）。",
+    "newFindings": "新增诊断",
+    "resolvedFindings": "已解决诊断"
+  },
+  "guidance": {
+    "title": "为什么没有 Profile？",
+    "unavailable": "无法读取集群的 Profile 设置。"
+  },
+  "insights": {
+    "title": "重复语句与归档 Profile",
+    "loading": "加载中...",
+    "recurring": "重复语句",
+    "recurringHint": "按 SQL 指纹（忽略字面量）分组的已完成语句，来源于保留的 Profile 和归档快照。",
+    "noRecurring": "保留的历史中没有重复执行的语句。",
+    "statement": "语句",
+    "runs": "次数",
+    "totalTime": "总耗时",
+    "actions": "操作",
+    "openLatest": "打开",
+    "compareTwo": "对比最近两次",
+    "snapshots": "归档快照",
+    "snapshotsOn": "打开已完成查询的诊断时会归档其 Profile。",
+    "snapshotsOff": "Profile 归档未开启。管理员可在服务配置中开启 [profile_snapshots]。",
+    "select": "选择",
+    "captured": "采集时间",
+    "open": "打开",
+    "compareSelected": "对比所选",
+    "compareById": "按查询 ID 对比",
+    "compare": "对比"
+  },
+  "header": {
+    "version": "引擎版本",
+    "level": "Profile 级别",
+    "confidence": "置信度",
+    "partial": "临时数据",
+    "archived": "归档于 {{time}}"
   }
 }

@@ -1,0 +1,73 @@
+<nb-card class="insights-card">
+  <nb-card-header>
+    <button type="button" class="toggle" (click)="toggle()" [attr.aria-expanded]="open">
+      <strong>{{ 'profile.insights.title' | translate }}</strong>
+      <span>{{ (open ? 'profile.collapse' : 'profile.expand') | translate }}</span>
+    </button>
+  </nb-card-header>
+  <nb-card-body *ngIf="open">
+    <div *ngIf="loading" class="muted"><nb-spinner size="tiny" status="primary"></nb-spinner> {{ 'profile.insights.loading' | translate }}</div>
+    <ng-container *ngIf="!loading">
+      <h4>{{ 'profile.insights.recurring' | translate }}</h4>
+      <p class="muted">{{ 'profile.insights.recurringHint' | translate }}</p>
+      <p *ngIf="!recurring.length" class="muted">{{ 'profile.insights.noRecurring' | translate }}</p>
+      <div class="table-wrap" *ngIf="recurring.length">
+        <table>
+          <thead><tr>
+            <th scope="col">{{ 'profile.insights.statement' | translate }}</th>
+            <th scope="col">{{ 'profile.insights.runs' | translate }}</th>
+            <th scope="col">avg</th><th scope="col">max</th><th scope="col">{{ 'profile.insights.totalTime' | translate }}</th>
+            <th scope="col"><span class="visually-hidden">{{ 'profile.insights.actions' | translate }}</span></th>
+          </tr></thead>
+          <tbody>
+            <tr *ngFor="let group of recurring">
+              <td class="sql"><code [title]="group.fingerprint">{{ group.sample_sql }}</code></td>
+              <td>{{ group.executions }}</td>
+              <td>{{ formatMs(group.avg_ms) }}</td>
+              <td>{{ formatMs(group.max_ms) }}</td>
+              <td>{{ formatMs(group.total_ms) }}</td>
+              <td class="actions">
+                <button nbButton ghost size="tiny" type="button" (click)="openDiagnostics.emit(group.query_ids[0])">{{ 'profile.insights.openLatest' | translate }}</button>
+                <button nbButton ghost size="tiny" type="button" (click)="compareRecurring(group)" [disabled]="group.query_ids.length < 2">{{ 'profile.insights.compareTwo' | translate }}</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>{{ 'profile.insights.snapshots' | translate }}</h4>
+      <p class="muted">{{ (snapshotsEnabled ? 'profile.insights.snapshotsOn' : 'profile.insights.snapshotsOff') | translate }}</p>
+      <div class="table-wrap" *ngIf="snapshots.length">
+        <table>
+          <thead><tr>
+            <th scope="col"><span class="visually-hidden">{{ 'profile.insights.select' | translate }}</span></th>
+            <th scope="col">Query ID</th><th scope="col">{{ 'profile.list.state' | translate }}</th>
+            <th scope="col">{{ 'profile.insights.totalTime' | translate }}</th><th scope="col">{{ 'profile.insights.captured' | translate }}</th>
+            <th scope="col"><span class="visually-hidden">{{ 'profile.insights.actions' | translate }}</span></th>
+          </tr></thead>
+          <tbody>
+            <tr *ngFor="let snapshot of snapshots">
+              <td><input type="checkbox" [checked]="selected.includes(snapshot.query_id)" (change)="toggleSelected(snapshot.query_id)"
+                         [attr.aria-label]="('profile.insights.select' | translate) + ' ' + snapshot.query_id"></td>
+              <td><code>{{ snapshot.query_id }}</code></td>
+              <td>{{ snapshot.query_state }}</td>
+              <td>{{ formatMs(snapshot.total_ms) }}</td>
+              <td>{{ snapshot.created_at }}</td>
+              <td><button nbButton ghost size="tiny" type="button" (click)="openDiagnostics.emit(snapshot.query_id)">{{ 'profile.insights.open' | translate }}</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <button nbButton size="tiny" status="primary" type="button" *ngIf="snapshots.length" [disabled]="selected.length !== 2" (click)="compareSelected()">
+        {{ 'profile.insights.compareSelected' | translate }}
+      </button>
+
+      <h4>{{ 'profile.insights.compareById' | translate }}</h4>
+      <form class="manual" (ngSubmit)="compareManual()">
+        <input nbInput fieldSize="tiny" name="base" [(ngModel)]="manualBase" [placeholder]="'profile.compare.base' | translate" [attr.aria-label]="'profile.compare.base' | translate">
+        <input nbInput fieldSize="tiny" name="target" [(ngModel)]="manualTarget" [placeholder]="'profile.compare.target' | translate" [attr.aria-label]="'profile.compare.target' | translate">
+        <button nbButton size="tiny" type="submit" [disabled]="!manualBase.trim() || !manualTarget.trim()">{{ 'profile.insights.compare' | translate }}</button>
+      </form>
+    </ng-container>
+  </nb-card-body>
+</nb-card>

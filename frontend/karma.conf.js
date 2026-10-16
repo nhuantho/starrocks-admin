@@ -1,6 +1,8 @@
 const { executablePath } = require('puppeteer');
 
-process.env.CHROME_BIN = executablePath();
+// Allow CI or developers to provide an installed browser. Fall back to the
+// Puppeteer-managed Chrome used by the default local setup.
+process.env.CHROME_BIN = process.env.CHROME_BIN || executablePath();
 
 // Karma configuration file generated for Angular CLI unit tests
 module.exports = function (config) {

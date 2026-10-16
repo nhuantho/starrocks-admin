@@ -4,8 +4,9 @@ Status: **observed in Doris 4.1.3** (`doris-4.1.3-rc02`). Every name below appea
 
 - `J` = `backend/tests/fixtures/profiles/doris-4.1.3-jdbc.txt` (MergedProfile + DetailProfile + Appendix, 1 BE, 4 operators)
 - `M` = `backend/tests/fixtures/profiles/doris-4.1.3-join-merged.txt` (MergedProfile only, no DetailProfile/Appendix, 13 operators)
+- `F` = `backend/tests/fixtures/profiles/doris-4.1.3-failed-summary.txt` (captured failure: Summary/Execution Summary only, zero runtime operators; `Task State: ERR`, `System Message: N/A`). Its summary keys are a subset of those catalogued below, including measured zero and unknown `N/A`/`-1ms` timings. The failing phase and cause are not established by this fixture.
 
-Both profiles scan an external JDBC catalog. **No native `OLAP_SCAN_OPERATOR`, spill, failed, or 2.1/3.x profile has been captured yet**, so counters for those cases are not listed here and rules must not depend on them until a fixture is added.
+The two operator profiles scan an external JDBC catalog. **No native `OLAP_SCAN_OPERATOR`, spill, or 2.1/3.x profile has been captured yet**, so counters for those cases are not listed here and rules must not depend on them until a fixture is added. A failure summary cannot establish the error's cause when Doris did not record a message.
 
 Diagnostic rules may read only counters listed here (or counters cited from official Doris docs in a code comment). Extend this file whenever a fixture is added.
 

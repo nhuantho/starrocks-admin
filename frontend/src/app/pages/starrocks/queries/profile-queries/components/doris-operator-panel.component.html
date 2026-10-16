@@ -1,0 +1,58 @@
+<section class="doris-panel" *ngIf="node">
+  <div class="panel-summary">
+    <span><strong>{{ node.operator_name }}</strong> · F{{ node.fragment_id }}/P{{ node.pipeline_id }}<ng-container *ngIf="node.plan_node_id !== null && node.plan_node_id !== undefined"> · id={{ node.plan_node_id }}</ng-container></span>
+    <span *ngIf="instances">{{ 'profile.operator.instances' | translate }}: {{ instances }}</span>
+  </div>
+
+  <div class="panel-findings" *ngIf="findings.length">
+    <strong>{{ 'profile.findings.title' | translate }}</strong>
+    <ul>
+      <li *ngFor="let d of findings" [attr.data-severity]="d.severity">
+        <span class="severity"><span aria-hidden="true">{{ severitySymbol(d.severity) }}</span> {{ ('profile.severity.' + d.severity) | translate }}</span>
+        {{ d.rule_name }} — <span class="reason">{{ d.reason }}</span>
+      </li>
+    </ul>
+  </div>
+
+  <label class="filter">
+    <span class="visually-hidden">{{ 'profile.operator.filter' | translate }}</span>
+    <input nbInput fieldSize="tiny" fullWidth [(ngModel)]="filter" [placeholder]="'profile.operator.filter' | translate">
+  </label>
+
+  <div class="table-wrap">
+    <table class="counter-table">
+      <caption class="visually-hidden">{{ 'profile.operator.caption' | translate }}</caption>
+      <thead>
+        <tr>
+          <th scope="col">{{ 'profile.operator.counter' | translate }}</th>
+          <th scope="col">sum</th>
+          <th scope="col">avg</th>
+          <th scope="col">max</th>
+          <th scope="col">min</th>
+          <th scope="col">max/avg</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of rows; trackBy: trackByKey" [class.highlighted]="row.highlighted">
+          <th scope="row">
+            <span *ngIf="row.highlighted" class="evidence-tag">{{ 'profile.operator.evidence' | translate }}</span>
+            {{ row.key }}
+          </th>
+          <ng-container *ngIf="row.avg || row.max || row.sum || row.min; else scalar">
+            <td>{{ row.sum ?? '—' }}</td>
+            <td>{{ row.avg ?? '—' }}</td>
+            <td>{{ row.max ?? '—' }}</td>
+            <td>{{ row.min ?? '—' }}</td>
+            <td>
+              <span *ngIf="row.skew !== undefined" [class.skewed]="row.skew >= skewThreshold">
+                {{ row.skew | number:'1.0-2' }}×<ng-container *ngIf="row.skew >= skewThreshold"> {{ 'profile.operator.skewed' | translate }}</ng-container>
+              </span>
+            </td>
+          </ng-container>
+          <ng-template #scalar><td colspan="5" class="scalar">{{ row.raw || 'N/A' }}</td></ng-template>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">{{ 'profile.operator.note' | translate }}</p>
+</section>

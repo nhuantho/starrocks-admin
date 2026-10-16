@@ -39,6 +39,7 @@ mod profile_permission_tests {
         let expected = Some(("clusters".to_string(), "profiles:get".to_string()));
         assert_eq!(extract_permission("POST", "/api/clusters/profiles/explain"), expected);
         assert_eq!(extract_permission("GET", "/api/clusters/profiles/query-1/status"), expected);
+        assert_eq!(extract_permission("GET", "/api/clusters/profiles/query-1/metadata"), expected);
         assert_ne!(extract_permission("POST", "/api/clusters/profiles/query-1"), expected);
         assert_eq!(extract_permission("POST", "/api/clusters/profiles/compare"), expected);
         for uri in ["snapshots", "settings", "recurring", "query-1/report"] {

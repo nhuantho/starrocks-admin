@@ -189,6 +189,7 @@ export interface ProfileListItem {
   EndTime?: string;
   FeNode?: string;
   Engine?: string;
+  TaskType?: string;
 }
 
 export interface ProfileDetail {
@@ -239,6 +240,39 @@ export interface DiagnosticResult {
   // Recommended actions to fix the issue (建议措施)
   suggestions: string[];
   parameter_suggestions?: ParameterSuggestion[];
+  // Estimated share (0-1) of measured time or rows affected (Doris)
+  impact?: number;
+  // high | medium | low (Doris)
+  confidence?: string;
+  // Counter names that support this finding, for highlighting
+  evidence_counters?: string[];
+  // Copyable SQL, advice only; never executed by the server
+  sql_snippets?: SqlSnippet[];
+}
+
+export interface SqlSnippet {
+  label: string;
+  sql: string;
+  // session | global | statement
+  scope: string;
+  warning?: string;
+}
+
+export interface PhaseSegment {
+  key: string;
+  label: string;
+  time_ms: number;
+  raw: string;
+}
+
+export interface PhaseBreakdown {
+  total_ms?: number;
+  segments: PhaseSegment[];
+  unaccounted_ms?: number;
+  // False when segments exceed the total; they must not be drawn as a stack
+  additive: boolean;
+  details?: PhaseSegment[];
+  note: string;
 }
 
 // Parameter suggestion with description and impact
@@ -250,6 +284,9 @@ export interface ParameterSuggestion {
   command: string;
   description: string;  // Human-readable description of what this parameter does
   impact: string;       // Expected impact of changing this parameter
+  scope?: string;       // session | global
+  risk?: string;
+  reason?: string;      // Evidence that motivated the suggestion
 }
 
 // Aggregated diagnostic for overview display
@@ -297,6 +334,64 @@ export interface ProfileAnalysisResult {
   node_diagnostics?: { [planNodeId: number]: DiagnosticResult[] };
   // Raw profile content for PROFILE tab display
   profile_content?: string;
+  engine_version?: string;
+  profile_level?: number;
+  // Overall evidence confidence: high | medium | low
+  confidence?: string;
+  phase_breakdown?: PhaseBreakdown;
+  // Present when served from an archived snapshot
+  archived?: { snapshot_id: number; captured_at: string; reason: string };
+}
+
+export interface ProfileSnapshotSummary {
+  id: number;
+  query_id: string;
+  engine: string;
+  sql_fingerprint: string;
+  query_state: string;
+  total_ms?: number;
+  size_bytes: number;
+  reason: string;
+  created_at: string;
+}
+
+export interface ProfileComparison {
+  base_query_id: string;
+  target_query_id: string;
+  same_fingerprint: boolean;
+  base_total_ms?: number;
+  target_total_ms?: number;
+  total_delta_ms?: number;
+  score_delta: number;
+  phases: Array<{ key: string; label: string; base_ms?: number; target_ms?: number; delta_ms?: number }>;
+  operators: Array<{
+    node_id: string; operator_name: string; base_ns?: number; target_ns?: number; delta_ns?: number;
+    base_rows?: number; target_rows?: number;
+  }>;
+  only_in_base: string[];
+  only_in_target: string[];
+  new_diagnostics: Array<{ rule_id: string; node_path: string }>;
+  resolved_diagnostics: Array<{ rule_id: string; node_path: string }>;
+  warnings: string[];
+}
+
+export interface ProfileSettings {
+  engine: string;
+  variables: { [name: string]: string };
+  fe_config: { [name: string]: string };
+  guidance: string[];
+  snippets: SqlSnippet[];
+  snapshots_enabled: boolean;
+}
+
+export interface RecurringQuery {
+  fingerprint: string;
+  sample_sql: string;
+  executions: number;
+  avg_ms: number;
+  max_ms: number;
+  total_ms: number;
+  query_ids: string[];
 }
 
 @Injectable({
@@ -426,6 +521,10 @@ export class NodeService {
     return this.api.get<ProfileDetail>(`/clusters/profiles/${queryId}`);
   }
 
+  getProfileMetadata(queryId: string): Observable<{catalog?: string; database?: string; task_type?: string}> {
+    return this.api.get(`/clusters/profiles/${encodeURIComponent(queryId)}/metadata`);
+  }
+
   getProfileStatus(queryId: string): Observable<ProfileListItem> {
     return this.api.get<ProfileListItem>(`/clusters/profiles/${encodeURIComponent(queryId)}/status`);
   }
@@ -436,5 +535,29 @@ export class NodeService {
 
   analyzeProfile(queryId: string): Observable<ProfileAnalysisResult> {
     return this.api.get<ProfileAnalysisResult>(`/clusters/profiles/${queryId}/analyze`);
+  }
+
+  listProfileSnapshots(limit = 100): Observable<{ enabled: boolean; snapshots: ProfileSnapshotSummary[] }> {
+    return this.api.get<{ enabled: boolean; snapshots: ProfileSnapshotSummary[] }>('/clusters/profiles/snapshots', { limit });
+  }
+
+  compareProfiles(baseQueryId: string, targetQueryId: string): Observable<ProfileComparison> {
+    return this.api.post<ProfileComparison>('/clusters/profiles/compare', {
+      base_query_id: baseQueryId,
+      target_query_id: targetQueryId,
+    });
+  }
+
+  getProfileSettings(): Observable<ProfileSettings> {
+    return this.api.get<ProfileSettings>('/clusters/profiles/settings');
+  }
+
+  getRecurringQueries(limit = 20): Observable<RecurringQuery[]> {
+    return this.api.get<RecurringQuery[]>('/clusters/profiles/recurring', { limit });
+  }
+
+  // Analysis report (never includes the raw profile); format: md | html
+  exportProfileReport(queryId: string, format: 'md' | 'html', redact: boolean): Observable<string> {
+    return this.api.getText(`/clusters/profiles/${encodeURIComponent(queryId)}/report`, { format, redact });
   }
 }

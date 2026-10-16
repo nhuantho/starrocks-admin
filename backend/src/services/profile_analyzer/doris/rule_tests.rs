@@ -791,4 +791,32 @@ fn profile_level_from_changed_session_variables() {
     let response = analyze_full(&text, None);
     assert_eq!(response.profile_level, Some(2));
     assert!(find(&response, "DORIS_PROFILE_LEVEL").is_none());
+    let response = analyze_full(&text, Some(&[("profile_level", "1")]));
+    assert_eq!(response.profile_level, Some(2));
+    assert!(find(&response, "DORIS_PROFILE_LEVEL").is_none());
+}
+
+#[test]
+fn historical_profile_level_is_not_inferred_from_console_session() {
+    let text = include_str!("../../../../tests/fixtures/profiles/doris-4.1.3-join-merged.txt");
+    let response = analyze_full(text, Some(&[("profile_level", "2")]));
+    assert_eq!(response.profile_level, None);
+}
+
+#[test]
+fn captured_failure_keeps_summary_without_inventing_operators() {
+    let text = include_str!("../../../../tests/fixtures/profiles/doris-4.1.3-failed-summary.txt");
+    let response = analyze_full(text, None);
+    assert!(response.execution_tree.is_none());
+    assert!(response.operator_diagnostics.is_empty());
+    assert!(response.root_cause_paths.is_empty());
+    let summary = response.summary.as_ref().unwrap();
+    assert_eq!(summary.query_state, "ERR");
+    assert_eq!(summary.planner_total_time_ms, None);
+    let failure = find(&response, "DORIS_QUERY_FAILED").unwrap();
+    assert_eq!(failure.severity, "Warning");
+    assert!(failure.message.contains("no cause is inferred"));
+    assert!(failure.parameter_suggestions.is_empty());
+    assert!(response.phase_breakdown.is_some());
+    assert_eq!(response.profile_content.as_deref(), Some(text));
 }
