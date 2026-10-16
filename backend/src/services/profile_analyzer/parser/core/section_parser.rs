@@ -129,6 +129,7 @@ impl SectionParser {
             total_instance_count: None,
             is_profile_complete: None,
             profile_completeness_warning: None,
+            workload_group: None,
         })
     }
 

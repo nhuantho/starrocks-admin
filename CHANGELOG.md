@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Doris 4.1.3 query profile diagnostics with an interactive operator graph, query-phase breakdown, evidence-linked findings, counter details, confidence and severity/impact scoring.
+- Doris profile compatibility adapters, parser mutation tests, captured-profile snapshots, and an anonymization utility. OLAP and spill diagnostics remain disabled until backed by a real fixture.
+- Opt-in, organization-scoped profile snapshots with retention limits, profile comparison, recurring-query summaries, settings guidance, and redacted Markdown/HTML reports.
+- English and Chinese diagnostics UI, operator keyboard navigation, and a mocked-response Karma smoke spec.
+
+### Changed
+- Profile analysis responses expose Doris engine/version/profile completeness and query phase metadata while retaining the existing StarRocks analyzer.
+
+### Fixed
+- Skip StarRocks-only audit latency probes on Doris, avoiding repeated failed queries that consume profile retention slots when profiling is global.
+- Doris Profiles supplements QUERY-only HTTP history with connected-FE SQL metadata/LOAD records, displays engine task types, and resolves missing default catalogs for visible rows.
+- Doris failures with no runtime operators now expose recorded summary diagnostics instead of failing analysis; unknown causes remain unknown.
+- Historical profile level and incomplete archive eligibility no longer use misleading console-session/terminal-state assumptions.
+- Doris timing percentages stay unknown when wall time is unavailable, and SQL editor asynchronous state updates refresh the OnPush view.
+
 ## [1.0.0] - 2024-12-05
 
 ### 🎉 首个正式版本发布

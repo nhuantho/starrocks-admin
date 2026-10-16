@@ -1,0 +1,12 @@
+:host { display: block; text-align: left; max-width: 44rem; margin: 1rem auto 0; font-size: 0.75rem; }
+.guidance { display: grid; gap: 0.45rem; padding: 0.75rem 1rem; border: 1px solid var(--stellar-border, #e4e9f2); border-radius: 0.5rem; }
+ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.25rem; }
+dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.15rem 0.75rem; margin: 0; }
+dd { margin: 0; overflow-wrap: anywhere; }
+.line { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: baseline; }
+.scope { font-size: 0.64rem; text-transform: uppercase; border: 1px solid currentColor; border-radius: 0.25rem; padding: 0 0.3rem; }
+.scope[data-scope='global'] { color: #ff3d71; }
+.risk { margin: 0; color: #b86e00; }
+.command { display: flex; gap: 0.4rem; align-items: flex-start; }
+.command pre { flex: 1; margin: 0; padding: 0.35rem 0.5rem; background: var(--stellar-subtle, #f7f9fc); border-radius: 0.3rem; white-space: pre-wrap; font-size: 0.68rem; }
+.muted { margin: 0; color: var(--stellar-muted, #8f9bb3); }

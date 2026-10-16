@@ -1,0 +1,23 @@
+<section class="guidance" [attr.aria-label]="'profile.guidance.title' | translate">
+  <strong>{{ 'profile.guidance.title' | translate }}</strong>
+  <p *ngIf="failed" class="muted">{{ 'profile.guidance.unavailable' | translate }}</p>
+  <ng-container *ngIf="settings as s">
+    <ul><li *ngFor="let line of s.guidance">{{ line }}</li></ul>
+    <dl *ngIf="entries(s.variables).length || entries(s.fe_config).length">
+      <ng-container *ngFor="let entry of entries(s.variables)"><dt><code>{{ entry[0] }}</code></dt><dd>{{ entry[1] }}</dd></ng-container>
+      <ng-container *ngFor="let entry of entries(s.fe_config)"><dt><code>{{ entry[0] }}</code> (FE)</dt><dd>{{ entry[1] }}</dd></ng-container>
+    </dl>
+    <div class="snippet" *ngFor="let snippet of s.snippets">
+      <div class="line">
+        <span>{{ snippet.label }}</span>
+        <span class="scope" [attr.data-scope]="snippet.scope">{{ ('profile.scope.' + snippet.scope) | translate }}</span>
+      </div>
+      <p class="risk" *ngIf="snippet.warning">⚠ {{ snippet.warning }}</p>
+      <div class="command">
+        <pre>{{ snippet.sql }}</pre>
+        <button nbButton ghost size="tiny" type="button" (click)="copyText.emit(snippet.sql)">{{ 'profile.findings.copy' | translate }}</button>
+      </div>
+    </div>
+    <p class="muted">{{ 'profile.findings.adviceOnly' | translate }}</p>
+  </ng-container>
+</section>

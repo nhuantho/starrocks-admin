@@ -3,9 +3,11 @@ import { ActivatedRoute } from '@angular/router';
 import { Location } from '@angular/common'; // Import Location
 import { NbToastrService, NbDialogService } from '@nebular/theme';
 import { LocalDataSource } from 'ng2-smart-table';
-import { Subject, forkJoin, of } from 'rxjs';
-import { catchError, takeUntil } from 'rxjs/operators';
+import { Subject, Subscription, forkJoin, from, of } from 'rxjs';
+import { catchError, mergeMap, takeUntil } from 'rxjs/operators';
 import { NodeService, ProfileListItem } from '../../../../@core/data/node.service';
+import { FindingFocus } from './components/profile-diagnostics-list.component';
+import { ComparePair } from './components/profile-history-insights.component';
 import { ClusterContextService } from '../../../../@core/data/cluster-context.service';
 import { Cluster } from '../../../../@core/data/cluster.service';
 import { ErrorHandler } from '../../../../@core/utils/error-handler';
@@ -24,6 +26,9 @@ import { TranslateService } from '@ngx-translate/core';
 export class ProfileQueriesComponent implements OnInit, OnDestroy {
   // Data sources
   profileSource: LocalDataSource = new LocalDataSource();
+  private profileMetadata = new Map<string, {catalog?: string; database?: string; task_type?: string}>();
+  private metadataPending = new Set<string>();
+  private metadataRequest?: Subscription;
   
   // State
   clusterId: number;
@@ -42,6 +47,11 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
   profileDetailLoading = false;
   @ViewChild('profileDetailDialog') profileDetailDialogTemplate: TemplateRef<any>;
   @ViewChild('queryExplainDialog') queryExplainDialogTemplate: TemplateRef<any>;
+  @ViewChild('profileCompareDialog') profileCompareDialogTemplate: TemplateRef<any>;
+  // Evidence counters of the finding that focused the selected node
+  highlightCounters: string[] = [];
+  exportRedact = false;
+  readonly nodeLabel = (nodeId: string): string => this.causeNodeName(nodeId);
   profiles: ProfileListItem[] = [];
   inspectedQuery: ProfileListItem | null = null;
   explainSql = '';
@@ -117,15 +127,50 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
     return node ? `${node.operator_name} · F${node.fragment_id ?? '—'}/P${node.pipeline_id ?? '—'}` : nodeId;
   }
 
-  getDorisTimingMetrics(): {key: string; value: string}[] {
-    if (this.analysisData?.engine !== 'doris' || !this.selectedNode) { return []; }
-    return Object.entries(this.selectedNode.unique_metrics || {})
-      .filter(([key]) => key.includes('Time') && key !== 'OperatorTotalTime')
-      .map(([key, value]) => ({ key, value: String(value) }))
-      .sort((a, b) => {
-        const rank = (key: string) => key === 'ExecTime' ? 0 : key === 'InitConnectorTime' ? 1 : key.startsWith('WaitForDependency') ? 2 : 3;
-        return rank(a.key) - rank(b.key) || a.key.localeCompare(b.key);
-      });
+  // A finding was selected: focus its operator and highlight the counters it relies on.
+  onFindingFocus(focus: FindingFocus): void {
+    this.selectNodeById(focus.nodeId);
+    this.highlightCounters = [...focus.counters];
+  }
+
+  openCompare(pair: ComparePair): void {
+    this.dialogService.open(this.profileCompareDialogTemplate, {
+      context: pair,
+      hasBackdrop: true,
+      closeOnBackdropClick: true,
+      closeOnEsc: true,
+      dialogClass: 'profile-dialog-lg',
+    });
+  }
+
+  // Download the analysis report; the server never includes the raw profile.
+  exportReport(format: 'md' | 'html'): void {
+    if (!this.currentQueryId) { return; }
+    const queryId = this.currentQueryId;
+    this.nodeService.exportProfileReport(queryId, format, this.exportRedact).pipe(takeUntil(this.destroy$)).subscribe({
+      next: body => {
+        const type = format === 'html' ? 'text/html' : 'text/markdown';
+        const url = URL.createObjectURL(new Blob([body], { type: `${type};charset=utf-8` }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `profile-${queryId}.${format}`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+      },
+      error: error => this.toastrService.danger(ErrorHandler.extractErrorMessage(error), this.translate.instant('profile.export.failed')),
+    });
+  }
+
+  // Arrow keys move focus between graph nodes in reading order (top-to-bottom, left-to-right).
+  onNodeKeydown(event: KeyboardEvent, node: any): void {
+    const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[event.key];
+    if (!step) { return; }
+    event.preventDefault();
+    const ordered = [...this.graphNodes].sort((a, b) => a.y - b.y || a.x - b.x);
+    const next = ordered[ordered.findIndex(item => item.id === node.id) + step];
+    if (next) {
+      (document.querySelector(`.dag-node[data-node-id="${CSS.escape(next.id)}"]`) as HTMLElement | null)?.focus();
+    }
   }
 
   // DAG Analysis
@@ -626,6 +671,7 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
           width: '40%',
           valuePrepareFunction: (value: any) => renderLongText(value, 100),
         },
+        TaskType: { title: this.translate.instant('profile.list.taskType'), type: 'string', width: '7%' },
         Catalog: { title: this.translate.instant('profile.inspect.catalog'), type: 'string', width: '12%' },
         User: { title: this.translate.instant('profile.inspect.user'), type: 'string', width: '8%' },
       },
@@ -662,6 +708,10 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // Resolve only visible Doris rows; avoid downloading every retained profile on each refresh.
+    this.profileSource.onChanged().pipe(takeUntil(this.destroy$)).subscribe(change => {
+      if (change.action !== 'update') { this.resolveVisibleCatalogs(change.elements || []); }
+    });
     this.translate.onLangChange
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
@@ -682,6 +732,8 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
           // Always use the active cluster (override route parameter)
           const newClusterId = cluster.id;
           if (this.clusterId !== newClusterId) {
+            this.profileMetadata.clear();
+            this.metadataPending.clear();
             this.clusterId = newClusterId;
             this.loadProfiles();
           }
@@ -746,11 +798,52 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
     }
   }
 
+  private applyProfileMetadata(rows: ProfileListItem[]): void {
+    rows.forEach(row => {
+      const metadata = this.profileMetadata.get(row.QueryId);
+      if (!row.Catalog && metadata?.catalog) { row.Catalog = metadata.catalog; }
+      if (!row.Database && metadata?.database) { row.Database = metadata.database; }
+      if (!row.TaskType && metadata?.task_type) { row.TaskType = metadata.task_type; }
+    });
+  }
+
+  private resolveVisibleCatalogs(rows: ProfileListItem[]): void {
+    this.metadataRequest?.unsubscribe();
+    this.metadataPending.clear();
+    const cluster = this.clusterId;
+    const missing = rows.filter(row => row.Engine === 'doris' && !row.Catalog
+      && !this.profileMetadata.has(row.QueryId) && !this.metadataPending.has(row.QueryId)).slice(0, 20);
+    missing.forEach(row => this.metadataPending.add(row.QueryId));
+    this.metadataRequest = from(missing).pipe(
+      mergeMap(row => this.nodeService.getProfileMetadata(row.QueryId).pipe(
+        catchError(() => of({})),
+        mergeMap(metadata => of({row, metadata})),
+      ), 4),
+      takeUntil(this.destroy$),
+    ).subscribe(({row, metadata}) => {
+      if (this.clusterId !== cluster) { return; }
+      this.metadataPending.delete(row.QueryId);
+      this.profileMetadata.set(row.QueryId, metadata);
+      // Keep the backing list and displayed row in sync without resetting filters or pagination.
+      const current = this.profiles.find(item => item.QueryId === row.QueryId);
+      if (current) {
+        this.applyProfileMetadata([current]);
+        this.profileSource.update(current, current);
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
   // Load profiles
   loadProfiles(): void {
+    // An explicit refresh retries metadata that was unavailable or had expired.
+    this.profileMetadata.forEach((metadata, id) => {
+      if (!metadata.catalog) { this.profileMetadata.delete(id); }
+    });
     this.loading = true;
     this.nodeService.listProfiles().subscribe(
       data => {
+        this.applyProfileMetadata(data);
         this.profiles = data;
         this.profileSource.load(data);
         this.updateDynamicThresholds(data);
@@ -767,6 +860,7 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
   loadProfilesSilently(): void {
     this.nodeService.listProfiles().subscribe(
       data => {
+        this.applyProfileMetadata(data);
         this.profiles = data;
         if (this.inspectedQuery) {
           const updated = data.find(query => query.QueryId === this.inspectedQuery.QueryId);
@@ -966,6 +1060,7 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
     this.graphNodes = [];
     this.graphEdges = [];
     this.selectedNode = null;
+    this.highlightCounters = [];
     this.activeCauseNodeIds = new Set();
     this.selectedCauseIndex = null;
     
@@ -1003,7 +1098,7 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
       const liveState = result.status.error ? null : result.status.State;
       this.diagnosticsState = this.safeState(liveState || reportedState || 'UNKNOWN');
       const terminal = (state: string) => ['FINISHED', 'EOF', 'OK', 'SUCCESS', 'FAILED', 'ERROR', 'ERR',
-        'CANCELLED', 'CANCELED', 'ABORTED'].includes(this.safeState(state));
+        'CANCELLED', 'CANCELED', 'ABORTED', 'TIMEOUT'].includes(this.safeState(state));
       this.diagnosticsFinal = !!data && terminal(this.diagnosticsState) && terminal(reportedState)
         && data.summary?.is_profile_complete !== false;
       this.diagnosticsNotice = '';
@@ -1017,6 +1112,7 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
         this.currentProfileDetail = data.profile_content || '';
         this.diagnosticsUpdatedAt = new Date();
         if (data.execution_tree) { this.buildGraph(data.execution_tree, hadGraph); }
+        else { this.graphNodes = []; this.graphEdges = []; this.graphWidth = 0; this.graphHeight = 0; }
         this.selectedNode = this.graphNodes.find(node => node.id === selectedId) || null;
         const matchingPath = data.root_cause_paths?.findIndex(path => path.node_ids.join('|') === previousPath);
         this.selectedCauseIndex = matchingPath >= 0 ? matchingPath : (!hadGraph && data.root_cause_paths?.length ? 0 : null);
@@ -1027,7 +1123,7 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
         this.analysisError = this.analysisData ? '' : ErrorHandler.extractErrorMessage(error);
         this.diagnosticsNotice = 'profile.live.waiting';
       }
-      const active = !result.status.error && ['RUNNING', 'PENDING', 'QUEUED'].includes(this.diagnosticsState);
+      const active = !result.status.error && ['RUNNING', 'PENDING', 'QUEUED', 'WAITING'].includes(this.diagnosticsState);
       this.diagnosticsRetries = active ? 0 : this.diagnosticsRetries + 1;
       if (result.status.error && data) { this.diagnosticsNotice = 'profile.live.statusUnavailable'; }
       const retry = !this.diagnosticsFinal && (active || this.diagnosticsRetries < 6);
@@ -1366,6 +1462,7 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
       event.stopPropagation(); // Prevent panel click from clearing selection
     }
     this.selectedNode = node;
+    this.highlightCounters = [];
   }
   
   // Handle click on DAG panel background (clear selection)
@@ -1394,6 +1491,7 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
   // Clear selected node (return to summary view)
   clearSelectedNode(): void {
     this.selectedNode = null;
+    this.highlightCounters = [];
   }
   
   // Get top 10 nodes by time percentage (include all nodes, even 0%)
@@ -1453,6 +1551,10 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
   // Format time string with percentage
   formatTimeWithPercent(timeStr: string | undefined, percent: number): string {
     if (!timeStr) return '-';
+    if (this.analysisData?.engine === 'doris' &&
+        (timeStr === 'N/A' || !(this.analysisData?.summary?.query_execution_wall_time_ms > 0))) {
+      return timeStr;
+    }
     return `${percent.toFixed(1)}%(${timeStr})`;
   }
 
@@ -1554,6 +1656,8 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
   // If node has NetworkTime -> show CPUTime + NetworkTime
   // Otherwise -> show CPUTime only (100%)
   getExecutionTimeBreakdown(): { items: { label: string; time: string; percent: number; color: string }[] } | null {
+    // Doris shows per-counter min/avg/max in the operator panel instead: its dependency waits are
+    // not part of ExecTime, so a CPU/scan/network split of ExecTime would be invented.
     if (!this.selectedNode || this.analysisData?.engine === 'doris') return null;
     
     const allMetrics = this.getAllNodeMetrics();
@@ -1988,6 +2092,9 @@ export class ProfileQueriesComponent implements OnInit, OnDestroy {
   getCurrentDiagnosticsCount(): number {
     if (this.selectedNode) {
       return this.getNodeDiagnostics(this.selectedNode)?.length || 0;
+    }
+    if (this.analysisData?.engine === 'doris') {
+      return this.analysisData?.diagnostics?.length || 0;
     }
     return this.analysisData?.aggregated_diagnostics?.length || 0;
   }

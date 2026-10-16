@@ -59,6 +59,7 @@ pub struct AppState {
     pub metrics_collector_service: Arc<MetricsCollectorService>,
     pub data_statistics_service: Arc<DataStatisticsService>,
     pub overview_service: Arc<OverviewService>,
+    pub profile_snapshot_service: Arc<services::profile_snapshot_service::ProfileSnapshotService>,
 
     // RBAC Services
     pub casbin_service: Arc<CasbinService>,
@@ -111,7 +112,13 @@ pub struct AppState {
         handlers::variables::update_variable,
         handlers::profile::list_profiles,
         handlers::profile::get_profile,
+        handlers::profile::get_profile_metadata,
         handlers::profile::analyze_profile_handler,
+        handlers::profile::list_snapshots,
+        handlers::profile::compare_profiles,
+        handlers::profile::profile_settings,
+        handlers::profile::recurring_queries,
+        handlers::profile::export_report,
         handlers::system_management::get_system_functions,
         handlers::system_management::get_system_function_detail,
         handlers::system::get_runtime_info,
@@ -368,11 +375,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let user_service = Arc::new(UserService::new(pool.clone(), Arc::clone(&casbin_service)));
 
     // Build AppState with all services
+    let profile_snapshot_service =
+        Arc::new(services::profile_snapshot_service::ProfileSnapshotService::new(
+            pool.clone(),
+            config.profile_snapshots.clone(),
+        ));
+
     let app_state = AppState {
         db: pool.clone(),
         mysql_pool_manager: Arc::clone(&mysql_pool_manager),
         jwt_util: Arc::clone(&jwt_util),
         audit_config: config.audit.clone(),
+        profile_snapshot_service: Arc::clone(&profile_snapshot_service),
         auth_service: Arc::clone(&auth_service),
         cluster_service: Arc::clone(&cluster_service),
         organization_service: Arc::clone(&organization_service),
@@ -402,6 +416,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
     } else {
         tracing::warn!("Metrics collector disabled by configuration");
+    }
+
+    // Purge archived profile snapshots past their age/size caps (only when archiving is enabled)
+    if config.profile_snapshots.enabled {
+        tracing::info!(
+            "Profile snapshots enabled (max_per_cluster={}, max_age_days={})",
+            config.profile_snapshots.max_per_cluster,
+            config.profile_snapshots.max_age_days
+        );
+        let executor =
+            ScheduledExecutor::new("profile-snapshot-purge", std::time::Duration::from_secs(3600));
+        let service = Arc::clone(&profile_snapshot_service);
+        tokio::spawn(async move {
+            executor.start(service).await;
+        });
     }
 
     // Wrap AppState in Arc for shared ownership across routes
@@ -497,6 +526,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/clusters/profiles/explain", post(handlers::profile::explain_query))
         .route("/api/clusters/profiles/:query_id", get(handlers::profile::get_profile))
         .route(
+            "/api/clusters/profiles/:query_id/metadata",
+            get(handlers::profile::get_profile_metadata),
+        )
+        .route(
             "/api/clusters/profiles/:query_id/status",
             get(handlers::profile::get_profile_status),
         )
@@ -504,6 +537,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "/api/clusters/profiles/:query_id/analyze",
             get(handlers::profile::analyze_profile_handler),
         )
+        .route("/api/clusters/profiles/snapshots", get(handlers::profile::list_snapshots))
+        .route("/api/clusters/profiles/compare", post(handlers::profile::compare_profiles))
+        .route("/api/clusters/profiles/settings", get(handlers::profile::profile_settings))
+        .route("/api/clusters/profiles/recurring", get(handlers::profile::recurring_queries))
+        .route("/api/clusters/profiles/:query_id/report", get(handlers::profile::export_report))
         // Sessions
         .route("/api/clusters/sessions", get(handlers::sessions::get_sessions))
         .route("/api/clusters/sessions/:session_id", delete(handlers::sessions::kill_session))

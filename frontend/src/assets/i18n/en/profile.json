@@ -19,7 +19,8 @@
     "startTime": "Start Time",
     "executionTime": "Execution Time",
     "state": "State",
-    "sqlStatement": "SQL Statement"
+    "sqlStatement": "SQL Statement",
+    "taskType": "Type"
   },
   "tabs": {
     "analysis": "Execution Analysis",
@@ -27,7 +28,7 @@
   },
   "analysis": {
     "analyzing": "Analyzing Profile...",
-    "retentionHint": "Tip: StarRocks periodically cleans up Profile data, so detailed analysis may no longer be available for older queries.",
+    "retentionHint": "Profiles may be evicted by the database. Some failed queries contain a summary but never started runtime operators.",
     "failed": "Analysis failed: {{error}}",
     "unknownError": "Unknown error"
   },
@@ -61,7 +62,8 @@
     "resultBytes": "Size of result data returned to the client",
     "dataCacheHitRate": "DataCache Hit Rate",
     "noMetrics": "No metric data",
-    "dataCacheTooltip": "DataCache hit rate (shared-data architecture)\nLocal cache read: {{local}}\nRemote storage read: {{remote}}\nHit rate: {{hitRate}}%\n(Hit rate >= 70% is healthy)"
+    "dataCacheTooltip": "DataCache hit rate (shared-data architecture)\nLocal cache read: {{local}}\nRemote storage read: {{remote}}\nHit rate: {{hitRate}}%\n(Hit rate >= 70% is healthy)",
+    "workloadGroup": "Workload group"
   },
   "node": {
     "tab": "Node",
@@ -92,7 +94,10 @@
     "success": "Graph exported",
     "successTitle": "Export succeeded",
     "imageFailed": "Failed to export image",
-    "moduleLoadFailed": "Failed to load export module"
+    "moduleLoadFailed": "Failed to load export module",
+    "redact": "Redact SQL literals",
+    "markdown": "Markdown",
+    "failed": "Export failed"
   },
   "copy": {
     "profileCopied": "Profile content copied to clipboard",
@@ -454,7 +459,9 @@
     "recommendations": "Optimization recommendations",
     "counters": "Doris runtime counters",
     "waitHint": "ExecTime and dependency waits are separate counters. Do not add them as query wall time.",
-    "openDiagnostics": "Open query diagnostics"
+    "openDiagnostics": "Open query diagnostics",
+    "warningCount": "{{count}} topology warnings",
+    "noOperators": "No runtime operators were recorded for this query. Recorded summary diagnostics are shown on the right."
   },
   "live": {
     "pause": "Pause live updates · 5s",
@@ -466,5 +473,100 @@
     "waiting": "Waiting for a runtime profile. Profiling must be enabled in the original query session. The last available snapshot is preserved.",
     "statusUnavailable": "Query status is temporarily unavailable; showing the state reported by this profile.",
     "unavailable": "A final complete profile could not be confirmed. Automatic retries stopped; refresh manually to try again. The last snapshot is preserved."
+  },
+  "phases": {
+    "title": "Query phases",
+    "total": "Total",
+    "stackLabel": "Measured query phases as a share of total time",
+    "unaccounted": "Not attributed",
+    "notAdditive": "These phases overlap, so they are shown as separate bars instead of a stack."
+  },
+  "findings": {
+    "title": "Findings",
+    "none": "No findings.",
+    "impact": "Impact",
+    "where": "Where",
+    "queryLevel": "Whole query",
+    "parameters": "Parameter suggestions",
+    "why": "Why",
+    "risk": "Risk",
+    "copy": "Copy",
+    "adviceOnly": "Advice only: nothing is executed on the cluster. Review and run changes yourself."
+  },
+  "severity": {
+    "Critical": "Critical",
+    "Error": "Error",
+    "Warning": "Warning",
+    "Info": "Info"
+  },
+  "confidence": {
+    "high": "high",
+    "medium": "medium",
+    "low": "low"
+  },
+  "scope": {
+    "session": "session",
+    "global": "global (whole cluster)",
+    "statement": "statement"
+  },
+  "operator": {
+    "instances": "Instances",
+    "filter": "Filter counters",
+    "caption": "Operator counters with sum, average, maximum and minimum across tasks",
+    "counter": "Counter",
+    "evidence": "evidence",
+    "skewed": "skewed",
+    "note": "max/avg compares the slowest task with the average. Wait counters are separate from ExecTime and are not added to it; N/A means not measured."
+  },
+  "compare": {
+    "title": "Compare profiles",
+    "close": "Close comparison",
+    "loading": "Comparing profiles...",
+    "base": "Baseline",
+    "target": "Compared",
+    "totalDelta": "Total change",
+    "scoreDelta": "Score change",
+    "fingerprint": "SQL fingerprint",
+    "same": "Same statement",
+    "different": "Different statements",
+    "phase": "Phase",
+    "operators": "Largest operator changes",
+    "rows": "Rows",
+    "unmatched": "{{base}} operators only in the baseline and {{target}} only in the compared profile (plan changed).",
+    "newFindings": "New findings",
+    "resolvedFindings": "Resolved findings"
+  },
+  "guidance": {
+    "title": "Why is the profile missing?",
+    "unavailable": "Could not read the cluster's profile settings."
+  },
+  "insights": {
+    "title": "Recurring statements and archived profiles",
+    "loading": "Loading...",
+    "recurring": "Recurring statements",
+    "recurringHint": "Finished statements grouped by SQL fingerprint (literals ignored), from retained profiles and archived snapshots.",
+    "noRecurring": "No statement ran more than once in the retained history.",
+    "statement": "Statement",
+    "runs": "Runs",
+    "totalTime": "Total time",
+    "actions": "Actions",
+    "openLatest": "Open",
+    "compareTwo": "Compare last two",
+    "snapshots": "Archived snapshots",
+    "snapshotsOn": "Profiles are archived when diagnostics are opened for finished queries.",
+    "snapshotsOff": "Profile archiving is off. An administrator can enable [profile_snapshots] in the server config.",
+    "select": "Select",
+    "captured": "Captured",
+    "open": "Open",
+    "compareSelected": "Compare selected",
+    "compareById": "Compare by query ID",
+    "compare": "Compare"
+  },
+  "header": {
+    "version": "Engine version",
+    "level": "Profile level",
+    "confidence": "Confidence",
+    "partial": "Provisional",
+    "archived": "Archived {{time}}"
   }
 }

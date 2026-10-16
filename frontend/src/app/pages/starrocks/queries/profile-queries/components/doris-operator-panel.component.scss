@@ -1,0 +1,17 @@
+:host { display: block; font-size: 0.72rem; }
+.doris-panel { display: grid; gap: 0.5rem; }
+.panel-summary { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; }
+.panel-findings ul { margin: 0.25rem 0 0; padding-left: 1rem; display: grid; gap: 0.2rem; }
+.panel-findings .severity { font-weight: 700; }
+.panel-findings .reason { color: var(--stellar-muted, #8f9bb3); overflow-wrap: anywhere; }
+.table-wrap { overflow-x: auto; max-height: 24rem; overflow-y: auto; border: 1px solid var(--stellar-border, #e4e9f2); border-radius: 0.35rem; }
+.counter-table { width: 100%; border-collapse: collapse; }
+.counter-table th, .counter-table td { padding: 0.25rem 0.4rem; border-bottom: 1px solid var(--stellar-border, #e4e9f2); text-align: left; vertical-align: top; white-space: nowrap; }
+.counter-table thead th { position: sticky; top: 0; background: var(--stellar-surface, #fff); font-weight: 600; }
+.counter-table tbody th { font-weight: 500; white-space: normal; overflow-wrap: anywhere; min-width: 9rem; }
+.counter-table .scalar { white-space: normal; overflow-wrap: anywhere; color: var(--stellar-muted, #8f9bb3); }
+tr.highlighted { background: rgba(51, 102, 255, 0.08); }
+.evidence-tag { display: inline-block; font-size: 0.6rem; text-transform: uppercase; border: 1px solid var(--stellar-accent, #3366ff); color: var(--stellar-accent, #3366ff); border-radius: 0.2rem; padding: 0 0.25rem; margin-right: 0.25rem; }
+.skewed { color: #b86e00; font-weight: 700; }
+.note { margin: 0; color: var(--stellar-muted, #8f9bb3); font-size: 0.66rem; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

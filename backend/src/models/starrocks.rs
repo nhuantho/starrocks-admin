@@ -460,6 +460,8 @@ pub struct ProfileListItem {
     pub fe_node: String,
     #[serde(rename = "Engine", default)]
     pub engine: String,
+    #[serde(rename = "TaskType", default)]
+    pub task_type: String,
 }
 
 // Profile detail from get_query_profile()

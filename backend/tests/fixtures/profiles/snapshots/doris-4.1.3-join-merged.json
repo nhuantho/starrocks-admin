@@ -1,0 +1,389 @@
+{
+  "confidence": "high",
+  "diagnostics": [
+    {
+      "confidence": "high",
+      "impact": 0.59,
+      "node": "doris_f3_p1_JDBC_SCAN_OPERATOR_0_none",
+      "rule": "DORIS_TIME_SHARE",
+      "severity": "Info"
+    },
+    {
+      "confidence": "high",
+      "impact": 0.59,
+      "node": "doris_f3_p1_JDBC_SCAN_OPERATOR_0_none",
+      "rule": "DORIS_SCAN_WAIT",
+      "severity": "Info"
+    },
+    {
+      "confidence": "high",
+      "impact": 0.4,
+      "node": "doris_f2_p2_JDBC_SCAN_OPERATOR_2_none",
+      "rule": "DORIS_TIME_SHARE",
+      "severity": "Info"
+    },
+    {
+      "confidence": "high",
+      "impact": 0.4,
+      "node": "doris_f2_p2_JDBC_SCAN_OPERATOR_2_none",
+      "rule": "DORIS_SCAN_WAIT",
+      "severity": "Info"
+    },
+    {
+      "confidence": "high",
+      "impact": null,
+      "node": "query",
+      "rule": "DORIS_PROFILE_LEVEL",
+      "severity": "Info"
+    }
+  ],
+  "engine": "doris",
+  "engine_version": "doris-4.1.3-rc02-7126cf65d96",
+  "nodes": [
+    {
+      "children": [
+        "doris_f0_p0_EXCHANGE_OPERATOR_8_none"
+      ],
+      "exec_ns": 110540,
+      "id": "doris_f0_p0_RESULT_SINK_OPERATOR_9_none",
+      "memory": 0,
+      "pct": 0.22,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f1_p0_DATA_STREAM_SINK_OPERATOR_none_8"
+      ],
+      "exec_ns": 69144,
+      "id": "doris_f0_p0_EXCHANGE_OPERATOR_8_none",
+      "memory": 192,
+      "pct": 0.14,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f1_p0_LOCAL_MERGE_SORT_SOURCE_OPERATOR_7_none"
+      ],
+      "exec_ns": 21883,
+      "id": "doris_f1_p0_DATA_STREAM_SINK_OPERATOR_none_8",
+      "memory": 0,
+      "pct": 0.04,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f1_p1_SORT_SINK_OPERATOR_7_none"
+      ],
+      "exec_ns": 8160,
+      "id": "doris_f1_p0_LOCAL_MERGE_SORT_SOURCE_OPERATOR_7_none",
+      "memory": 0,
+      "pct": 0.02,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f1_p1_LOCAL_EXCHANGE_OPERATOR_-3_none"
+      ],
+      "exec_ns": 20796,
+      "id": "doris_f1_p1_SORT_SINK_OPERATOR_7_none",
+      "memory": 192,
+      "pct": 0.04,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f1_p2_LOCAL_EXCHANGE_SINK_OPERATOR_-3_none"
+      ],
+      "exec_ns": 1680,
+      "id": "doris_f1_p1_LOCAL_EXCHANGE_OPERATOR_-3_none",
+      "memory": 4229,
+      "pct": 0.0,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f1_p2_AGGREGATION_OPERATOR_6_none"
+      ],
+      "exec_ns": 9657,
+      "id": "doris_f1_p2_LOCAL_EXCHANGE_SINK_OPERATOR_-3_none",
+      "memory": 4229,
+      "pct": 0.02,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f1_p3_AGGREGATION_SINK_OPERATOR_6_none"
+      ],
+      "exec_ns": 16231,
+      "id": "doris_f1_p2_AGGREGATION_OPERATOR_6_none",
+      "memory": 0,
+      "pct": 0.03,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f1_p3_EXCHANGE_OPERATOR_5_none"
+      ],
+      "exec_ns": 40354,
+      "id": "doris_f1_p3_AGGREGATION_SINK_OPERATOR_6_none",
+      "memory": 436510,
+      "pct": 0.08,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f2_p0_DATA_STREAM_SINK_OPERATOR_none_5"
+      ],
+      "exec_ns": 17999,
+      "id": "doris_f1_p3_EXCHANGE_OPERATOR_5_none",
+      "memory": 192,
+      "pct": 0.04,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f2_p0_STREAMING_AGGREGATION_OPERATOR_4_none"
+      ],
+      "exec_ns": 99690,
+      "id": "doris_f2_p0_DATA_STREAM_SINK_OPERATOR_none_5",
+      "memory": 0,
+      "pct": 0.2,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f2_p0_LOCAL_EXCHANGE_OPERATOR_-6_none"
+      ],
+      "exec_ns": 42989,
+      "id": "doris_f2_p0_STREAMING_AGGREGATION_OPERATOR_4_none",
+      "memory": 436510,
+      "pct": 0.08,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f2_p1_LOCAL_EXCHANGE_SINK_OPERATOR_-6_none"
+      ],
+      "exec_ns": 1486,
+      "id": "doris_f2_p0_LOCAL_EXCHANGE_OPERATOR_-6_none",
+      "memory": 320,
+      "pct": 0.0,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f2_p1_HASH_JOIN_OPERATOR_3_none"
+      ],
+      "exec_ns": 9986,
+      "id": "doris_f2_p1_LOCAL_EXCHANGE_SINK_OPERATOR_-6_none",
+      "memory": 320,
+      "pct": 0.02,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f2_p1_LOCAL_EXCHANGE_OPERATOR_-5_none",
+        "doris_f2_p3_HASH_JOIN_SINK_OPERATOR_3_none"
+      ],
+      "exec_ns": 17914,
+      "id": "doris_f2_p1_HASH_JOIN_OPERATOR_3_none",
+      "memory": 144,
+      "pct": 0.04,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f2_p2_LOCAL_EXCHANGE_SINK_OPERATOR_-5_none"
+      ],
+      "exec_ns": 1736,
+      "id": "doris_f2_p1_LOCAL_EXCHANGE_OPERATOR_-5_none",
+      "memory": 128,
+      "pct": 0.0,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f2_p2_JDBC_SCAN_OPERATOR_2_none"
+      ],
+      "exec_ns": 9206,
+      "id": "doris_f2_p2_LOCAL_EXCHANGE_SINK_OPERATOR_-5_none",
+      "memory": 128,
+      "pct": 0.02,
+      "rows": 1
+    },
+    {
+      "children": [],
+      "exec_ns": 20278000,
+      "id": "doris_f2_p2_JDBC_SCAN_OPERATOR_2_none",
+      "memory": 0,
+      "pct": 40.03,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f2_p3_LOCAL_EXCHANGE_OPERATOR_-4_none"
+      ],
+      "exec_ns": 19208,
+      "id": "doris_f2_p3_HASH_JOIN_SINK_OPERATOR_3_none",
+      "memory": 188,
+      "pct": 0.04,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f2_p4_LOCAL_EXCHANGE_SINK_OPERATOR_-4_none"
+      ],
+      "exec_ns": 990,
+      "id": "doris_f2_p3_LOCAL_EXCHANGE_OPERATOR_-4_none",
+      "memory": 128,
+      "pct": 0.0,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f2_p4_EXCHANGE_OPERATOR_1_none"
+      ],
+      "exec_ns": 28718,
+      "id": "doris_f2_p4_LOCAL_EXCHANGE_SINK_OPERATOR_-4_none",
+      "memory": 128,
+      "pct": 0.06,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f3_p0_DATA_STREAM_SINK_OPERATOR_none_1"
+      ],
+      "exec_ns": 23376,
+      "id": "doris_f2_p4_EXCHANGE_OPERATOR_1_none",
+      "memory": 128,
+      "pct": 0.05,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f3_p0_LOCAL_EXCHANGE_OPERATOR_-1_none"
+      ],
+      "exec_ns": 21940,
+      "id": "doris_f3_p0_DATA_STREAM_SINK_OPERATOR_none_1",
+      "memory": 0,
+      "pct": 0.04,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f3_p1_LOCAL_EXCHANGE_SINK_OPERATOR_-1_none"
+      ],
+      "exec_ns": 2700,
+      "id": "doris_f3_p0_LOCAL_EXCHANGE_OPERATOR_-1_none",
+      "memory": 128,
+      "pct": 0.01,
+      "rows": 1
+    },
+    {
+      "children": [
+        "doris_f3_p1_JDBC_SCAN_OPERATOR_0_none"
+      ],
+      "exec_ns": 75699,
+      "id": "doris_f3_p1_LOCAL_EXCHANGE_SINK_OPERATOR_-1_none",
+      "memory": 128,
+      "pct": 0.15,
+      "rows": 1
+    },
+    {
+      "children": [],
+      "exec_ns": 29710000,
+      "id": "doris_f3_p1_JDBC_SCAN_OPERATOR_0_none",
+      "memory": 0,
+      "pct": 58.65,
+      "rows": 1
+    }
+  ],
+  "phases": {
+    "additive": true,
+    "details": [
+      [
+        "fetch",
+        30.0
+      ],
+      [
+        "write",
+        0.0
+      ]
+    ],
+    "segments": [
+      [
+        "parse",
+        1.0
+      ],
+      [
+        "plan",
+        8.0
+      ],
+      [
+        "meta",
+        0.0
+      ],
+      [
+        "schedule",
+        9.0
+      ],
+      [
+        "execute_fetch",
+        31.0
+      ]
+    ],
+    "total_ms": 49.0,
+    "unaccounted_ms": 0.0
+  },
+  "profile_level": null,
+  "root": "doris_f0_p0_RESULT_SINK_OPERATOR_9_none",
+  "root_cause_paths": [
+    [
+      "doris_f3_p1_JDBC_SCAN_OPERATOR_0_none",
+      "doris_f3_p1_LOCAL_EXCHANGE_SINK_OPERATOR_-1_none",
+      "doris_f3_p0_LOCAL_EXCHANGE_OPERATOR_-1_none",
+      "doris_f3_p0_DATA_STREAM_SINK_OPERATOR_none_1",
+      "doris_f2_p4_EXCHANGE_OPERATOR_1_none",
+      "doris_f2_p4_LOCAL_EXCHANGE_SINK_OPERATOR_-4_none",
+      "doris_f2_p3_LOCAL_EXCHANGE_OPERATOR_-4_none",
+      "doris_f2_p3_HASH_JOIN_SINK_OPERATOR_3_none",
+      "doris_f2_p1_HASH_JOIN_OPERATOR_3_none",
+      "doris_f2_p1_LOCAL_EXCHANGE_SINK_OPERATOR_-6_none",
+      "doris_f2_p0_LOCAL_EXCHANGE_OPERATOR_-6_none",
+      "doris_f2_p0_STREAMING_AGGREGATION_OPERATOR_4_none",
+      "doris_f2_p0_DATA_STREAM_SINK_OPERATOR_none_5",
+      "doris_f1_p3_EXCHANGE_OPERATOR_5_none",
+      "doris_f1_p3_AGGREGATION_SINK_OPERATOR_6_none",
+      "doris_f1_p2_AGGREGATION_OPERATOR_6_none",
+      "doris_f1_p2_LOCAL_EXCHANGE_SINK_OPERATOR_-3_none",
+      "doris_f1_p1_LOCAL_EXCHANGE_OPERATOR_-3_none",
+      "doris_f1_p1_SORT_SINK_OPERATOR_7_none",
+      "doris_f1_p0_LOCAL_MERGE_SORT_SOURCE_OPERATOR_7_none",
+      "doris_f1_p0_DATA_STREAM_SINK_OPERATOR_none_8",
+      "doris_f0_p0_EXCHANGE_OPERATOR_8_none",
+      "doris_f0_p0_RESULT_SINK_OPERATOR_9_none"
+    ],
+    [
+      "doris_f2_p2_JDBC_SCAN_OPERATOR_2_none",
+      "doris_f2_p2_LOCAL_EXCHANGE_SINK_OPERATOR_-5_none",
+      "doris_f2_p1_LOCAL_EXCHANGE_OPERATOR_-5_none",
+      "doris_f2_p1_HASH_JOIN_OPERATOR_3_none",
+      "doris_f2_p1_LOCAL_EXCHANGE_SINK_OPERATOR_-6_none",
+      "doris_f2_p0_LOCAL_EXCHANGE_OPERATOR_-6_none",
+      "doris_f2_p0_STREAMING_AGGREGATION_OPERATOR_4_none",
+      "doris_f2_p0_DATA_STREAM_SINK_OPERATOR_none_5",
+      "doris_f1_p3_EXCHANGE_OPERATOR_5_none",
+      "doris_f1_p3_AGGREGATION_SINK_OPERATOR_6_none",
+      "doris_f1_p2_AGGREGATION_OPERATOR_6_none",
+      "doris_f1_p2_LOCAL_EXCHANGE_SINK_OPERATOR_-3_none",
+      "doris_f1_p1_LOCAL_EXCHANGE_OPERATOR_-3_none",
+      "doris_f1_p1_SORT_SINK_OPERATOR_7_none",
+      "doris_f1_p0_LOCAL_MERGE_SORT_SOURCE_OPERATOR_7_none",
+      "doris_f1_p0_DATA_STREAM_SINK_OPERATOR_none_8",
+      "doris_f0_p0_EXCHANGE_OPERATOR_8_none",
+      "doris_f0_p0_RESULT_SINK_OPERATOR_9_none"
+    ]
+  ],
+  "score": 99.11,
+  "warnings": []
+}

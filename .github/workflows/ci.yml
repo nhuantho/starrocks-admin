@@ -5,6 +5,14 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+    types: [ opened, synchronize, reopened, ready_for_review ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -147,3 +155,49 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Binary Size:** $(du -h build/dist/bin/starrocks-admin | cut -f1)" >> $GITHUB_STEP_SUMMARY
         echo "**Total Size:** $(du -sh build/dist/ | cut -f1)" >> $GITHUB_STEP_SUMMARY
+
+  auto-merge:
+    name: Auto-merge after CI
+    needs: [ lint-and-test, build ]
+    if: >-
+      github.event_name == 'pull_request' &&
+      !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      # No checkout or execution of PR code in this job with write permissions.
+      - name: Merge the tested pull request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tested = context.payload.pull_request;
+            const { data: current } = await github.rest.pulls.get({
+              ...context.repo,
+              pull_number: tested.number,
+            });
+            if (current.state !== 'open' || current.draft ||
+                current.head.repo?.full_name !== context.payload.repository.full_name ||
+                current.head.sha !== tested.head.sha ||
+                current.base.ref !== tested.base.ref ||
+                current.base.sha !== tested.base.sha) {
+              core.notice('PR changed since CI started; run CI on the current revision before merging.');
+              return;
+            }
+            const { data: result } = await github.rest.pulls.merge({
+              ...context.repo,
+              pull_number: current.number,
+              sha: tested.head.sha,
+              merge_method: 'merge',
+            });
+            if (!result.merged) {
+              core.setFailed(result.message || 'GitHub did not merge the pull request.');
+              return;
+            }
+            await core.summary.addHeading('Pull request merged')
+              .addLink(`#${current.number}`, current.html_url)
+              .addRaw('\nCI passed; no manual approval or merge click was needed.\n')
+              .write();

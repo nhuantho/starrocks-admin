@@ -112,6 +112,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
   selectedRefreshInterval: number | 'off' = 'off'; // Default: off (Grafana style)
   refreshIntervalOptions: { value: number | 'off'; label: string }[] = [];
   private destroy$ = new Subject<void>();
+  private resultSourcesReset$ = new Subject<void>();
 
   // CodeMirror editor
   private editorView: EditorView | null = null;
@@ -4440,6 +4441,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
         node.loading = false;
         this.loadingDatabases = false;
         this.refreshSqlSchema();
+        this.cdr.markForCheck();
         
         if (node.expanded && this.selectedNodeId === node.id && node.children.length > 0) {
           this.onNodeSelect(node.children[0]);
@@ -4452,6 +4454,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
         node.children = [];
         this.toastrService.danger(this.t('messages.loadDatabasesFailed'), this.t('common.error'));
         this.refreshSqlSchema();
+        this.cdr.markForCheck();
       },
     });
   }
@@ -4494,6 +4497,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
       next: (tables) => {
         applyTables(tables || []);
         node.loading = false;
+        this.cdr.markForCheck();
       },
       error: (error) => {
         node.loading = false;
@@ -4507,6 +4511,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
         }
         this.toastrService.danger(this.t('messages.loadTablesFailed', { error: error.message || error.statusText || this.t('messages.unknownError') }), this.t('common.error'));
         this.refreshSqlSchema();
+        this.cdr.markForCheck();
       },
     });
   }
@@ -4601,6 +4606,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
           this.sqlInput = update.state.doc.toString();
+          this.cdr.markForCheck();
         }
       }),
       this.themeCompartment.of(this.buildEditorTheme()),
@@ -5226,6 +5232,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
   }
 
   private executeSQLInternal(sql: string): void {
+    this.resultSourcesReset$.next();
     this.executing = true;
     this.queryResult = null;
     this.resultSettings = [];
@@ -5270,6 +5277,11 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
             });
 
             const source = new LocalDataSource();
+            // ng2-smart-table builds its rows asynchronously. Mark this OnPush
+            // parent on source events as well as on the HTTP response.
+            source.onChanged().pipe(
+              takeUntil(this.destroy$), takeUntil(this.resultSourcesReset$),
+            ).subscribe(() => this.cdr.markForCheck());
             source.load(dataRows);
             this.resultSources.push(source);
           } else {
@@ -5283,6 +5295,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
 
         this.rowCount = totalRowCount;
         this.executing = false;
+        this.cdr.markForCheck();
 
         if (result.results.length > 1) {
           this.toastrService.success(
@@ -5310,6 +5323,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
       },
       error: (error) => {
         this.executing = false;
+        this.cdr.markForCheck();
         this.toastrService.danger(ErrorHandler.extractErrorMessage(error), this.t('results.executionFailed'));
       },
     });
@@ -5360,6 +5374,7 @@ export class QueryExecutionComponent implements OnInit, OnDestroy, AfterViewInit
   }
 
   clearSQL(): void {
+    this.resultSourcesReset$.next();
     this.sqlInput = '';
     if (this.editorView) {
       const transaction = this.editorView.state.update({

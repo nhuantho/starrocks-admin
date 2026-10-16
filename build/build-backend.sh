@@ -78,6 +78,14 @@ enabled = true
 [audit]
 database = "starrocks_audit_db__"
 table = "starrocks_audit_tbl__"
+
+# Archive analyzed query profiles so they survive cluster profile eviction (opt-in)
+[profile_snapshots]
+enabled = false
+max_per_cluster = 200
+max_bytes_per_cluster = 268435456
+max_age_days = 30
+max_profile_bytes = 16777216
 EOF
 echo "Created production config.toml"
 

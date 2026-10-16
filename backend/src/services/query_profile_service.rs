@@ -2,7 +2,52 @@ use crate::models::ProfileListItem;
 use crate::services::mysql_client::is_doris_catalogs;
 use crate::services::{MySQLClient, StarRocksClient};
 use crate::utils::{ApiError, ApiResult};
+use serde::Serialize;
 use serde_json::Value;
+use utoipa::ToSchema;
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ProfileMetadata {
+    pub catalog: Option<String>,
+    pub database: Option<String>,
+    pub task_type: Option<String>,
+}
+
+pub fn parse_profile_metadata(profile: &str) -> ProfileMetadata {
+    // Read only the captured Summary, never infer the session catalog from SQL or connection defaults.
+    let mut catalog = None;
+    let mut database = None;
+    let mut task_type = None;
+    for line in profile.lines() {
+        let line = line.trim();
+        if line.starts_with("Execution Summary:")
+            || line.starts_with("MergedProfile:")
+            || line.starts_with("Execution Profile")
+        {
+            break;
+        }
+        let Some((key, value)) = line
+            .strip_prefix("- ")
+            .and_then(|line| line.split_once(':'))
+        else {
+            continue;
+        };
+        if key.trim() == "Sql Statement" {
+            break;
+        }
+        let value = value.trim();
+        if value.is_empty() || matches!(value, "N/A" | "NULL") {
+            continue;
+        }
+        match key.trim() {
+            "Default Catalog" => catalog = Some(value.to_string()),
+            "Default Db" => database = Some(value.to_string()),
+            "Task Type" | "Query Type" => task_type = Some(value.to_ascii_uppercase()),
+            _ => {},
+        }
+    }
+    ProfileMetadata { catalog, database, task_type }
+}
 
 pub struct QueryProfileService {
     pub client: StarRocksClient,
@@ -71,9 +116,40 @@ pub fn parse_profile_list(
                 user: field(&["User", "QueryUser", "查询用户"]),
                 fe_node: field(&["FeNode", "Frontend", "FE节点"]),
                 engine: engine.to_string(),
+                task_type: field(&["TaskType", "QueryType", "查询类型"]),
             })
         })
         .collect()
+}
+
+fn merge_profile_metadata(profiles: &mut Vec<ProfileListItem>, metadata: Vec<ProfileListItem>) {
+    let mut indexes: std::collections::HashMap<String, usize> = profiles
+        .iter()
+        .enumerate()
+        .map(|(index, profile)| (profile.query_id.clone(), index))
+        .collect();
+    for item in metadata {
+        if let Some(index) = indexes.get(&item.query_id).copied() {
+            let existing = &mut profiles[index];
+            if existing.catalog.is_empty() {
+                existing.catalog = item.catalog;
+            }
+            if existing.database.is_empty() {
+                existing.database = item.database;
+            }
+            if existing.task_type.is_empty() {
+                existing.task_type = item.task_type;
+            }
+        } else {
+            indexes.insert(item.query_id.clone(), profiles.len());
+            profiles.push(item);
+        }
+    }
+    profiles.sort_by(|a, b| {
+        b.start_time
+            .cmp(&a.start_time)
+            .then(a.query_id.cmp(&b.query_id))
+    });
 }
 
 fn unwrap_doris_response(payload: Value) -> ApiResult<Value> {
@@ -178,6 +254,23 @@ impl QueryProfileService {
         }
         let mut profiles =
             parse_doris_history(self.doris_get("/rest/v2/manager/query/query_info").await?)?;
+        // Doris query_info filters out LOAD and omits Default Catalog. Supplement it with
+        // permission-checked SQL metadata from the pooled FE. Other FEs remain in query_info;
+        // the UI resolves their missing catalog lazily via the authorized profile endpoint.
+        // https://doris.apache.org/docs/4.x/query-acceleration/query-profile/
+        // SHOW LOAD PROFILE was verified on the staging 4.1.3 server. Older versions may reject it.
+        for sql in ["SHOW QUERY PROFILE LIMIT 2000", "SHOW LOAD PROFILE '/'"] {
+            match tokio::time::timeout(std::time::Duration::from_secs(5), self.mysql.query_raw(sql))
+                .await
+            {
+                Ok(Ok((columns, rows))) => {
+                    if let Ok(metadata) = parse_profile_list(&columns, rows, "doris") {
+                        merge_profile_metadata(&mut profiles, metadata);
+                    }
+                },
+                _ => tracing::debug!("Doris SQL profile metadata unavailable on connected FE"),
+            }
+        }
         // Live queries may not yet have a retained runtime profile. Do not infer completion from absence.
         for query in self.client.get_queries().await? {
             let live = ProfileListItem {
@@ -192,6 +285,7 @@ impl QueryProfileService {
                 end_time: String::new(),
                 fe_node: query.fe_ip.unwrap_or_default(),
                 engine: "doris".to_string(),
+                task_type: "QUERY".to_string(),
             };
             if let Some(index) = profiles
                 .iter()
@@ -349,6 +443,69 @@ pub fn validate_explain_sql(sql: &str) -> ApiResult<&str> {
 mod profile_tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn captured_catalog_metadata_never_uses_sql_or_connection_defaults() {
+        let real = parse_profile_metadata(include_str!(
+            "../../tests/fixtures/profiles/doris-4.1.3-jdbc.txt"
+        ));
+        assert_eq!(real.catalog.as_deref(), Some("internal"));
+        assert_eq!(real.task_type.as_deref(), Some("QUERY"));
+        let external = parse_profile_metadata(
+            "Summary:\n - Default Catalog: external_iceberg\n - Default Db: gold\n - Task Type: LOAD\n - Sql Statement: select 1\n - Default Catalog: fake_from_sql\nExecution Summary:",
+        );
+        assert_eq!(external.catalog.as_deref(), Some("external_iceberg"));
+        assert_eq!(external.database.as_deref(), Some("gold"));
+        assert_eq!(external.task_type.as_deref(), Some("LOAD"));
+        let missing =
+            parse_profile_metadata("Summary:\n - Sql Statement: select * from external.db.t");
+        assert!(missing.catalog.is_none());
+        assert!(
+            parse_profile_metadata("Summary:\n - Sql Statement:\n - Default Catalog: fake_sql")
+                .catalog
+                .is_none()
+        );
+        assert!(
+            parse_profile_metadata("Summary:\n - Default Catalog: N/A")
+                .catalog
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn sql_metadata_adds_load_and_catalog_without_overwriting_live_state() {
+        let mut profiles = parse_doris_history(json!({
+            "columnNames": ["Query ID", "Sql", "状态", "查询类型"],
+            "rows": [["q1", "select 1", "RUNNING", "QUERY"]]
+        }))
+        .unwrap();
+        let columns = [
+            "Profile ID",
+            "Task State",
+            "Default Catalog",
+            "Default Db",
+            "Task Type",
+            "Sql Statement",
+        ]
+        .map(str::to_string);
+        let rows = vec![
+            vec!["q1", "OK", "internal", "db", "QUERY", "select 1"],
+            vec!["q2", "OK", "iceberg", "gold", "LOAD", "insert into t select 1"],
+            vec!["q2", "OK", "iceberg", "gold", "LOAD", "insert into t select 1"],
+        ]
+        .into_iter()
+        .map(|r| r.into_iter().map(str::to_string).collect())
+        .collect();
+        merge_profile_metadata(&mut profiles, parse_profile_list(&columns, rows, "doris").unwrap());
+        assert_eq!(profiles.len(), 2);
+        let query = profiles.iter().find(|p| p.query_id == "q1").unwrap();
+        assert_eq!(query.state, "RUNNING");
+        assert_eq!(query.catalog, "internal");
+        let load = profiles.iter().find(|p| p.query_id == "q2").unwrap();
+        assert_eq!(load.task_type, "LOAD");
+        assert_eq!(load.catalog, "iceberg");
+        assert_eq!(load.state, "FINISHED");
+    }
 
     #[test]
     fn doris_history_maps_columns_and_keeps_failures() {

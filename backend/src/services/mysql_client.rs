@@ -116,10 +116,9 @@ pub(crate) fn parse_catalog_names(
             .get(index)
             .map(|name| name.trim())
             .filter(|name| !name.is_empty())
+            && !names.iter().any(|existing| existing == name)
         {
-            if !names.iter().any(|existing| existing == name) {
-                names.push(name.to_string());
-            }
+            names.push(name.to_string());
         }
     }
     Ok(names)
@@ -256,7 +255,7 @@ impl MySQLSession {
         let execution_time_ms = start.elapsed().as_millis();
 
         // Detailed performance logging for debugging
-        tracing::debug!("SQL: '{}' -> {} rows in {}ms", sql, rows.len(), execution_time_ms);
+        tracing::debug!(row_count = rows.len(), execution_time_ms, "SQL execution completed");
 
         let process_start = std::time::Instant::now();
         let (columns, data_rows) = process_query_result(rows);
